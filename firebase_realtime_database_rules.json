@@ -1,0 +1,11 @@
+{
+  "rules": {
+    "presence": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth.uid === $uid"
+      },
+      ".indexOn": ["online", "gender", "lastSeen", "live", "busy"]
+    }
+  }
+}
