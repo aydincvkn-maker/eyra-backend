@@ -8,10 +8,15 @@ const messageSchema = new mongoose.Schema(
     to: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // private chat veya gift alıcısı
     type: { 
       type: String, 
-      enum: ["text", "gift", "system", "emoji", "sticker", "image"], 
+      enum: ["text", "gift", "system", "emoji", "sticker", "image", "call_chat"], 
       default: "text" 
     },
     content: { type: String, required: true, maxlength: 1000 },
+
+    // Call chat extras (optional)
+    originalContent: { type: String },
+    originalLanguage: { type: String },
+    translations: { type: mongoose.Schema.Types.Mixed },
     
     // Moderasyon
     isDeleted: { type: Boolean, default: false },

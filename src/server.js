@@ -11,9 +11,11 @@ const connectDB = require("./config/db");
 const { connectRedis } = require("./config/redis");
 const { logger } = require("./utils/logger");
 const User = require("./models/User");
+const Message = require("./models/Message");
 const LiveStream = require("./models/LiveStream");
 const presenceService = require("./services/presenceService");
 const liveService = require("./services/liveService");
+const translationService = require('./services/translationService');
 
 // =========================
 // PRESENCE <-> DATABASE SYNC
@@ -1129,6 +1131,113 @@ io.on("connection", (socket) => {
   socket.on("call:end", ({ roomName }) => forwardCallEvent("call:ended", roomName));
   socket.on("call:cancel", ({ roomName }) => forwardCallEvent("call:cancelled", roomName));
 
+  // ============ CALL IN-CHAT MESSAGING WITH TRANSLATION ============
+  // Görüntülü arama sırasında mesaj gönderme (UI tarafında çeviri ibaresi yok; sadece displayContent kullanılır)
+  socket.on('call:message', async ({ roomName, content, targetLanguage, tempId }) => {
+    const senderId = socket.data.userId;
+    if (!senderId || !roomName || !content) {
+      console.log(`⚠️ call:message - missing required fields`);
+      return;
+    }
+
+    console.log(`💬 call:message received sender=${senderId} room=${roomName} tempId=${tempId || '-'}`);
+
+    try {
+      if (String(content).length > 500) {
+        socket.emit('call:message_error', { error: 'message_too_long', maxLength: 500, tempId });
+        return;
+      }
+
+      const sender = await User.findById(senderId)
+        .select('username name profileImage preferredLanguage')
+        .lean();
+
+      if (!sender) {
+        socket.emit('call:message_error', { error: 'user_not_found', tempId });
+        return;
+      }
+
+      const receiverId = getCounterpartyForRoom(roomName, senderId);
+      if (!receiverId) {
+        console.log(`⚠️ call:message - counterparty not found for room=${roomName} sender=${senderId}`);
+        socket.emit('call:message_error', { error: 'call_not_found', tempId });
+        return;
+      }
+
+      const receiver = await User.findById(receiverId).select('preferredLanguage').lean();
+
+      const senderLang = sender.preferredLanguage || 'tr';
+      const receiverLang = receiver?.preferredLanguage || targetLanguage || 'tr';
+
+      let originalLanguage = senderLang;
+      let translatedContent = String(content);
+      const translations = {};
+
+      if (senderLang !== receiverLang) {
+        try {
+          const translateResult = await translationService.translateText(
+            String(content),
+            receiverLang,
+            'auto'
+          );
+
+          originalLanguage = translateResult.detectedLanguage || senderLang;
+          translatedContent = translateResult.translatedText || String(content);
+
+          translations[originalLanguage] = String(content);
+          translations[receiverLang] = translatedContent;
+        } catch (translateErr) {
+          console.error('❌ Translation error:', translateErr.message);
+          translatedContent = String(content);
+        }
+      }
+
+      const message = await Message.create({
+        roomId: roomName,
+        from: senderId,
+        to: receiverId,
+        type: 'call_chat',
+        content: String(content),
+        originalContent: String(content),
+        originalLanguage,
+        translations,
+      });
+
+      const messagePayload = {
+        _id: message._id.toString(),
+        roomName,
+        content: String(content),
+        translatedContent,
+        originalLanguage,
+        targetLanguage: receiverLang,
+        isTranslated: String(content) !== translatedContent,
+        tempId,
+        sender: {
+          _id: String(senderId),
+          username: sender.username,
+          name: sender.name,
+          profileImage: sender.profileImage,
+        },
+        timestamp: message.createdAt,
+      };
+
+      socket.emit('call:message_sent', {
+        ...messagePayload,
+        displayContent: String(content),
+      });
+
+      emitToUserSockets(receiverId, 'call:message_received', {
+        ...messagePayload,
+        displayContent: translatedContent,
+      });
+
+      console.log(`💬 Call message: ${senderId} -> ${receiverId} in ${roomName} (${originalLanguage} -> ${receiverLang})`);
+    } catch (e) {
+      console.error('❌ call:message error:', e.message);
+      socket.emit('call:message_error', { error: 'send_failed', details: e.message, tempId });
+    }
+  });
+
   socket.on("disconnect", async (reason) => {
     // ✅ Disconnect logu
     const userId = socket.data?.userId || 'unknown';
@@ -1263,16 +1372,31 @@ const emitToUserSockets = (userId, eventName, payload) => {
 };
 
 // Helper: find the counterparty of a call by room name
-const getCounterpartyForRoom = (roomName, senderId) => {
-  const info = activeCalls.get(roomName);
-  if (!info) return null;
+const parseCallRoomName = (roomName) => {
+  if (!roomName) return null;
+  const parts = String(roomName).split('_');
+  if (parts.length < 4 || parts[0] !== 'call') return null;
+  const callerId = parts[1];
+  const targetUserId = parts[2];
+  if (!callerId || !targetUserId) return null;
+  return { callerId, targetUserId };
+};
 
+const getCounterpartyForRoom = (roomName, senderId) => {
   const senderStr = String(senderId || "").trim();
   if (!senderStr) return null;
 
-  if (senderStr === String(info.callerId)) return String(info.targetUserId);
-  if (senderStr === String(info.targetUserId)) return String(info.callerId);
+  const info = activeCalls.get(roomName);
+  if (info) {
+    if (senderStr === String(info.callerId)) return String(info.targetUserId);
+    if (senderStr === String(info.targetUserId)) return String(info.callerId);
+  }
 
+  const parsed = parseCallRoomName(roomName);
+  if (parsed) {
+    if (senderStr === String(parsed.callerId)) return String(parsed.targetUserId);
+    if (senderStr === String(parsed.targetUserId)) return String(parsed.callerId);
+  }
   return null;
 };
 
