@@ -1131,6 +1131,94 @@ io.on("connection", (socket) => {
   socket.on("call:end", ({ roomName }) => forwardCallEvent("call:ended", roomName));
   socket.on("call:cancel", ({ roomName }) => forwardCallEvent("call:cancelled", roomName));
 
+  // ============ PRIVATE CHAT SOCKET EVENTS ============
+  const chatService = require('./services/chatService');
+  
+  // ✅ Send private chat message
+  socket.on('chat:send_message', async (data) => {
+    const fromUserId = socket.data.userId;
+    console.log(`📩 chat:send_message received - fromUserId: ${fromUserId}, to: ${data.to}, text: ${data.text?.substring(0, 20)}`);
+    
+    if (!fromUserId || !data.to) {
+      console.log('⚠️ chat:send_message - missing userId or recipient');
+      socket.emit('chat:error', {
+        tempId: data.tempId,
+        error: 'Missing userId or recipient'
+      });
+      return;
+    }
+    
+    try {
+      console.log(`📩 Calling chatService.sendMessage...`);
+      const message = await chatService.sendMessage(fromUserId, data.to, {
+        text: data.text,
+        replyToId: data.replyToId,
+        mediaUrl: data.mediaUrl,
+        mediaType: data.mediaType
+      });
+      
+      console.log(`📩 Message saved with id: ${message._id}`);
+      
+      const messageData = {
+        messageId: message._id.toString(),
+        from: fromUserId,
+        to: data.to,
+        text: message.content,
+        timestamp: message.createdAt,
+        replyToId: data.replyToId,
+        mediaUrl: data.mediaUrl,
+        mediaType: data.mediaType,
+        isMe: false
+      };
+      
+      // Send to recipient
+      emitToUserSockets(data.to, 'chat:new_message', messageData);
+      
+      // Confirm to sender
+      socket.emit('chat:new_message', {
+        ...messageData,
+        isMe: true,
+        tempId: data.tempId
+      });
+      
+      console.log(`💬 Chat message sent: ${fromUserId} -> ${data.to}`);
+    } catch (error) {
+      console.error('❌ chat:send_message error:', error.message);
+      
+      let errorMessage = 'Failed to send message';
+      if (error.message === 'RATE_LIMIT_EXCEEDED') errorMessage = 'Too many messages. Please slow down.';
+      if (error.message === 'USER_BLOCKED') errorMessage = 'user_blocked';
+      
+      socket.emit('chat:error', {
+        tempId: data.tempId,
+        error: errorMessage
+      });
+    }
+  });
+
+  // ✅ Typing indicator
+  socket.on('chat:typing', (data) => {
+    const fromUserId = socket.data.userId;
+    if (!fromUserId || !data.to) return;
+    
+    emitToUserSockets(data.to, 'chat:typing', {
+      from: fromUserId,
+      fromUserId: fromUserId,
+      isTyping: data.isTyping || false
+    });
+  });
+
+  // ✅ Mark messages as read
+  socket.on('chat:mark_read', (data) => {
+    const userId = socket.data.userId;
+    if (!userId || !data.from) return;
+    
+    emitToUserSockets(data.from, 'chat:messages_read', {
+      by: userId,
+      conversationWith: data.from
+    });
+  });
+
   // ============ CALL IN-CHAT MESSAGING WITH TRANSLATION ============
   // Görüntülü arama sırasında mesaj gönderme (UI tarafında çeviri ibaresi yok; sadece displayContent kullanılır)
   socket.on('call:message', async ({ roomName, content, targetLanguage, tempId }) => {
