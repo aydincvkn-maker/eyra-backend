@@ -14,12 +14,14 @@ Write-Host ""
 Set-Location $repoPath
 
 while ($true) {
-    $status = git status --porcelain 2>$null
+    # Submodule'lari ignore ederek sadece ana repo degisikliklerini kontrol et
+    $status = git status --porcelain --ignore-submodules 2>$null
     
     if ($status) {
         $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         
         Write-Host "[$timestamp] Degisiklik tespit edildi!"
+        Write-Host $status
         
         git add -A
         
