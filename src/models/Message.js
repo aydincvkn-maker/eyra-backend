@@ -11,7 +11,15 @@ const messageSchema = new mongoose.Schema(
       enum: ["text", "gift", "system", "emoji", "sticker", "image", "video", "audio", "file", "call_chat"], 
       default: "text" 
     },
-    content: { type: String, required: true, maxlength: 1000 },
+    content: {
+      type: String,
+      default: "",
+      required: function () {
+        // Media messages may legitimately have empty content.
+        return ["text", "gift", "system", "emoji", "sticker", "call_chat"].includes(this.type);
+      },
+      maxlength: 1000
+    },
 
     // Call chat extras (optional)
     originalContent: { type: String },
