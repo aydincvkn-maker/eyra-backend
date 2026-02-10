@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
 const appleSignin = require("apple-signin-auth");
 const { normalizeGender } = require("../utils/gender");
-const { JWT_SECRET } = require("../config/env");
+const { JWT_SECRET, NODE_ENV } = require("../config/env");
 const presenceService = require("../services/presenceService");
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -44,6 +44,8 @@ const buildUserPayload = (user) => ({
   coins: user.coins,
   level: user.level,
   isGuest: user.isGuest,
+  role: user.role,
+  permissions: user.permissions || [],
 });
 
 exports.login = async (req, res) => {
@@ -111,6 +113,13 @@ exports.login = async (req, res) => {
     }
 
     const token = createToken(user);
+
+    res.cookie("auth_token", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: NODE_ENV === "production",
+      maxAge: 1000 * 60 * 60 * 24 * 90,
+    });
 
     res.json({
       success: true,
@@ -564,6 +573,8 @@ exports.logout = async (req, res) => {
       global.userSockets.delete(String(userId));
     }
 
+    res.clearCookie("auth_token");
+
     res.json({
       success: true,
       message: "Çıkış yapıldı",
@@ -623,6 +634,13 @@ exports.refreshToken = async (req, res) => {
 
     // Generate new token with extended expiration
     const token = createToken(user);
+
+    res.cookie("auth_token", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: NODE_ENV === "production",
+      maxAge: 1000 * 60 * 60 * 24 * 90,
+    });
 
     res.json({
       success: true,
