@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 const userController = require("../controllers/userController");
 const auth = require("../middleware/auth");
-const admin = require("../middleware/admin");
+const requirePermission = require("../middleware/requirePermission");
 const multer = require("multer");
 
 // Multer konfigürasyonu - avatar yükleme için
@@ -63,7 +63,7 @@ router.post("/me/freeze", auth, userController.freezeAccount);
 // =============================================
 
 // ADMIN: Tüm kullanıcıları listele (pagination + search)
-router.get("/admin", auth, admin, userController.getAdminUsers);
+router.get("/admin", auth, requirePermission("users:view"), userController.getAdminUsers);
 
 // GET /api/users - Tüm kullanıcıları getir (search query destekli)
 router.get("/", optionalAuth, userController.getUsers);
@@ -104,12 +104,12 @@ router.post("/:userId/end-broadcast", auth, userController.endBroadcast);
 // =============================================
 
 // PATCH /api/users/:userId/ban - Ban toggle
-router.patch("/:userId/ban", auth, admin, userController.toggleBan);
+router.patch("/:userId/ban", auth, requirePermission("users:ban"), userController.toggleBan);
 
 // PATCH /api/users/:userId/unban - Unban
-router.patch("/:userId/unban", auth, admin, userController.unbanUser);
+router.patch("/:userId/unban", auth, requirePermission("users:ban"), userController.unbanUser);
 
 // PATCH /api/users/:userId/coins - Coin güncelle
-router.patch("/:userId/coins", auth, admin, userController.updateCoins);
+router.patch("/:userId/coins", auth, requirePermission("users:edit"), userController.updateCoins);
 
 module.exports = router;
