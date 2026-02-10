@@ -1,7 +1,7 @@
 const rolePermissions = {
   super_admin: ["*"],
   admin: ["*"],
-  moderator: ["streams:view", "reports:view"],
+  moderator: ["streams:view", "reports:view", "users:view"],
   viewer: ["streams:view"],
 };
 

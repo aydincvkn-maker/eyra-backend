@@ -46,7 +46,7 @@ router.get("/dashboard", auth, requirePermission("streams:view"), async (req, re
   }
 });
 
-router.get("/system", auth, requirePermission("system:settings"), async (req, res) => {
+router.get("/system", auth, requirePermission(["streams:view", "system:settings"]), async (req, res) => {
   try {
     const dbState = mongoose.connection.readyState;
     const dbStatus = dbState === 1 ? "connected" : "disconnected";
