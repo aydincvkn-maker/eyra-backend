@@ -52,6 +52,13 @@ router.get("/system", auth, requirePermission(["streams:view", "system:settings"
     const dbStatus = dbState === 1 ? "connected" : "disconnected";
     const connectedUsers = global.userSockets?.size ?? 0;
     const activeLives = await LiveStream.countDocuments({ isLive: true, status: "live" });
+    const env = process.env.NODE_ENV || "development";
+    const region =
+      process.env.AWS_REGION ||
+      process.env.REGION ||
+      process.env.DEPLOY_REGION ||
+      process.env.CLUSTER ||
+      "unknown";
 
     res.json({
       uptimeSec: Math.round(process.uptime()),
@@ -59,6 +66,8 @@ router.get("/system", auth, requirePermission(["streams:view", "system:settings"
       memory: process.memoryUsage(),
       connectedUsers,
       activeLives,
+      env,
+      region,
       serverTime: new Date().toISOString(),
     });
   } catch (err) {
