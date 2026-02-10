@@ -1543,7 +1543,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+app.options("/*", cors(corsOptions));
 
 // ✅ General API rate limiter
 app.use("/api", generalLimiter);
