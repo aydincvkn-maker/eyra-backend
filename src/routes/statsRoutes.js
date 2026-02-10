@@ -1,12 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth");
-const admin = require("../middleware/admin");
+const requirePermission = require("../middleware/requirePermission");
 const LiveStream = require("../models/LiveStream");
 const User = require("../models/User");
 const mongoose = require("mongoose");
 
-router.get("/dashboard", auth, admin, async (req, res) => {
+router.get("/dashboard", auth, requirePermission("streams:view"), async (req, res) => {
   try {
     const activeLives = await LiveStream.find({ isLive: true, status: "live" })
       .populate("host", "username email")
@@ -46,7 +46,7 @@ router.get("/dashboard", auth, admin, async (req, res) => {
   }
 });
 
-router.get("/system", auth, admin, async (req, res) => {
+router.get("/system", auth, requirePermission("system:settings"), async (req, res) => {
   try {
     const dbState = mongoose.connection.readyState;
     const dbStatus = dbState === 1 ? "connected" : "disconnected";

@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 const liveController = require("../controllers/liveController");
 const auth = require("../middleware/auth");
-const admin = require("../middleware/admin");
+const requirePermission = require("../middleware/requirePermission");
 const { liveStartLimiter, chatLimiter, reportLimiter } = require("../middleware/rateLimit");
 
 // ============ DEBUG ROUTES ============
@@ -114,10 +114,10 @@ router.get("/chat/:roomId", auth, liveController.getChatHistory);
 router.post("/flag", auth, reportLimiter, liveController.flagStream);
 
 // Yayını banla (admin only)
-router.post("/ban", auth, admin, liveController.banStream);
+router.post("/ban", auth, requirePermission("streams:ban"), liveController.banStream);
 
 // Yayın yasağını kaldır (admin only)
-router.post("/unban", auth, admin, liveController.unbanStream);
+router.post("/unban", auth, requirePermission("streams:ban"), liveController.unbanStream);
 
 // ============ CO-HOST ENDPOINTS ============
 // Co-host daveti gönder (Host tarafından)

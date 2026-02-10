@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth");
-const admin = require("../middleware/admin");
+const requirePermission = require("../middleware/requirePermission");
 const SystemSettings = require("../models/SystemSettings");
 
 const getOrCreateSettings = async () => {
@@ -13,7 +13,7 @@ const getOrCreateSettings = async () => {
   return settings;
 };
 
-router.get("/", auth, admin, async (req, res) => {
+router.get("/", auth, requirePermission("system:settings"), async (req, res) => {
   try {
     const settings = await getOrCreateSettings();
     res.json({ success: true, settings });
@@ -23,7 +23,7 @@ router.get("/", auth, admin, async (req, res) => {
   }
 });
 
-router.put("/", auth, admin, async (req, res) => {
+router.put("/", auth, requirePermission("system:settings"), async (req, res) => {
   try {
     const { maintenanceMode, globalSlowMode } = req.body || {};
 
