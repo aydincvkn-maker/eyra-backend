@@ -39,7 +39,7 @@ module.exports = {
   MONGO_URI: required("MONGO_URI", "mongodb://127.0.0.1:27017/eyra"),
   JWT_SECRET: required("JWT_SECRET", "super_secret_eyra_key"),
   CLIENT_ORIGIN: required("CLIENT_ORIGIN", "http://localhost:3000"),
-  MOBILE_ORIGIN: required("MOBILE_ORIGIN", "*"),
+  MOBILE_ORIGIN: required("MOBILE_ORIGIN", ""),
 
   // 🔥 LIVEKIT Değerleri - Development'ta fallback, production'da mutlaka eklenmeli
   LIVEKIT_URL: required("LIVEKIT_URL", "wss://livekit.example.com"),
