@@ -797,9 +797,15 @@ exports.flagStream = async (req, res) => {
  */
 exports.banStream = async (req, res) => {
   try {
-    const { roomId, reason } = req.body;
+    const { roomId, reason, streamId } = req.body;
 
-    const stream = await LiveStream.findOne({ roomId });
+    let stream = null;
+    if (roomId) {
+      stream = await LiveStream.findOne({ roomId });
+    } else if (streamId) {
+      stream = await LiveStream.findById(streamId);
+    }
+
     if (!stream) {
       return res.status(404).json({ ok: false, error: "stream_not_found" });
     }
@@ -855,6 +861,44 @@ exports.banStream = async (req, res) => {
   } catch (err) {
     console.error("banStream error:", err);
     res.status(500).json({ ok: false, error: "ban_failed" });
+  }
+};
+
+/**
+ * Yayın yasağını kaldır (admin)
+ */
+exports.unbanStream = async (req, res) => {
+  try {
+    const { roomId, streamId } = req.body;
+
+    let stream = null;
+    if (roomId) {
+      stream = await LiveStream.findOne({ roomId });
+    } else if (streamId) {
+      stream = await LiveStream.findById(streamId);
+    }
+
+    if (!stream) {
+      return res.status(404).json({ ok: false, error: "stream_not_found" });
+    }
+
+    stream.isLive = false;
+    stream.status = "ended";
+    stream.isFlagged = false;
+    stream.flagReason = undefined;
+    stream.bannedAt = undefined;
+    await stream.save();
+
+    try {
+      await liveService.invalidateStreamCache(stream.roomId);
+    } catch (e) {
+      console.warn("⚠️ Cache invalidation failed:", e.message);
+    }
+
+    res.json({ ok: true, message: "Yayın yasağı kaldırıldı" });
+  } catch (err) {
+    console.error("unbanStream error:", err);
+    res.status(500).json({ ok: false, error: "unban_failed" });
   }
 };
 
