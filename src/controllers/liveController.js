@@ -2,6 +2,7 @@
 const LiveStream = require("../models/LiveStream");
 const User = require("../models/User");
 const Message = require("../models/Message");
+const Report = require("../models/Report");
 const { v4: uuidv4 } = require("uuid");
 const { AccessToken } = require("livekit-server-sdk");
 const presenceService = require("../services/presenceService");
@@ -764,6 +765,25 @@ exports.flagStream = async (req, res) => {
     stream.isFlagged = true;
     stream.flagReason = reason;
     await stream.save();
+
+    // ✅ Create report record for admin panel
+    try {
+      const reporterId = req.user?.id;
+      const targetId = stream.host;
+
+      if (reporterId && targetId) {
+        await Report.create({
+          reporter: reporterId,
+          target: targetId,
+          stream: stream._id,
+          roomId: stream.roomId,
+          reason: String(reason || "").trim(),
+          status: "open",
+        });
+      }
+    } catch (e) {
+      console.warn("⚠️ Report create failed:", e.message);
+    }
 
     res.json({ ok: true, message: "Yayın işaretlendi" });
   } catch (err) {
