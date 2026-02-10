@@ -109,6 +109,9 @@ router.patch("/:userId/ban", auth, requirePermission("users:ban"), userControlle
 // PATCH /api/users/:userId/unban - Unban
 router.patch("/:userId/unban", auth, requirePermission("users:ban"), userController.unbanUser);
 
+// DELETE /api/users/:userId - Admin kullanıcı sil
+router.delete("/:userId", auth, requirePermission("users:ban"), userController.adminDeleteUser);
+
 // PATCH /api/users/:userId/coins - Coin güncelle
 router.patch("/:userId/coins", auth, requirePermission("users:edit"), userController.updateCoins);
 

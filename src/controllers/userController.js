@@ -331,6 +331,46 @@ exports.unbanUser = async (req, res) => {
   }
 };
 
+// ADMIN: Kullanıcıyı kalıcı olarak sil
+exports.adminDeleteUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+    }
+
+    // Admin kendini silemesin
+    if (String(user._id) === String(req.user.id)) {
+      return res.status(400).json({ success: false, message: "Kendinizi silemezsiniz" });
+    }
+
+    // Super admin silinemesin
+    if (user.role === "super_admin") {
+      return res.status(403).json({ success: false, message: "Super admin silinemez" });
+    }
+
+    await User.findByIdAndDelete(userId);
+
+    // İlişkili yayınları da temizle
+    try {
+      await LiveStream.deleteMany({ hostId: userId });
+    } catch (e) {
+      console.warn("LiveStream cleanup warning:", e.message);
+    }
+
+    console.log(`🗑️ Admin ${req.user.id} kullanıcıyı sildi: ${user.username} (${userId})`);
+
+    res.json({
+      success: true,
+      message: `"${user.username}" başarıyla silindi`,
+    });
+  } catch (err) {
+    console.error("adminDeleteUser error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
 exports.updateCoins = async (req, res) => {
   try {
     const { userId } = req.params;
