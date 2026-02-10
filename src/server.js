@@ -204,6 +204,7 @@ const statsRoutes = require("./routes/statsRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
 const callRoutes = require("./routes/callRoutes");
 const debugRoutes = require("./routes/debugRoutes");
+const supportRoutes = require("./routes/supportRoutes");
 const { generalLimiter } = require("./middleware/rateLimit");
 
 const app = express();
@@ -1559,6 +1560,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/calls", callRoutes);
+app.use("/api/support", supportRoutes);
 
 // Debug/maintenance endpoints (disabled in production unless explicitly enabled)
 if (NODE_ENV !== 'production' || process.env.DEBUG_ROUTES_ENABLED === 'true') {
