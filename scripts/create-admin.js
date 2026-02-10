@@ -15,10 +15,14 @@ const ask = (question) => new Promise((resolve) => rl.question(question, resolve
   try {
     await connectDB();
 
-    const email = String(await ask('Admin email: ')).trim().toLowerCase();
-    const password = String(await ask('Admin password: ')).trim();
-    const username = String(await ask('Admin username: ')).trim();
-    const name = String(await ask('Admin name: ')).trim();
+    const email = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase() ||
+      String(await ask('Admin email: ')).trim().toLowerCase();
+    const password = String(process.env.ADMIN_PASSWORD || '').trim() ||
+      String(await ask('Admin password: ')).trim();
+    const username = String(process.env.ADMIN_USERNAME || '').trim() ||
+      String(await ask('Admin username: ')).trim();
+    const name = String(process.env.ADMIN_NAME || '').trim() ||
+      String(await ask('Admin name: ')).trim();
 
     if (!email || !password || !username || !name) {
       console.log('❌ All fields are required.');
