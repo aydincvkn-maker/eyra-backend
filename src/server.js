@@ -201,6 +201,7 @@ const giftRoutes = require("./routes/giftRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const statsRoutes = require("./routes/statsRoutes");
+const settingsRoutes = require("./routes/settingsRoutes");
 const callRoutes = require("./routes/callRoutes");
 const debugRoutes = require("./routes/debugRoutes");
 const { generalLimiter } = require("./middleware/rateLimit");
@@ -1556,6 +1557,7 @@ app.use("/api/gifts", giftRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/stats", statsRoutes);
+app.use("/api/settings", settingsRoutes);
 app.use("/api/calls", callRoutes);
 
 // Debug/maintenance endpoints (disabled in production unless explicitly enabled)
