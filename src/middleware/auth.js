@@ -23,6 +23,10 @@ async function auth(req, res, next) {
     if (!user) {
       return res.status(401).json({ message: "Kullanıcı bulunamadı" });
     }
+
+    if (user.isBanned || user.isActive === false || user.isFrozen === true) {
+      return res.status(403).json({ message: "Hesap erişimi kısıtlı" });
+    }
     
     // 4. req.user'a ekle
     req.user = {

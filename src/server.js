@@ -1,12 +1,14 @@
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
+const compression = require("compression");
 const http = require("http");
 const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
 const { createAdapter } = require("@socket.io/redis-adapter");
 const Redis = require("ioredis");
 
-const { PORT, JWT_SECRET, NODE_ENV } = require("./config/env");
+const { PORT, JWT_SECRET, NODE_ENV, CLIENT_ORIGIN, MOBILE_ORIGIN } = require("./config/env");
 const connectDB = require("./config/db");
 const { connectRedis } = require("./config/redis");
 const { logger } = require("./utils/logger");
@@ -191,6 +193,8 @@ async function closeActiveLiveStreamsForHost(userId, reason = 'presence_offline'
 
 // ROUTES
 const authRoutes = require("./routes/authRoutes");
+const authMiddleware = require("./middleware/auth");
+const adminMiddleware = require("./middleware/admin");
 const userRoutes = require("./routes/userRoutes");
 const liveRoutes = require("./routes/liveRoutes");
 const giftRoutes = require("./routes/giftRoutes");
@@ -199,12 +203,35 @@ const reportRoutes = require("./routes/reportRoutes");
 const statsRoutes = require("./routes/statsRoutes");
 const callRoutes = require("./routes/callRoutes");
 const debugRoutes = require("./routes/debugRoutes");
+const { generalLimiter } = require("./middleware/rateLimit");
 
 const app = express();
 const server = http.createServer(app);
+const parseOrigins = (value) => {
+  if (!value) return [];
+  return String(value)
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+};
+
+const allowedOrigins = new Set([
+  ...parseOrigins(CLIENT_ORIGIN),
+  ...parseOrigins(MOBILE_ORIGIN),
+]);
+
+const isOriginAllowed = (origin) => {
+  if (!origin) return true; // non-browser clients
+  if (allowedOrigins.has("*")) return true;
+  return allowedOrigins.has(origin);
+};
+
 const io = new Server(server, {
-  cors: { 
-    origin: "*",
+  cors: {
+    origin: (origin, callback) => {
+      if (isOriginAllowed(origin)) return callback(null, true);
+      return callback(new Error("Not allowed by CORS"));
+    },
     methods: ["GET", "POST"],
     credentials: false,
   },
@@ -1488,18 +1515,38 @@ const getCounterpartyForRoom = (roomName, senderId) => {
   return null;
 };
 
-// ✅ JSON BODY PARSER
-app.use(express.json());
+if (process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+}
 
-// ✅ CORS - TÜM LOCALHOST VE YEREL AĞ ORİGİNLERİNE İZİN VER
-app.use(
-  cors({
-    origin: "*",
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+app.disable('x-powered-by');
+
+// ✅ Security & Performance middlewares
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+}));
+app.use(compression());
+
+// ✅ JSON BODY PARSER
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// ✅ CORS - Allowlist based on env
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (isOriginAllowed(origin)) return callback(null, true);
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: false,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+
+// ✅ General API rate limiter
+app.use("/api", generalLimiter);
 
 // ROUTES
 app.use("/api/auth", authRoutes);
@@ -1511,8 +1558,14 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/calls", callRoutes);
 
-// Debug/maintenance endpoints (kept for backwards compatibility)
-app.use("/api", debugRoutes);
+// Debug/maintenance endpoints (disabled in production unless explicitly enabled)
+if (NODE_ENV !== 'production' || process.env.DEBUG_ROUTES_ENABLED === 'true') {
+  if (NODE_ENV === 'production') {
+    app.use("/api", authMiddleware, adminMiddleware, debugRoutes);
+  } else {
+    app.use("/api", debugRoutes);
+  }
+}
 
 // ✅ HEALTH CHECK ENDPOINT
 app.get("/api/health", (req, res) => {
