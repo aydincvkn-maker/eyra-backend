@@ -1,9 +1,11 @@
 const express = require("express");
 const router = express.Router();
+const auth = require("../middleware/auth");
+const admin = require("../middleware/admin");
 const LiveStream = require("../models/LiveStream");
 const User = require("../models/User");
 
-router.get("/dashboard", async (req, res) => {
+router.get("/dashboard", auth, admin, async (req, res) => {
   try {
     const activeLives = await LiveStream.find({ isLive: true, status: "live" })
       .populate("host", "username email")
