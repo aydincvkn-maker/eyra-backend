@@ -1,11 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth");
-const admin = require("../middleware/admin");
+const requirePermission = require("../middleware/requirePermission");
 const Report = require("../models/Report");
 
 // Tüm raporları getir (admin only) + pagination
-router.get("/", auth, admin, async (req, res) => {
+router.get("/", auth, requirePermission("reports:view"), async (req, res) => {
   try {
     const page = Math.max(parseInt(req.query.page || "1"), 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit || "50"), 1), 200);
@@ -19,35 +19,84 @@ router.get("/", auth, admin, async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    const [items, total] = await Promise.all([
-      Report.find(query)
-        .populate("reporter", "username email")
-        .populate("target", "username email")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Report.countDocuments(query),
-    ]);
+    let items = [];
+    let total = 0;
 
-    const normalized = items
-      .map((r) => ({
-        _id: r._id,
-        reporter: r.reporter?.username || r.reporter?.email || "Unknown",
-        reporterId: r.reporter?._id || null,
-        target: r.target?.username || r.target?.email || "Unknown",
-        targetId: r.target?._id || null,
-        reason: r.reason || "",
-        status: r.status || "open",
-        createdAt: r.createdAt,
-        roomId: r.roomId || null,
-      }))
-      .filter((r) => {
-        if (!search) return true;
-        const hay = `${r.reporter} ${r.target} ${r.reason} ${r.roomId || ""}`
-          .toLowerCase();
-        return hay.includes(search.toLowerCase());
-      });
+    if (search) {
+      const regex = new RegExp(search, "i");
+
+      const pipeline = [
+        { $match: query },
+        { $sort: { createdAt: -1 } },
+        {
+          $lookup: {
+            from: "users",
+            localField: "reporter",
+            foreignField: "_id",
+            as: "reporter",
+          },
+        },
+        { $unwind: { path: "$reporter", preserveNullAndEmptyArrays: true } },
+        {
+          $lookup: {
+            from: "users",
+            localField: "target",
+            foreignField: "_id",
+            as: "target",
+          },
+        },
+        { $unwind: { path: "$target", preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $or: [
+              { reason: regex },
+              { roomId: regex },
+              { "reporter.username": regex },
+              { "reporter.email": regex },
+              { "target.username": regex },
+              { "target.email": regex },
+            ],
+          },
+        },
+        {
+          $facet: {
+            items: [{ $skip: skip }, { $limit: limit }],
+            total: [{ $count: "count" }],
+          },
+        },
+      ];
+
+      const result = await Report.aggregate(pipeline);
+      const bucket = result?.[0] || {};
+      items = bucket.items || [];
+      total = bucket.total?.[0]?.count || 0;
+    } else {
+      const [rawItems, rawTotal] = await Promise.all([
+        Report.find(query)
+          .populate("reporter", "username email")
+          .populate("target", "username email")
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+        Report.countDocuments(query),
+      ]);
+
+      items = rawItems;
+      total = rawTotal;
+    }
+
+    const normalized = items.map((r) => ({
+      _id: r._id,
+      reporter: r.reporter?.username || r.reporter?.email || "Unknown",
+      reporterId: r.reporter?._id || null,
+      target: r.target?.username || r.target?.email || "Unknown",
+      targetId: r.target?._id || null,
+      reason: r.reason || "",
+      status: r.status || "open",
+      createdAt: r.createdAt,
+      roomId: r.roomId || null,
+    }));
 
     res.json({
       success: true,
@@ -66,7 +115,7 @@ router.get("/", auth, admin, async (req, res) => {
 });
 
 // Rapor durumunu güncelle (admin only)
-router.put("/:id", auth, admin, async (req, res) => {
+router.put("/:id", auth, requirePermission("reports:manage"), async (req, res) => {
   try {
     const id = req.params.id;
     const { status } = req.body;
@@ -101,7 +150,7 @@ router.put("/:id", auth, admin, async (req, res) => {
 });
 
 // Rapor sil (admin only)
-router.delete("/:id", auth, admin, async (req, res) => {
+router.delete("/:id", auth, requirePermission("reports:manage"), async (req, res) => {
   try {
     const id = req.params.id;
     await Report.deleteOne({ _id: id });
