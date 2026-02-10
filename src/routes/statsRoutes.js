@@ -4,6 +4,7 @@ const auth = require("../middleware/auth");
 const admin = require("../middleware/admin");
 const LiveStream = require("../models/LiveStream");
 const User = require("../models/User");
+const mongoose = require("mongoose");
 
 router.get("/dashboard", auth, admin, async (req, res) => {
   try {
@@ -38,15 +39,31 @@ router.get("/dashboard", auth, admin, async (req, res) => {
     
   } catch (err) {
     console.error("❌ Stats error:", err);
-
-    // Sahte veri döndürme: hata varsa boş stats gönder
-    res.status(200).json({
-      totalViewers: 0,
-      totalCoinsPerMin: 0,
-      onlineHosts: 0,
-      flaggedStreams: 0,
-      activeStreams: []
+    res.status(500).json({
+      success: false,
+      error: "stats_fetch_failed",
     });
+  }
+});
+
+router.get("/system", auth, admin, async (req, res) => {
+  try {
+    const dbState = mongoose.connection.readyState;
+    const dbStatus = dbState === 1 ? "connected" : "disconnected";
+    const connectedUsers = global.userSockets?.size ?? 0;
+    const activeLives = await LiveStream.countDocuments({ isLive: true, status: "live" });
+
+    res.json({
+      uptimeSec: Math.round(process.uptime()),
+      db: { state: dbStatus },
+      memory: process.memoryUsage(),
+      connectedUsers,
+      activeLives,
+      serverTime: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("❌ System stats error:", err);
+    res.status(500).json({ success: false, error: "system_stats_failed" });
   }
 });
 

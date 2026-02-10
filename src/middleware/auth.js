@@ -5,14 +5,31 @@ const User = require("../models/User");
 
 async function auth(req, res, next) {
   try {
-    // 1. Header'dan token'ı al
+    const parseCookie = (header = "") => {
+      return header.split(";").reduce((acc, part) => {
+        const [key, ...value] = part.trim().split("=");
+        if (!key) return acc;
+        acc[key] = decodeURIComponent(value.join("="));
+        return acc;
+      }, {});
+    };
+
+    // 1. Header'dan token'ı al (Bearer) veya httpOnly cookie
     const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    let token = null;
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    }
+
+    if (!token && req.headers.cookie) {
+      const cookies = parseCookie(req.headers.cookie);
+      token = cookies.auth_token || cookies.access_token || null;
+    }
+
+    if (!token) {
       return res.status(401).json({ message: "Token bulunamadı" });
     }
-    
-    const token = authHeader.split(' ')[1];
     
     // 2. Token'ı doğrula
     const decoded = jwt.verify(token, JWT_SECRET);
