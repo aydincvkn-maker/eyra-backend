@@ -1,5 +1,7 @@
 const express = require("express");
 const router = express.Router();
+const auth = require("../middleware/auth");
+const admin = require("../middleware/admin");
 
 // Örnek dummy data — panel çalışsın diye
 let reports = [
@@ -13,13 +15,28 @@ let reports = [
   },
 ];
 
-// Tüm raporları getir
-router.get("/", (req, res) => {
-  res.json(reports);
+// Tüm raporları getir (admin only) + pagination
+router.get("/", auth, admin, (req, res) => {
+  const page = Math.max(parseInt(req.query.page || "1"), 1);
+  const limit = Math.min(Math.max(parseInt(req.query.limit || "50"), 1), 200);
+  const total = reports.length;
+  const start = (page - 1) * limit;
+  const items = reports.slice(start, start + limit);
+
+  res.json({
+    success: true,
+    reports: items,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit),
+    },
+  });
 });
 
-// Rapor durumunu güncelle
-router.put("/:id", (req, res) => {
+// Rapor durumunu güncelle (admin only)
+router.put("/:id", auth, admin, (req, res) => {
   const id = req.params.id;
   const { status } = req.body;
 
@@ -27,15 +44,15 @@ router.put("/:id", (req, res) => {
   if (!r) return res.status(404).json({ message: "Rapor bulunamadı" });
 
   r.status = status;
-  res.json(r);
+  res.json({ success: true, report: r });
 });
 
-// Rapor sil
-router.delete("/:id", (req, res) => {
+// Rapor sil (admin only)
+router.delete("/:id", auth, admin, (req, res) => {
   const id = req.params.id;
   reports = reports.filter((x) => x._id !== id);
 
-  res.json({ message: "Silindi" });
+  res.json({ success: true, message: "Silindi" });
 });
 
 module.exports = router;
