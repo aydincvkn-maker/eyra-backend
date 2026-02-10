@@ -168,6 +168,65 @@ exports.getUsers = async (req, res) => {
   }
 };
 
+// ADMIN: Tüm kullanıcıları listele (pagination destekli)
+exports.getAdminUsers = async (req, res) => {
+  try {
+    const searchQuery = req.query.search ? String(req.query.search).trim() : null;
+    const page = Math.max(parseInt(req.query.page || "1"), 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit || "50"), 1), 200);
+
+    const query = {};
+
+    if (searchQuery) {
+      const escapedQuery = escapeRegex(searchQuery);
+      query.$or = [
+        { username: { $regex: escapedQuery, $options: 'i' } },
+        { name: { $regex: escapedQuery, $options: 'i' } },
+        { email: { $regex: escapedQuery, $options: 'i' } },
+      ];
+    }
+
+    const total = await User.countDocuments(query);
+
+    const users = await User.find(query)
+      .select("-password -refreshToken")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    const userIds = users.map((u) => String(u._id));
+    const presenceMap = await presenceService.getMultiplePresence(userIds);
+
+    const formattedUsers = users.map(user => {
+      const presenceData = presenceMap[String(user._id)] || {
+        online: false,
+        busy: false,
+        live: false,
+        inCall: false,
+        status: 'offline',
+        lastSeen: null,
+      };
+
+      return formatUser(user, presenceData);
+    });
+
+    res.json({
+      success: true,
+      users: formattedUsers,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (err) {
+    console.error("❌ getAdminUsers error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
 exports.getFemaleUsers = async (req, res) => {
   try {
     const currentUserId = req.user?.id ? String(req.user.id) : null;

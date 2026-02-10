@@ -62,6 +62,9 @@ router.post("/me/freeze", auth, userController.freezeAccount);
 // GENEL KULLANICI ENDPOINT'LERİ
 // =============================================
 
+// ADMIN: Tüm kullanıcıları listele (pagination + search)
+router.get("/admin", auth, admin, userController.getAdminUsers);
+
 // GET /api/users - Tüm kullanıcıları getir (search query destekli)
 router.get("/", optionalAuth, userController.getUsers);
 
