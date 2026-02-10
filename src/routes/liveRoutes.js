@@ -116,6 +116,9 @@ router.post("/flag", auth, reportLimiter, liveController.flagStream);
 // Yayını banla (admin only)
 router.post("/ban", auth, admin, liveController.banStream);
 
+// Yayın yasağını kaldır (admin only)
+router.post("/unban", auth, admin, liveController.unbanStream);
+
 // ============ CO-HOST ENDPOINTS ============
 // Co-host daveti gönder (Host tarafından)
 router.post("/cohost/invite", auth, liveController.inviteCoHost);
