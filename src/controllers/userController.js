@@ -391,6 +391,41 @@ exports.updateCoins = async (req, res) => {
   }
 };
 
+// ADMIN: Kullanıcıya coin ekle (mevcut bakiyeye ekleme yapar)
+exports.addCoins = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { amount } = req.body;
+
+    if (!amount || !Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ success: false, message: "Geçerli bir miktar girin" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      userId,
+      { $inc: { coins: amount } },
+      { new: true }
+    ).select("-password -refreshToken");
+
+    console.log(`💰 Admin ${req.user.id} → ${user.username}'a ${amount} coin ekledi (yeni: ${updated.coins})`);
+
+    res.json({
+      success: true,
+      message: `${amount} coin başarıyla eklendi`,
+      coins: updated.coins,
+      username: updated.username,
+    });
+  } catch (err) {
+    console.error("addCoins error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
 // =============================================
 // YENİ ENDPOINT'LER - PROFİL EKRANI İÇİN
 // =============================================

@@ -112,7 +112,10 @@ router.patch("/:userId/unban", auth, requirePermission("users:ban"), userControl
 // DELETE /api/users/:userId - Admin kullanıcı sil
 router.delete("/:userId", auth, requirePermission("users:ban"), userController.adminDeleteUser);
 
-// PATCH /api/users/:userId/coins - Coin güncelle
+// PATCH /api/users/:userId/coins - Coin güncelle (set)
 router.patch("/:userId/coins", auth, requirePermission("users:edit"), userController.updateCoins);
+
+// POST /api/users/:userId/add-coins - Coin ekle (increment)
+router.post("/:userId/add-coins", auth, requirePermission("users:edit"), userController.addCoins);
 
 module.exports = router;
