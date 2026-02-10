@@ -59,6 +59,8 @@ const formatUser = (user, presenceData = {}) => {
     coins: user.coins || 0,
     level: user.level || 1,
     totalEarnings: user.totalEarnings || 0,
+    role: user.role || 'viewer',
+    isBanned: user.isBanned || false,
     isVerified: user.isVerified || false,
     // Presence bilgisi: Socket heartbeat (memory) + Mongo fallback
     presenceStatus,
