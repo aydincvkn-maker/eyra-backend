@@ -57,8 +57,11 @@ const buildUserPayload = (user) => ({
   coins: user.coins,
   level: user.level,
   isGuest: user.isGuest,
-    role: user.role,
-    permissions: user.permissions || [],
+  isOnline: user.isOnline,
+  lastSeen: user.lastSeen,
+  lastOnlineAt: user.lastOnlineAt,
+  role: user.role,
+  permissions: user.permissions || [],
 });
 
 exports.login = async (req, res) => {
