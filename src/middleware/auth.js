@@ -42,7 +42,15 @@ async function auth(req, res, next) {
     }
 
     if (user.isBanned || user.isActive === false || user.isFrozen === true) {
-      return res.status(403).json({ message: "Hesap erişimi kısıtlı" });
+      // Admin ve super_admin hesapları ban kontrolünden muaf tut
+      const isAdminRole = user.role === "admin" || user.role === "super_admin";
+      if (!isAdminRole) {
+        return res.status(403).json({ message: "Hesap erişimi kısıtlı" });
+      }
+      // Admin ise otomatik olarak ban/freeze'i kaldır
+      await User.findByIdAndUpdate(user._id, {
+        $set: { isBanned: false, isFrozen: false, isActive: true }
+      });
     }
     
     // 4. req.user'a ekle

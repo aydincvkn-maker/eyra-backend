@@ -299,6 +299,16 @@ exports.toggleBan = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "Kullanıcı bulunamadı" });
 
+    // Admin kendini banlamasın
+    if (String(user._id) === String(req.user.id)) {
+      return res.status(400).json({ message: "Kendinizi banlayamazsınız" });
+    }
+
+    // Super admin banlanamasın
+    if (user.role === "super_admin" || user.role === "admin") {
+      return res.status(403).json({ message: "Admin hesaplar banlanamaz" });
+    }
+
     const newBanState = !user.isBanned;
     const updated = await User.findByIdAndUpdate(
       userId,
