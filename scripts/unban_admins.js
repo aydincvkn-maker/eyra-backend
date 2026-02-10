@@ -4,7 +4,7 @@ const env = require('../src/config/env');
 const User = require('../src/models/User');
 
 async function main() {
-  await mongoose.connect(env.MONGODB_URI);
+  await mongoose.connect(env.MONGO_URI);
   console.log('DB bağlandı');
 
   // Tüm admin/super_admin hesaplarını unban et
