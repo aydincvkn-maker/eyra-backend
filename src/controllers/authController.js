@@ -31,6 +31,19 @@ const createToken = (user, expiresIn = "90d") =>
     { expiresIn }
   );
 
+const getAuthCookieOptions = () => {
+  const isProd = NODE_ENV === "production";
+  const sameSite = process.env.COOKIE_SAMESITE || (isProd ? "none" : "lax");
+  const secure = sameSite === "none" ? true : isProd;
+
+  return {
+    httpOnly: true,
+    sameSite,
+    secure,
+    maxAge: 1000 * 60 * 60 * 24 * 90,
+  };
+};
+
 const buildUserPayload = (user) => ({
   _id: user._id,
   username: user.username,
@@ -114,12 +127,7 @@ exports.login = async (req, res) => {
 
     const token = createToken(user);
 
-    res.cookie("auth_token", token, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: NODE_ENV === "production",
-      maxAge: 1000 * 60 * 60 * 24 * 90,
-    });
+    res.cookie("auth_token", token, getAuthCookieOptions());
 
     res.json({
       success: true,
@@ -573,7 +581,7 @@ exports.logout = async (req, res) => {
       global.userSockets.delete(String(userId));
     }
 
-    res.clearCookie("auth_token");
+    res.clearCookie("auth_token", getAuthCookieOptions());
 
     res.json({
       success: true,
@@ -635,12 +643,7 @@ exports.refreshToken = async (req, res) => {
     // Generate new token with extended expiration
     const token = createToken(user);
 
-    res.cookie("auth_token", token, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: NODE_ENV === "production",
-      maxAge: 1000 * 60 * 60 * 24 * 90,
-    });
+    res.cookie("auth_token", token, getAuthCookieOptions());
 
     res.json({
       success: true,
