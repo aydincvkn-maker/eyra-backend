@@ -41,11 +41,15 @@ async function main() {
     autoDeploy: 'yes',
     branch: 'main',
     serviceDetails: {
-      runtime: 'node',
       region: 'frankfurt',
       plan: 'free',
       buildCommand: 'npm install',
       startCommand: 'npm start',
+      envSpecificDetails: {
+        buildCommand: 'npm install',
+        startCommand: 'npm start',
+      },
+      runtime: 'node',
       envVars: [
         { key: 'NODE_ENV', value: 'production' },
         { key: 'PORT', value: '5000' },
