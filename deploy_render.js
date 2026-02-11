@@ -87,11 +87,13 @@ async function main() {
     autoDeploy: 'yes',
     branch: 'main',
     serviceDetails: {
-      runtime: 'node',
       region: 'frankfurt',
       plan: 'free',
-      buildCommand: 'npm install && npm run build',
-      startCommand: 'npm start',
+      envSpecificDetails: {
+        buildCommand: 'npm install && npm run build',
+        startCommand: 'npm start',
+      },
+      runtime: 'node',
       envVars: [
         { key: 'NODE_ENV', value: 'production' },
         { key: 'NEXT_PUBLIC_API_URL', value: backendUrl },
