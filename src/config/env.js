@@ -26,7 +26,8 @@ const required = (key, fallback) => {
   }
 
   if (NODE_ENV === "production") {
-    throw new Error(`[ENV] ${key} tanımlı değil (production'da fallback kullanılmaz)`);
+    console.warn(`[ENV] ${key} tanımlı değil, fallback kullanılıyor: ${fallback}`);
+    return fallback;
   }
 
   console.warn(`[ENV] ${key} tanımlı değil, fallback kullanılıyor: ${fallback}`);
