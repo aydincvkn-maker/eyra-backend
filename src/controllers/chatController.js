@@ -197,10 +197,13 @@ exports.adminSendMessage = async (req, res) => {
       const targetSockets = global.userSockets.get(targetKey);
       if (targetSockets && targetSockets.size > 0) {
         targetSockets.forEach(socketId => {
-          global.io.to(socketId).emit('new_message', {
+          global.io.to(socketId).emit('chat:new_message', {
+            messageId: message._id.toString(),
             from: adminId,
             to: toUserId,
-            message,
+            text: message.content,
+            timestamp: message.createdAt,
+            isMe: false,
           });
         });
       }
