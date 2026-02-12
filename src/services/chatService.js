@@ -115,20 +115,29 @@ exports.sendMessage = async (fromUserId, toUserId, data) => {
       throw new Error('EMPTY_MESSAGE');
     }
 
-    // Block check
-    const fromUser = await User.findById(fromUserId).select('blockedUsers');
-    const toUser = await User.findById(toUserId).select('blockedUsers');
+    // Block check (skip for admin messages)
+    if (!data.isAdmin) {
+      const fromUser = await User.findById(fromUserId).select('blockedUsers');
+      const toUser = await User.findById(toUserId).select('blockedUsers');
 
-    if (!fromUser || !toUser) {
-      console.log(`❌ User not found: fromUser=${!!fromUser}, toUser=${!!toUser}`);
-      throw new Error('USER_NOT_FOUND');
-    }
-    
-    const fromBlocked = fromUser.blockedUsers?.some(id => id.toString() === toUserId);
-    const toBlocked = toUser.blockedUsers?.some(id => id.toString() === fromUserId);
+      if (!fromUser || !toUser) {
+        console.log(`❌ User not found: fromUser=${!!fromUser}, toUser=${!!toUser}`);
+        throw new Error('USER_NOT_FOUND');
+      }
+      
+      const fromBlocked = fromUser.blockedUsers?.some(id => id.toString() === toUserId);
+      const toBlocked = toUser.blockedUsers?.some(id => id.toString() === fromUserId);
 
-    if (fromBlocked || toBlocked) {
-      throw new Error('USER_BLOCKED');
+      if (fromBlocked || toBlocked) {
+        throw new Error('USER_BLOCKED');
+      }
+    } else {
+      // Admin: only verify target user exists
+      const toUser = await User.findById(toUserId).select('_id');
+      if (!toUser) {
+        console.log(`❌ Target user not found: ${toUserId}`);
+        throw new Error('USER_NOT_FOUND');
+      }
     }
     
     // Create consistent roomId
