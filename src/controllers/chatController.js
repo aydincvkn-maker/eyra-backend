@@ -189,7 +189,7 @@ exports.adminSendMessage = async (req, res) => {
       return res.status(400).json({ message: "toUserId ve text gerekli" });
     }
 
-    const message = await chatService.sendMessage(adminId, toUserId, text);
+    const message = await chatService.sendMessage(adminId, toUserId, { text });
 
     // Socket ile gerçek zamanlı bildirim
     if (global.io && global.userSockets) {
