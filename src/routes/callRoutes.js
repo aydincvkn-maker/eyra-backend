@@ -7,6 +7,8 @@ const auth = require('../middleware/auth');
 const presenceService = require('../services/presenceService');
 const { LIVEKIT_URL } = require('../config/env');
 const { generateLiveKitToken } = require('../services/liveService');
+const CallHistory = require('../models/CallHistory');
+const User = require('../models/User');
 
 /**
  * POST /api/calls/initiate
@@ -75,6 +77,20 @@ router.post('/initiate', auth, async (req, res) => {
       });
     }
 
+    // Save call history record
+    try {
+      await CallHistory.create({
+        caller: callerId,
+        receiver: targetUserId,
+        type: 'video',
+        status: 'missed', // Will be updated on accept/end
+        roomName,
+        startedAt: new Date(),
+      });
+    } catch (histErr) {
+      console.error('❌ CallHistory create error:', histErr);
+    }
+
     // Notify target user via socket
     if (global.io && global.userSockets) {
       const targetKey = String(targetUserId);
@@ -140,6 +156,18 @@ router.post('/end', auth, async (req, res) => {
         presenceService.setBusy(targetUserId, false)
       ]);
 
+      // Update call history - mark as completed with duration
+      try {
+        const startTime = callInfo.createdAt || Date.now();
+        const durationSec = Math.floor((Date.now() - startTime) / 1000);
+        await CallHistory.findOneAndUpdate(
+          { roomName },
+          { $set: { status: 'completed', durationSec, endedAt: new Date() } }
+        );
+      } catch (histErr) {
+        console.error('❌ CallHistory update error:', histErr);
+      }
+
       // Remove from active calls
       global.activeCalls.delete(roomName);
 
@@ -188,6 +216,16 @@ router.post('/reject', auth, async (req, res) => {
         presenceService.setBusy(callerId, false),
         presenceService.setBusy(targetUserId, false)
       ]);
+
+      // Update call history - mark as rejected
+      try {
+        await CallHistory.findOneAndUpdate(
+          { roomName },
+          { $set: { status: 'rejected', endedAt: new Date() } }
+        );
+      } catch (histErr) {
+        console.error('❌ CallHistory reject update error:', histErr);
+      }
 
       // Remove from active calls
       global.activeCalls.delete(roomName);
@@ -270,6 +308,58 @@ router.get('/active', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Get active calls error:', error);
+    res.status(500).json({ message: 'Sunucu hatası' });
+  }
+});
+
+/**
+ * GET /api/calls/history
+ * Get call history for the current user
+ */
+router.get('/history', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const limit = parseInt(req.query.limit) || 50;
+
+    const calls = await CallHistory.find({
+      $or: [{ caller: userId }, { receiver: userId }]
+    })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('caller', '_id username name profileImage presenceStatus isOnline isLive isBusy followers following')
+      .populate('receiver', '_id username name profileImage presenceStatus isOnline isLive isBusy followers following');
+
+    const result = calls.map(call => {
+      const isIncoming = String(call.receiver._id) === String(userId);
+      const otherUser = isIncoming ? call.caller : call.receiver;
+
+      return {
+        id: call._id,
+        user: {
+          _id: otherUser._id,
+          username: otherUser.username,
+          name: otherUser.name || otherUser.username,
+          profileImage: otherUser.profileImage || '',
+          presenceStatus: otherUser.presenceStatus || 'offline',
+          isOnline: otherUser.isOnline || false,
+          isLive: otherUser.isLive || false,
+          isBusy: otherUser.isBusy || false,
+          followers: otherUser.followers || 0,
+          following: otherUser.following || 0,
+        },
+        isIncoming,
+        time: call.startedAt || call.createdAt,
+        durationSec: call.durationSec || 0,
+        isMissed: call.status === 'missed' || call.status === 'cancelled',
+        isVideo: call.type !== 'audio',
+        type: call.type,
+        status: call.status,
+      };
+    });
+
+    res.json({ success: true, calls: result });
+  } catch (error) {
+    console.error('❌ Call history error:', error);
     res.status(500).json({ message: 'Sunucu hatası' });
   }
 });

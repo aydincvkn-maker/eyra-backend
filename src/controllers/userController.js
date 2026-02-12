@@ -2,6 +2,9 @@
 const mongoose = require("mongoose");
 const User = require("../models/User");
 const LiveStream = require("../models/LiveStream");
+const Follow = require("../models/Follow");
+const Visitor = require("../models/Visitor");
+const CallHistory = require("../models/CallHistory");
 const path = require("path");
 const fs = require("fs");
 const { normalizeGender, genderVisibilityQueryForViewer } = require("../utils/gender");
@@ -814,7 +817,7 @@ exports.getUserById = async (req, res) => {
 // YENİ ENDPOINT'LER - EKSİK OLANLAR
 // =============================================
 
-// POST /api/users/:userId/follow - Takip et/bırak
+// POST /api/users/:userId/follow - Takip et
 exports.followUser = async (req, res) => {
   try {
     const currentUserId = req.user.id;
@@ -829,22 +832,22 @@ exports.followUser = async (req, res) => {
       return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
-    const currentUser = await User.findById(currentUserId);
-    if (!currentUser) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+    // Zaten takip ediyor mu kontrol et
+    const existing = await Follow.findOne({ follower: currentUserId, following: userId });
+    if (existing) {
+      return res.json({ success: true, message: "Zaten takip ediyorsunuz", isFollowing: true });
     }
 
-    // Takip et (basit counter artır)
+    // Follow kaydı oluştur
+    await Follow.create({ follower: currentUserId, following: userId });
+
+    // Counter güncelle
     await User.findByIdAndUpdate(userId, { $inc: { followers: 1 } });
     await User.findByIdAndUpdate(currentUserId, { $inc: { following: 1 } });
 
-    console.log(`✅ ${currentUser.username} -> ${userToFollow.username} takip etti`);
+    console.log(`✅ ${currentUserId} -> ${userId} takip etti`);
 
-    res.json({
-      success: true,
-      message: "Takip edildi",
-      isFollowing: true
-    });
+    res.json({ success: true, message: "Takip edildi", isFollowing: true });
   } catch (err) {
     console.error("followUser error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
@@ -861,28 +864,188 @@ exports.unfollowUser = async (req, res) => {
       return res.status(400).json({ success: false, message: "Kendinizi takipten çıkaramazsınız" });
     }
 
-    const userToUnfollow = await User.findById(userId);
-    if (!userToUnfollow) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+    // Follow kaydını sil
+    const deleted = await Follow.findOneAndDelete({ follower: currentUserId, following: userId });
+
+    if (deleted) {
+      // Counter azalt
+      await User.findByIdAndUpdate(userId, { $inc: { followers: -1 } });
+      await User.findByIdAndUpdate(currentUserId, { $inc: { following: -1 } });
+
+      // Negatif değerleri düzelt
+      await User.updateOne({ _id: userId, followers: { $lt: 0 } }, { $set: { followers: 0 } });
+      await User.updateOne({ _id: currentUserId, following: { $lt: 0 } }, { $set: { following: 0 } });
     }
-
-    // Takipten çık (counter azalt, negatif olmasın)
-    await User.findByIdAndUpdate(userId, { $inc: { followers: -1 } });
-    await User.findByIdAndUpdate(currentUserId, { $inc: { following: -1 } });
-
-    // Negatif değerleri düzelt
-    await User.updateOne({ _id: userId, followers: { $lt: 0 } }, { $set: { followers: 0 } });
-    await User.updateOne({ _id: currentUserId, following: { $lt: 0 } }, { $set: { following: 0 } });
 
     console.log(`✅ ${currentUserId} -> ${userId} takipten çıktı`);
 
-    res.json({
-      success: true,
-      message: "Takipten çıkıldı",
-      isFollowing: false
-    });
+    res.json({ success: true, message: "Takipten çıkıldı", isFollowing: false });
   } catch (err) {
     console.error("unfollowUser error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+// GET /api/users/me/followers - Takipçileri getir
+exports.getMyFollowers = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const limit = parseInt(req.query.limit) || 50;
+
+    const follows = await Follow.find({ following: userId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('follower', '_id username name profileImage gender age location country level isOnline isLive isBusy presenceStatus followers following');
+
+    const users = follows.map(f => {
+      const u = f.follower;
+      if (!u) return null;
+      return {
+        _id: u._id,
+        username: u.username,
+        name: u.name || u.username,
+        profileImage: u.profileImage || '',
+        gender: u.gender,
+        age: u.age,
+        location: u.location,
+        country: u.country,
+        level: u.level || 1,
+        isOnline: u.isOnline || false,
+        isLive: u.isLive || false,
+        isBusy: u.isBusy || false,
+        presenceStatus: u.presenceStatus || 'offline',
+        followers: u.followers || 0,
+        following: u.following || 0,
+      };
+    }).filter(Boolean);
+
+    res.json({ success: true, users });
+  } catch (err) {
+    console.error("getMyFollowers error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+// GET /api/users/me/following - Takip edilenleri getir
+exports.getMyFollowing = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const limit = parseInt(req.query.limit) || 50;
+
+    const follows = await Follow.find({ follower: userId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('following', '_id username name profileImage gender age location country level isOnline isLive isBusy presenceStatus followers following');
+
+    const users = follows.map(f => {
+      const u = f.following;
+      if (!u) return null;
+      return {
+        _id: u._id,
+        username: u.username,
+        name: u.name || u.username,
+        profileImage: u.profileImage || '',
+        gender: u.gender,
+        age: u.age,
+        location: u.location,
+        country: u.country,
+        level: u.level || 1,
+        isOnline: u.isOnline || false,
+        isLive: u.isLive || false,
+        isBusy: u.isBusy || false,
+        presenceStatus: u.presenceStatus || 'offline',
+        followers: u.followers || 0,
+        following: u.following || 0,
+      };
+    }).filter(Boolean);
+
+    res.json({ success: true, users });
+  } catch (err) {
+    console.error("getMyFollowing error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+// POST /api/users/:userId/visit - Profil ziyareti kaydet
+exports.visitProfile = async (req, res) => {
+  try {
+    const visitorId = req.user.id;
+    const { userId } = req.params;
+
+    // Kendi profilini ziyaret etme
+    if (visitorId === userId) {
+      return res.json({ success: true, message: "Kendi profiliniz" });
+    }
+
+    // Upsert: varsa güncelle, yoksa oluştur
+    await Visitor.findOneAndUpdate(
+      { profileOwner: userId, visitor: visitorId },
+      { $set: { lastVisitAt: new Date() }, $inc: { visitCount: 1 } },
+      { upsert: true, new: true }
+    );
+
+    res.json({ success: true, message: "Ziyaret kaydedildi" });
+  } catch (err) {
+    console.error("visitProfile error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+// GET /api/users/me/visitors - Son ziyaretçileri getir
+exports.getMyVisitors = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const limit = parseInt(req.query.limit) || 50;
+
+    const visitors = await Visitor.find({ profileOwner: userId })
+      .sort({ lastVisitAt: -1 })
+      .limit(limit)
+      .populate('visitor', '_id username name profileImage gender age location country level isOnline isLive isBusy presenceStatus followers following');
+
+    const result = visitors.map(v => {
+      const u = v.visitor;
+      if (!u) return null;
+      return {
+        id: v._id,
+        user: {
+          _id: u._id,
+          username: u.username,
+          name: u.name || u.username,
+          profileImage: u.profileImage || '',
+          gender: u.gender,
+          age: u.age,
+          location: u.location,
+          country: u.country,
+          level: u.level || 1,
+          isOnline: u.isOnline || false,
+          isLive: u.isLive || false,
+          isBusy: u.isBusy || false,
+          presenceStatus: u.presenceStatus || 'offline',
+          followers: u.followers || 0,
+          following: u.following || 0,
+        },
+        time: v.lastVisitAt,
+        visitCount: v.visitCount,
+      };
+    }).filter(Boolean);
+
+    res.json({ success: true, visitors: result });
+  } catch (err) {
+    console.error("getMyVisitors error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+// GET /api/users/:userId/is-following - Takip durumu kontrol
+exports.isFollowing = async (req, res) => {
+  try {
+    const currentUserId = req.user.id;
+    const { userId } = req.params;
+
+    const existing = await Follow.findOne({ follower: currentUserId, following: userId });
+    res.json({ success: true, isFollowing: !!existing });
+  } catch (err) {
+    console.error("isFollowing error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };

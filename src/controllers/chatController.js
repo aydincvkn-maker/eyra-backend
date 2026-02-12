@@ -178,3 +178,37 @@ exports.removeReaction = async (req, res) => {
     return res.status(500).json({ message: "Sunucu hatası" });
   }
 };
+
+// Admin: Send message to a specific user
+exports.adminSendMessage = async (req, res) => {
+  try {
+    const adminId = String(req.user?.id || "");
+    const { toUserId, text } = req.body;
+
+    if (!toUserId || !text) {
+      return res.status(400).json({ message: "toUserId ve text gerekli" });
+    }
+
+    const message = await chatService.sendMessage(adminId, toUserId, text);
+
+    // Socket ile gerçek zamanlı bildirim
+    if (global.io && global.userSockets) {
+      const targetKey = String(toUserId);
+      const targetSockets = global.userSockets.get(targetKey);
+      if (targetSockets && targetSockets.size > 0) {
+        targetSockets.forEach(socketId => {
+          global.io.to(socketId).emit('new_message', {
+            from: adminId,
+            to: toUserId,
+            message,
+          });
+        });
+      }
+    }
+
+    return res.json({ success: true, message });
+  } catch (err) {
+    console.error("adminSendMessage error:", err);
+    return res.status(500).json({ message: "Sunucu hatası" });
+  }
+};

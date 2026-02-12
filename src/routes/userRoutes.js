@@ -52,6 +52,15 @@ router.delete("/me/avatar", auth, userController.deleteAvatar);
 // GET /api/users/me/stats - İstatistikleri getir
 router.get("/me/stats", auth, userController.getMyStats);
 
+// GET /api/users/me/followers - Takipçileri getir
+router.get("/me/followers", auth, userController.getMyFollowers);
+
+// GET /api/users/me/following - Takip edilenleri getir
+router.get("/me/following", auth, userController.getMyFollowing);
+
+// GET /api/users/me/visitors - Ziyaretçileri getir
+router.get("/me/visitors", auth, userController.getMyVisitors);
+
 // PUT /api/users/me/settings - Ayarları güncelle
 router.put("/me/settings", auth, userController.updateSettings);
 
@@ -86,6 +95,12 @@ router.post("/:userId/follow", auth, userController.followUser);
 
 // DELETE /api/users/:userId/follow - Takipten çık
 router.delete("/:userId/follow", auth, userController.unfollowUser);
+
+// GET /api/users/:userId/is-following - Takip durumu kontrol
+router.get("/:userId/is-following", auth, userController.isFollowing);
+
+// POST /api/users/:userId/visit - Profil ziyareti kaydet
+router.post("/:userId/visit", auth, userController.visitProfile);
 
 // PUT /api/users/:userId/visibility - Görünürlük güncelle
 router.put("/:userId/visibility", auth, userController.updateVisibility);
