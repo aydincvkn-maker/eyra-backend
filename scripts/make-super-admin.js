@@ -1,32 +1,47 @@
 /* eslint-disable no-console */
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
-const mongoose = require('mongoose');
+const connectDB = require('../src/config/db');
+const User = require('../src/models/User');
 
-const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
 const TARGET_EMAIL = '0987sashok@gmail.com';
+const TARGET_PASSWORD = '555Sasha';
 
 (async () => {
   try {
-    await mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 15000 });
-    console.log('✅ MongoDB bağlantısı başarılı');
+    await connectDB();
 
-    const db = mongoose.connection.db;
-    const user = await db.collection('users').findOne({ email: TARGET_EMAIL });
+    let user = await User.findOne({ email: TARGET_EMAIL });
 
-    if (!user) {
-      console.log(`❌ Kullanıcı bulunamadı: ${TARGET_EMAIL}`);
-      process.exit(1);
+    if (user) {
+      console.log(`📋 Mevcut kullanıcı bulundu: ${user.email}, role: ${user.role}`);
+      user.role = 'super_admin';
+      user.isActive = true;
+      user.isBanned = false;
+      user.isFrozen = false;
+      await user.save();
+      console.log(`✅ Kullanıcı super_admin yapıldı: ${user.email}, yeni role: ${user.role}`);
+    } else {
+      console.log(`📋 Kullanıcı bulunamadı, yeni super_admin oluşturuluyor...`);
+      user = await User.create({
+        username: 'sasha_admin',
+        name: 'Sasha Admin',
+        email: TARGET_EMAIL,
+        password: TARGET_PASSWORD,
+        role: 'super_admin',
+        gender: 'other',
+        age: 25,
+        location: 'Türkiye',
+        country: 'TR',
+        coins: 0,
+        isGuest: false,
+        isOnline: false,
+        isActive: true,
+        isBanned: false,
+        isFrozen: false,
+      });
+      console.log(`✅ Super admin oluşturuldu: ${user.email} (id=${user._id}), role: ${user.role}`);
     }
 
-    console.log(`📋 Mevcut kullanıcı: ${user.email}, role: ${user.role}`);
-
-    await db.collection('users').updateOne(
-      { email: TARGET_EMAIL },
-      { $set: { role: 'super_admin', isActive: true, isBanned: false, isFrozen: false } }
-    );
-
-    const updated = await db.collection('users').findOne({ email: TARGET_EMAIL });
-    console.log(`✅ Kullanıcı super_admin yapıldı: ${updated.email}, yeni role: ${updated.role}`);
     process.exit(0);
   } catch (err) {
     console.error('❌ Hata:', err.message);
