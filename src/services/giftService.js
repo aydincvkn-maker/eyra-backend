@@ -161,6 +161,63 @@ exports.sendGift = async ({ senderId, recipientId, giftId, liveId, roomId }) => 
     recipientEarnings: recipientShare
   };
 };
+
+// =============================================
+// TRANSACTION & MISSION TRACKING (post-gift hooks)
+// =============================================
+
+/**
+ * Hediye gönderimi sonrası: Transaction kaydet, mission ilerlet, achievement kontrol
+ * sendGift fonksiyonundan sonra çağrılır
+ */
+exports.postGiftHooks = async ({ senderId, recipientId, giftId, giftValue, senderCoins, recipientCoins }) => {
+  try {
+    // Transaction kaydet - sender
+    await Transaction.create({
+      user: senderId,
+      type: "gift_sent",
+      amount: -giftValue,
+      balanceAfter: senderCoins,
+      relatedUser: recipientId,
+      relatedGift: giftId,
+      description: `Hediye gönderildi`,
+    });
+
+    // Transaction kaydet - recipient
+    const recipientShare = Math.floor(giftValue * 0.7);
+    await Transaction.create({
+      user: recipientId,
+      type: "gift_received",
+      amount: recipientShare,
+      balanceAfter: recipientCoins,
+      relatedUser: senderId,
+      relatedGift: giftId,
+      description: `Hediye alındı`,
+    });
+
+    // Mission progress
+    await trackMissionProgress(senderId, "send_gift", 1);
+
+    // XP ekle - sender
+    try {
+      const senderUser = await User.findById(senderId);
+      if (senderUser) {
+        await senderUser.addXP(5); // Hediye gönderme XP
+      }
+    } catch (e) {}
+
+    // Achievement kontrolü
+    const senderGiftCount = await Message.countDocuments({ from: senderId, type: "gift" });
+    await checkGiftSentAchievements(senderId, senderGiftCount);
+    await checkGiftReceivedAchievements(recipientId);
+    await checkCoinAchievements(senderId, senderCoins);
+  } catch (err) {
+    console.error("postGiftHooks error:", err);
+  }
+};
+
+/**
+ * Kullanıcının gönderdiği hediye geçmişi
  */
 exports.getGiftHistory = async (userId, limit = 50) => {
   return await Message.find({ 
