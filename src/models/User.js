@@ -88,13 +88,46 @@ const userSchema = new mongoose.Schema(
       showActivity: { type: Boolean, default: false }
     },
 
+    // ENGELLENEN KULLANICILAR
+    blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+
+    // VIP SİSTEMİ
+    isVip: { type: Boolean, default: false },
+    vipTier: { type: String, enum: ['none', 'silver', 'gold', 'diamond'], default: 'none' },
+    vipExpiresAt: { type: Date, default: null },
+    vipPurchasedAt: { type: Date, default: null },
+
+    // PUSH BİLDİRİMLER
+    fcmToken: { type: String, default: null },
+    fcmTokenUpdatedAt: { type: Date, default: null },
+
+    // PROFİL DOĞRULAMA
+    verificationStatus: { type: String, enum: ['none', 'pending', 'approved', 'rejected'], default: 'none' },
+    verificationPhoto: { type: String, default: null },
+    verificationRequestedAt: { type: Date, default: null },
+    verificationReviewedAt: { type: Date, default: null },
+    verificationReviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
     // BAŞARIMLAR
     achievements: [{
       id: String,
       name: String,
       icon: String,
+      description: String,
+      category: { type: String, enum: ['social', 'streaming', 'gifting', 'milestone'] },
       unlockedAt: Date
     }],
+
+    // XP EVENT TRACKING
+    dailyXpEarned: { type: Number, default: 0 },
+    dailyXpResetAt: { type: Date, default: null },
+    totalXpEarned: { type: Number, default: 0 },
+
+    // GÜNLÜK GÖREVLER
+    dailyMissionsCompletedAt: { type: Date, default: null },
+    spinLastUsedAt: { type: Date, default: null },
+    dailyLoginAt: { type: Date, default: null },
+    loginStreak: { type: Number, default: 0 },
 
     // TOKEN
     refreshToken: { type: String, default: null }
