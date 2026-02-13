@@ -9,6 +9,9 @@ const path = require("path");
 const fs = require("fs");
 const { normalizeGender, genderVisibilityQueryForViewer } = require("../utils/gender");
 const presenceService = require("../services/presenceService");
+const { trackMissionProgress } = require("./missionController");
+const { checkFollowerAchievements } = require("./achievementController");
+const { createNotification } = require("./notificationController");
 
 const normalizePresenceStatus = (presenceData = {}) => {
   const raw = String(presenceData.status || '').trim().toLowerCase();
