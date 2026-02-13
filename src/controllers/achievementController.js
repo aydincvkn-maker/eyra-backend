@@ -147,6 +147,7 @@ const checkLevelAchievements = async (userId, level) => {
   if (level >= 5) await tryUnlockAchievement(userId, "level_5");
   if (level >= 10) await tryUnlockAchievement(userId, "level_10");
 };
+exports.checkLevelAchievements = checkLevelAchievements;
 
 /**
  * Takipçi bazlı başarımları kontrol et
