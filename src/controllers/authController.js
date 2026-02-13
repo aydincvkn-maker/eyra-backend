@@ -194,10 +194,14 @@ exports.login = async (req, res) => {
 
     res.cookie("auth_token", token, getAuthCookieOptions());
 
+    // Günlük giriş bonusu
+    const dailyBonus = await checkDailyLoginBonus(user);
+
     res.json({
       success: true,
       token,
       user: buildUserPayload(user),
+      dailyBonus: dailyBonus.granted ? dailyBonus : undefined,
     });
   } catch (err) {
     console.error("Login error:", err);
