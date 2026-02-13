@@ -3,6 +3,9 @@ const Gift = require("../models/Gift");
 const User = require("../models/User");
 const LiveStream = require("../models/LiveStream");
 const Message = require("../models/Message");
+const Transaction = require("../models/Transaction");
+const { trackMissionProgress } = require("../controllers/missionController");
+const { checkGiftSentAchievements, checkGiftReceivedAchievements, checkCoinAchievements } = require("../controllers/achievementController");
 
 // Rate limiting için memory cache
 const giftRateLimits = new Map(); // `${userId}:${giftId}` -> { count, lastReset }
