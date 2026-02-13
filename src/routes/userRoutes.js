@@ -68,6 +68,9 @@ router.put("/me/settings", auth, userController.updateSettings);
 // POST /api/users/me/freeze - Hesabı dondur
 router.post("/me/freeze", auth, userController.freezeAccount);
 
+// GET /api/users/me/blocked - Engellenen kullanıcılar
+router.get("/me/blocked", auth, blockController.getBlockedUsers);
+
 // =============================================
 // GENEL KULLANICI ENDPOINT'LERİ
 // =============================================
@@ -102,6 +105,15 @@ router.get("/:userId/is-following", auth, userController.isFollowing);
 
 // POST /api/users/:userId/visit - Profil ziyareti kaydet
 router.post("/:userId/visit", auth, userController.visitProfile);
+
+// POST /api/users/:userId/block - Kullanıcı engelle
+router.post("/:userId/block", auth, blockController.blockUser);
+
+// DELETE /api/users/:userId/block - Engel kaldır
+router.delete("/:userId/block", auth, blockController.unblockUser);
+
+// GET /api/users/:userId/is-blocked - Engel durumu kontrol
+router.get("/:userId/is-blocked", auth, blockController.isBlocked);
 
 // PUT /api/users/:userId/visibility - Görünürlük güncelle
 router.put("/:userId/visibility", auth, userController.updateVisibility);
