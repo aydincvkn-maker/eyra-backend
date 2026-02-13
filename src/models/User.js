@@ -188,8 +188,19 @@ userSchema.methods.calculateLevel = function() {
 // XP ekleme
 userSchema.methods.addXP = async function(amount) {
   this.xp += amount;
+  const oldLevel = this.level;
   this.level = this.calculateLevel();
   await this.save();
+
+  // ✅ Level-up achievement trigger (lazy require to avoid circular deps)
+  if (this.level > oldLevel) {
+    try {
+      const { checkLevelAchievements } = require("../controllers/achievementController");
+      await checkLevelAchievements(this._id, this.level);
+    } catch (e) {
+      console.warn("⚠️ Level achievement check failed:", e.message);
+    }
+  }
 };
 
 // ✅ İndeksler - Çevrimiçi/çevrimdışı sorgularını hızlandır
