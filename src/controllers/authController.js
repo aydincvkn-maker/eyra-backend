@@ -5,6 +5,8 @@ const appleSignin = require("apple-signin-auth");
 const { normalizeGender } = require("../utils/gender");
 const { JWT_SECRET, NODE_ENV } = require("../config/env");
 const presenceService = require("../services/presenceService");
+const SystemSettings = require("../models/SystemSettings");
+const Transaction = require("../models/Transaction");
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
