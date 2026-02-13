@@ -186,6 +186,41 @@ exports.getVipStatus = async (req, res) => {
   }
 };
 
+// ✅ Admin: VIP istatistikleri (performant aggregation)
+exports.adminGetVipStats = async (req, res) => {
+  try {
+    const stats = await User.aggregate([
+      { $match: { isVip: true } },
+      {
+        $group: {
+          _id: "$vipTier",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const result = { total: 0, silver: 0, gold: 0, diamond: 0 };
+    for (const s of stats) {
+      result[s._id] = s.count;
+      result.total += s.count;
+    }
+
+    // Expiring soon (within 7 days)
+    const soon = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const expiringSoon = await User.countDocuments({
+      isVip: true,
+      vipExpiresAt: { $lte: soon, $gt: new Date() },
+    });
+
+    result.expiringSoon = expiringSoon;
+
+    res.json({ success: true, stats: result });
+  } catch (err) {
+    console.error("adminGetVipStats error:", err);
+    res.status(500).json({ success: false, error: "İstatistikler alınamadı" });
+  }
+};
+
 // Admin: VIP ver/kaldır
 exports.adminSetVip = async (req, res) => {
   try {

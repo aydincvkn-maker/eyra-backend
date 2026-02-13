@@ -10,6 +10,7 @@ router.get("/status", auth, vipController.getVipStatus);
 router.post("/purchase", auth, vipController.purchaseVip);
 
 // Admin routes
+router.get("/admin/stats", auth, admin, vipController.adminGetVipStats);
 router.post("/admin/set", auth, admin, vipController.adminSetVip);
 
 module.exports = router;
