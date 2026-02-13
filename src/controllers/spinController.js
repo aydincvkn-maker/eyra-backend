@@ -52,24 +52,39 @@ exports.getSpinStatus = async (req, res) => {
     const todayStart = new Date(now);
     todayStart.setUTCHours(0, 0, 0, 0);
 
-    const lastSpin = user.spinLastUsedAt;
-    const canSpin = !lastSpin || lastSpin < todayStart;
+    // ✅ Count today's spins from transactions
+    const todaySpinCount = await Transaction.countDocuments({
+      user: userId,
+      type: "spin_reward",
+      createdAt: { $gte: todayStart }
+    });
 
-    // VIP kullanıcılar günde 2 kez çevirebilir (ikincisi kontrol)
-    let extraSpinAvailable = false;
-    if (user.isVip && !canSpin) {
-      // VIP'ler bugün en fazla 2 kez çevirebilir - basit kontrol
-      extraSpinAvailable = false; // İlerisi için
+    // ✅ Get spin limit based on VIP status
+    const settings = await SystemSettings.findOne().lean();
+    let dailyLimit = settings?.dailySpinLimit || 1;
+    
+    if (user.isVip) {
+      const vipLimits = {
+        diamond: (settings?.vipDailySpinLimit || 2) + 1, // Diamond gets +1 extra
+        gold: settings?.vipDailySpinLimit || 2,
+        silver: settings?.vipDailySpinLimit || 2,
+      };
+      dailyLimit = vipLimits[user.vipTier] || settings?.vipDailySpinLimit || 2;
     }
 
+    const canSpin = todaySpinCount < dailyLimit;
+    const remainingSpins = Math.max(0, dailyLimit - todaySpinCount);
     const nextSpinAt = canSpin ? null : new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
 
     res.json({
       success: true,
       canSpin,
-      extraSpinAvailable,
+      remainingSpins,
+      dailyLimit,
+      todaySpinCount,
+      extraSpinAvailable: user.isVip && todaySpinCount >= 1 && todaySpinCount < dailyLimit,
       nextSpinAt,
-      lastSpinAt: lastSpin,
+      lastSpinAt: user.spinLastUsedAt,
     });
   } catch (err) {
     console.error("getSpinStatus error:", err);
