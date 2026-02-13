@@ -848,6 +848,27 @@ exports.followUser = async (req, res) => {
     await User.findByIdAndUpdate(userId, { $inc: { followers: 1 } });
     await User.findByIdAndUpdate(currentUserId, { $inc: { following: 1 } });
 
+    // Achievement & Notification hooks
+    const updatedFollowTarget = await User.findById(userId).select("followers username name");
+    if (updatedFollowTarget) {
+      checkFollowerAchievements(userId, updatedFollowTarget.followers).catch(() => {});
+    }
+    
+    // Takipçiye bildirim gönder
+    const currentUser = await User.findById(currentUserId).select("username name profileImage");
+    createNotification({
+      recipientId: userId,
+      type: "follow",
+      title: "Yeni Takipçi! 👋",
+      titleEn: "New Follower! 👋",
+      body: `${currentUser?.name || currentUser?.username || 'Birisi'} seni takip etmeye başladı`,
+      bodyEn: `${currentUser?.name || currentUser?.username || 'Someone'} started following you`,
+      senderId: currentUserId,
+      relatedId: currentUserId,
+      relatedType: "user",
+      imageUrl: currentUser?.profileImage,
+    }).catch(() => {});
+
     console.log(`✅ ${currentUserId} -> ${userId} takip etti`);
 
     res.json({ success: true, message: "Takip edildi", isFollowing: true });
