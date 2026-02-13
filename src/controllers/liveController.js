@@ -9,6 +9,8 @@ const presenceService = require("../services/presenceService");
 const liveService = require("../services/liveService");
 const translationService = require("../services/translationService");
 const { optimizeStreamList, getStreamThumbnail, getProfileImageUrl } = require("../utils/cdn");
+const { trackMissionProgress } = require("./missionController");
+const { checkStreamAchievements } = require("./achievementController");
 
 // ============ CATEGORY MAPPING (Turkish → English) ============
 const CATEGORY_MAP = {
@@ -310,6 +312,15 @@ exports.startLive = async (req, res) => {
     const token = await generateHostToken(userId, roomId);
     console.log('✅ [startLive] Token generated, length:', token?.length);
 
+    // ✅ Mission & Achievement tracking for streaming
+    try {
+      await trackMissionProgress(userId, 'first_stream');
+      await trackMissionProgress(userId, 'weekly_stream');
+      // Stream count for achievements
+      const streamCount = await LiveStream.countDocuments({ host: userId });
+      await checkStreamAchievements(userId, streamCount);
+    } catch (e) { console.warn('⚠️ Mission/achievement tracking failed:', e.message); }
+
     res.status(201).json({
       ok: true,
       streamId: roomId,
@@ -492,6 +503,9 @@ exports.joinAsViewer = async (req, res) => {
         userId
       });
     }
+
+    // ✅ Mission tracking for watching streams
+    try { await trackMissionProgress(userId, 'watch_stream'); } catch (_) {}
 
     res.json({
       ok: true,
@@ -1513,6 +1527,9 @@ exports.requestPaidCall = async (req, res) => {
         });
       }
     }
+
+    // ✅ Mission tracking for making calls
+    try { await trackMissionProgress(callerId, 'make_call'); } catch (_) {}
 
     res.json({
       ok: true,
