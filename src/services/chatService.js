@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const { logger } = require("../utils/logger");
 const { getRedisClient } = require("../config/redis");
 const { getChatRoomId } = require("../utils/chatUtils");
+const { trackMissionProgress } = require("../controllers/missionController");
 
 // ✅ Rate limiting map (Fallback if Redis is unavailable)
 const messageRateLimits = new Map();
@@ -167,6 +168,9 @@ exports.sendMessage = async (fromUserId, toUserId, data) => {
     
     await message.save();
     console.log(`✅ Message saved: ${message._id}`);
+    
+    // ✅ Mission tracking for sending messages
+    try { await trackMissionProgress(fromUserId, 'send_message'); } catch (_) {}
     
     // Populate sender info
     await message.populate('from', 'username name profileImage');
