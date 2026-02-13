@@ -102,16 +102,36 @@ exports.spin = async (req, res) => {
       return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
-    // Bugün çevirmiş mi kontrol et
+    // ✅ Count today's spins and check limit
     const now = new Date();
     const todayStart = new Date(now);
     todayStart.setUTCHours(0, 0, 0, 0);
 
-    if (user.spinLastUsedAt && user.spinLastUsedAt >= todayStart) {
+    const todaySpinCount = await Transaction.countDocuments({
+      user: userId,
+      type: "spin_reward",
+      createdAt: { $gte: todayStart }
+    });
+
+    const settings = await SystemSettings.findOne().lean();
+    let dailyLimit = settings?.dailySpinLimit || 1;
+    
+    if (user.isVip) {
+      const vipLimits = {
+        diamond: (settings?.vipDailySpinLimit || 2) + 1,
+        gold: settings?.vipDailySpinLimit || 2,
+        silver: settings?.vipDailySpinLimit || 2,
+      };
+      dailyLimit = vipLimits[user.vipTier] || settings?.vipDailySpinLimit || 2;
+    }
+
+    if (todaySpinCount >= dailyLimit) {
       return res.status(429).json({
         success: false,
-        message: "Bugün zaten çarkı çevirdiniz",
+        message: "Bugünkü çark hakkınız doldu",
         nextSpinAt: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000),
+        dailyLimit,
+        todaySpinCount,
       });
     }
 
