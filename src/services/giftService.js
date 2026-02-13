@@ -161,9 +161,6 @@ exports.sendGift = async ({ senderId, recipientId, giftId, liveId, roomId }) => 
     recipientEarnings: recipientShare
   };
 };
-
-/**
- * Kullanıcının gönderdiği hediye geçmişi
  */
 exports.getGiftHistory = async (userId, limit = 50) => {
   return await Message.find({ 
