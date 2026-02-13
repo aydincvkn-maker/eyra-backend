@@ -382,12 +382,16 @@ exports.googleLogin = async (req, res) => {
     const token = createToken(user);
     const needsProfileSetup = !user.gender || user.gender === "other";
 
+    // Günlük giriş bonusu
+    const dailyBonus = await checkDailyLoginBonus(user);
+
     res.json({
       success: true,
       token,
       isNewUser,
       needsProfileSetup,
       user: buildUserPayload(user),
+      dailyBonus: dailyBonus.granted ? dailyBonus : undefined,
     });
   } catch (err) {
     console.error("Google login error:", err);
