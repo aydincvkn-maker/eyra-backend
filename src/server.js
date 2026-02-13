@@ -213,6 +213,7 @@ const verificationRoutes = require("./routes/verificationRoutes");
 const transactionRoutes = require("./routes/transactionRoutes");
 const vipRoutes = require("./routes/vipRoutes");
 const { generalLimiter } = require("./middleware/rateLimit");
+const maintenanceMiddleware = require("./middleware/maintenanceMiddleware");
 
 const app = express();
 const server = http.createServer(app);
@@ -1556,6 +1557,9 @@ app.options(/.*/, cors(corsOptions));
 
 // ✅ General API rate limiter
 app.use("/api", generalLimiter);
+
+// ✅ Maintenance mode check
+app.use(maintenanceMiddleware);
 
 // ROUTES
 app.use("/api/auth", authRoutes);
