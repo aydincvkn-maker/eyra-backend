@@ -25,11 +25,39 @@ router.get("/", auth, requirePermission("system:settings"), async (req, res) => 
 
 router.put("/", auth, requirePermission("system:settings"), async (req, res) => {
   try {
-    const { maintenanceMode, globalSlowMode } = req.body || {};
-
+    const body = req.body || {};
     const update = { updatedBy: req.user?.id || null, updatedAt: new Date() };
-    if (typeof maintenanceMode === "boolean") update.maintenanceMode = maintenanceMode;
-    if (typeof globalSlowMode === "boolean") update.globalSlowMode = globalSlowMode;
+
+    // Tüm boolean alanları
+    const booleanFields = [
+      "maintenanceMode", "globalSlowMode", "registrationEnabled",
+      "guestLoginEnabled", "spinEnabled", "autoModerationEnabled",
+      "pushNotificationsEnabled",
+    ];
+    for (const field of booleanFields) {
+      if (typeof body[field] === "boolean") update[field] = body[field];
+    }
+
+    // Tüm number alanları
+    const numberFields = [
+      "maxLoginAttempts", "defaultCoins", "giftCommissionPercent",
+      "dailyLoginBonus", "dailySpinLimit", "vipDailySpinLimit",
+      "defaultCallPrice", "minCallPrice", "maxCallPrice",
+      "maxReportsBeforeAutoBan",
+      "vipSilverPrice", "vipGoldPrice", "vipDiamondPrice",
+      "vipSilverDays", "vipGoldDays", "vipDiamondDays",
+    ];
+    for (const field of numberFields) {
+      if (typeof body[field] === "number" && Number.isFinite(body[field])) {
+        update[field] = body[field];
+      }
+    }
+
+    // String alanları
+    const stringFields = ["minAppVersion"];
+    for (const field of stringFields) {
+      if (typeof body[field] === "string") update[field] = body[field].trim();
+    }
 
     const settings = await SystemSettings.findOneAndUpdate(
       {},
