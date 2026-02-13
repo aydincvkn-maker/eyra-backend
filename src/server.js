@@ -211,6 +211,7 @@ const spinRoutes = require("./routes/spinRoutes");
 const achievementRoutes = require("./routes/achievementRoutes");
 const verificationRoutes = require("./routes/verificationRoutes");
 const transactionRoutes = require("./routes/transactionRoutes");
+const vipRoutes = require("./routes/vipRoutes");
 const { generalLimiter } = require("./middleware/rateLimit");
 
 const app = express();
@@ -1573,6 +1574,7 @@ app.use("/api/spin", spinRoutes);
 app.use("/api/achievements", achievementRoutes);
 app.use("/api/verification", verificationRoutes);
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/vip", vipRoutes);
 
 // Debug/maintenance endpoints (disabled in production unless explicitly enabled)
 if (NODE_ENV !== 'production' || process.env.DEBUG_ROUTES_ENABLED === 'true') {
