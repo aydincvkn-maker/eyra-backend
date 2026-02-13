@@ -66,6 +66,66 @@ const buildUserPayload = (user) => ({
   permissions: user.permissions || [],
 });
 
+// Günlük giriş bonusu kontrolü ve verme
+const checkDailyLoginBonus = async (user) => {
+  try {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // Bugün zaten bonus aldıysa atla
+    if (user.dailyLoginAt && user.dailyLoginAt >= todayStart) {
+      return { granted: false, reason: "already_claimed" };
+    }
+
+    const settings = await SystemSettings.findOne().lean();
+    const bonusAmount = settings?.dailyLoginBonus || 50;
+
+    // Login streak hesapla
+    const yesterday = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
+    let newStreak = 1;
+    if (user.dailyLoginAt && user.dailyLoginAt >= yesterday) {
+      newStreak = (user.loginStreak || 0) + 1;
+    }
+
+    // Streak bonusu: her 7 günde ekstra %50
+    const streakMultiplier = Math.floor(newStreak / 7) > 0 ? 1.5 : 1;
+    const totalBonus = Math.floor(bonusAmount * streakMultiplier);
+
+    user.coins = (user.coins || 0) + totalBonus;
+    user.dailyLoginAt = now;
+    user.loginStreak = newStreak;
+    await user.save();
+
+    // Transaction kaydı
+    try {
+      await Transaction.create({
+        user: user._id,
+        type: "daily_bonus",
+        amount: totalBonus,
+        balanceAfter: user.coins,
+        description: `Günlük giriş bonusu (${newStreak}. gün seri)`,
+        status: "completed",
+      });
+    } catch (_) {}
+
+    // Mission tracking
+    try {
+      const { trackMissionProgress } = require("./missionController");
+      await trackMissionProgress(user._id, "daily_login");
+    } catch (_) {}
+
+    return {
+      granted: true,
+      amount: totalBonus,
+      streak: newStreak,
+      streakBonus: streakMultiplier > 1,
+    };
+  } catch (err) {
+    console.error("Daily login bonus error:", err);
+    return { granted: false, reason: "error" };
+  }
+};
+
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
