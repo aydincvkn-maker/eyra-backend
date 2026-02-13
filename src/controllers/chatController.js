@@ -217,3 +217,127 @@ exports.adminSendMessage = async (req, res) => {
     return res.status(500).json({ message: "Sunucu hatası" });
   }
 };
+
+// =========================
+// MEDYA YÜKLEME
+// =========================
+
+exports.uploadMedia = async (req, res) => {
+  try {
+    const userId = String(req.user?.id || "");
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "Dosya yüklenmedi" });
+    }
+
+    const file = req.file;
+    const ext = path.extname(file.originalname);
+    const timestamp = Date.now();
+    
+    // Dosya tipine göre klasör
+    let folder = "files";
+    if (file.mimetype.startsWith("image/")) folder = "images";
+    else if (file.mimetype.startsWith("video/")) folder = "videos";
+    else if (file.mimetype.startsWith("audio/")) folder = "audio";
+
+    const fileName = `chat_${userId}_${timestamp}${ext}`;
+    const uploadDir = path.join(__dirname, `../../uploads/chat/${folder}`);
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+    const filePath = path.join(uploadDir, fileName);
+    fs.writeFileSync(filePath, file.buffer);
+    const fileUrl = `/uploads/chat/${folder}/${fileName}`;
+
+    // Dosya tipi belirleme
+    let messageType = "file";
+    if (file.mimetype.startsWith("image/")) messageType = "image";
+    else if (file.mimetype.startsWith("video/")) messageType = "video";
+    else if (file.mimetype.startsWith("audio/")) messageType = "audio";
+
+    res.json({
+      success: true,
+      url: fileUrl,
+      type: messageType,
+      fileName: file.originalname,
+      fileSize: file.size,
+      mimeType: file.mimetype,
+    });
+  } catch (err) {
+    console.error("uploadMedia error:", err);
+    res.status(500).json({ success: false, message: "Dosya yüklenemedi" });
+  }
+};
+
+// =========================
+// MESAJ İLETME (FORWARD)
+// =========================
+
+exports.forwardMessage = async (req, res) => {
+  try {
+    const userId = String(req.user?.id || "");
+    const { messageId } = req.params;
+    const { toUserIds } = req.body; // Birden fazla kişiye iletme
+
+    if (!toUserIds || !Array.isArray(toUserIds) || toUserIds.length === 0) {
+      return res.status(400).json({ success: false, message: "Hedef kullanıcı(lar) gerekli" });
+    }
+
+    // Orijinal mesajı bul
+    const originalMessage = await Message.findById(messageId);
+    if (!originalMessage) {
+      return res.status(404).json({ success: false, message: "Mesaj bulunamadı" });
+    }
+
+    const forwardedMessages = [];
+
+    for (const toUserId of toUserIds) {
+      try {
+        const roomId = getChatRoomId(userId, toUserId);
+        const forwarded = await Message.create({
+          roomId,
+          from: userId,
+          to: toUserId,
+          type: originalMessage.type,
+          content: originalMessage.content,
+          metadata: {
+            ...originalMessage.metadata,
+            isForwarded: true,
+            originalMessageId: String(originalMessage._id),
+            originalSender: String(originalMessage.from),
+          },
+        });
+
+        forwardedMessages.push(forwarded);
+
+        // Socket ile gerçek zamanlı bildirim
+        if (global.io && global.userSockets) {
+          const targetSockets = global.userSockets.get(String(toUserId));
+          if (targetSockets && targetSockets.size > 0) {
+            targetSockets.forEach(socketId => {
+              global.io.to(socketId).emit('chat:new_message', {
+                messageId: forwarded._id.toString(),
+                from: userId,
+                to: toUserId,
+                text: forwarded.content,
+                type: forwarded.type,
+                timestamp: forwarded.createdAt,
+                isMe: false,
+                isForwarded: true,
+              });
+            });
+          }
+        }
+      } catch (e) {
+        console.error(`Forward to ${toUserId} failed:`, e);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `${forwardedMessages.length} kişiye iletildi`,
+      forwardedCount: forwardedMessages.length,
+    });
+  } catch (err) {
+    console.error("forwardMessage error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
