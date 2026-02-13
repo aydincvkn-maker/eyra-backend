@@ -417,6 +417,28 @@ const cleanupStaleLiveStreams = async () => {
 // Run every 2 minutes
 const staleLiveCleanupTimer = setInterval(cleanupStaleLiveStreams, 2 * 60 * 1000);
 
+// =========================
+// ✅ VIP EXPIRY CLEANUP JOB
+// =========================
+const cleanupExpiredVip = async () => {
+  try {
+    const now = new Date();
+    const result = await User.updateMany(
+      { isVip: true, vipExpiresAt: { $lte: now } },
+      { $set: { isVip: false, vipTier: 'none' } }
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`🧹 VIP expiry cleanup: ${result.modifiedCount} VIP üyelik sona erdi`);
+    }
+  } catch (e) {
+    logger.warn(`⚠️ cleanupExpiredVip failed: ${e.message}`);
+  }
+};
+
+// Run every 10 minutes
+const vipExpiryTimer = setInterval(cleanupExpiredVip, 10 * 60 * 1000);
+if (typeof vipExpiryTimer.unref === 'function') vipExpiryTimer.unref();
+
 if (typeof staleCleanupTimer.unref === 'function') {
   staleCleanupTimer.unref(); // Don't keep process alive just for this
 }
@@ -1540,6 +1562,10 @@ app.use(compression());
 // ✅ JSON BODY PARSER
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// ✅ Static file serving (uploads - verification selfies, avatars, etc.)
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ✅ CORS - Allowlist based on env
 const corsOptions = {
