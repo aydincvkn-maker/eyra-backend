@@ -13,6 +13,17 @@ const { trackMissionProgress } = require("./missionController");
 const { checkFollowerAchievements } = require("./achievementController");
 const { createNotification } = require("./notificationController");
 
+let _followIndexesSynced = false;
+const ensureFollowIndexes = async (force = false) => {
+  if (_followIndexesSynced && !force) return;
+  try {
+    await Follow.syncIndexes();
+    _followIndexesSynced = true;
+  } catch (e) {
+    console.warn("⚠️ Follow.syncIndexes warning:", e?.message || e);
+  }
+};
+
 const normalizePresenceStatus = (presenceData = {}) => {
   const raw = String(presenceData.status || '').trim().toLowerCase();
   if (raw === 'online' || raw === 'offline' || raw === 'live' || raw === 'in_call') {
@@ -840,6 +851,8 @@ exports.getUserById = async (req, res) => {
 // POST /api/users/:userId/follow - Takip et
 exports.followUser = async (req, res) => {
   try {
+    await ensureFollowIndexes();
+
     const currentUserId = req.user.id;
     const { userId } = req.params;
 
@@ -859,7 +872,25 @@ exports.followUser = async (req, res) => {
     }
 
     // Follow kaydı oluştur
-    await Follow.create({ follower: currentUserId, following: userId });
+    try {
+      await Follow.create({ follower: currentUserId, following: userId });
+    } catch (createErr) {
+      // Duplicate/index race handling
+      if (createErr?.code === 11000) {
+        const already = await Follow.findOne({
+          follower: currentUserId,
+          following: userId,
+        });
+
+        if (!already) {
+          // Try one forced index sync + retry (legacy/wrong index repair path)
+          await ensureFollowIndexes(true);
+          await Follow.create({ follower: currentUserId, following: userId });
+        }
+      } else {
+        throw createErr;
+      }
+    }
 
     // Counter güncelle
     await User.findByIdAndUpdate(userId, { $inc: { followers: 1 } });
