@@ -411,7 +411,8 @@ exports.updateCoins = async (req, res) => {
 exports.addCoins = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { amount } = req.body;
+    const rawAmount = req.body?.amount;
+    const amount = Number(rawAmount);
 
     if (!amount || !Number.isFinite(amount) || amount <= 0) {
       return res.status(400).json({ success: false, message: "Geçerli bir miktar girin" });
@@ -429,6 +430,22 @@ exports.addCoins = async (req, res) => {
     ).select("-password -refreshToken");
 
     console.log(`💰 Admin ${req.user.id} → ${user.username}'a ${amount} coin ekledi (yeni: ${updated.coins})`);
+
+    // Socket ile kullanıcıya anlık bildirim gönder
+    if (global.io && global.userSockets) {
+      const targetKey = String(userId);
+      const targetSockets = global.userSockets.get(targetKey);
+      if (targetSockets && targetSockets.size > 0) {
+        targetSockets.forEach(socketId => {
+          global.io.to(socketId).emit('coins:updated', {
+            coins: updated.coins,
+            added: amount,
+            message: `${amount} coin hesabınıza eklendi!`,
+          });
+        });
+        console.log(`📡 coins:updated event sent to ${targetSockets.size} socket(s) for user ${userId}`);
+      }
+    }
 
     res.json({
       success: true,
