@@ -875,7 +875,10 @@ exports.followUser = async (req, res) => {
     try {
       await Follow.create({ follower: currentUserId, following: userId });
     } catch (createErr) {
+<<<<<<< HEAD
       // Duplicate/index race handling
+=======
+>>>>>>> 269b35e (Fix follow index sync and duplicate follow handling)
       if (createErr?.code === 11000) {
         const already = await Follow.findOne({
           follower: currentUserId,
@@ -883,7 +886,10 @@ exports.followUser = async (req, res) => {
         });
 
         if (!already) {
+<<<<<<< HEAD
           // Try one forced index sync + retry (legacy/wrong index repair path)
+=======
+>>>>>>> 269b35e (Fix follow index sync and duplicate follow handling)
           await ensureFollowIndexes(true);
           await Follow.create({ follower: currentUserId, following: userId });
         }
