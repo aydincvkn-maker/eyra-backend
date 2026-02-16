@@ -882,11 +882,13 @@ exports.followUser = async (req, res) => {
           following: userId,
         });
 
-        if (!already) {
-          // Try one forced index sync + retry (legacy/wrong index repair path)
-          await ensureFollowIndexes(true);
-          await Follow.create({ follower: currentUserId, following: userId });
+        if (already) {
+          // İstek yarışında başka bir worker/istek kaydı oluşturduysa idempotent başarı dön
+          return res.json({ success: true, message: "Zaten takip ediyorsunuz", isFollowing: true });
         }
+
+        // 11000 alındı ama kayıt bulunamadıysa gerçek index/veri problemi olabilir
+        throw createErr;
       } else {
         throw createErr;
       }
