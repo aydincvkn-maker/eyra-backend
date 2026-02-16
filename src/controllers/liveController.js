@@ -1464,9 +1464,11 @@ exports.requestPaidCall = async (req, res) => {
       return res.status(404).json({ ok: false, error: "caller_not_found" });
     }
 
-    // Fiyat hesapla (dakika başı coin)
+    // Fiyat hesapla (doğrudan bağlantı: peşin ödeme)
     const pricePerMinute = stream.host.callPricePerMinute || 100; // Default: 100 coin/dk
-    const totalPrice = pricePerMinute * duration;
+    const parsedDuration = Number(duration) || 0;
+    const flatEntryPrice = 899;
+    const totalPrice = parsedDuration > 0 ? pricePerMinute * parsedDuration : flatEntryPrice;
 
     // Coin kontrolü
     if (caller.coins < totalPrice) {
@@ -1481,6 +1483,21 @@ exports.requestPaidCall = async (req, res) => {
     // Talep ID oluştur
     const requestId = `call_request_${Date.now()}_${uuidv4().slice(0, 8)}`;
 
+    // Peşin coin düş
+    caller.coins -= totalPrice;
+    await caller.save();
+
+    // Host'a coin ekle (%70)
+    const hostShare = Math.floor(totalPrice * 0.7);
+    await User.findByIdAndUpdate(hostId, {
+      $inc: { coins: hostShare, totalEarnings: hostShare }
+    });
+
+    // Call room oluştur ve token üret
+    const callRoomName = `paid_call_${requestId}`;
+    const callerToken = await generateViewerToken(callerId, callRoomName);
+    const hostToken = await generateHostToken(hostId, callRoomName);
+
     // Global state'e kaydet (gerçek uygulamada Redis kullanılmalı)
     if (!global.callRequests) global.callRequests = new Map();
     
@@ -1491,41 +1508,61 @@ exports.requestPaidCall = async (req, res) => {
       callerImage: caller.profileImage,
       hostId: String(hostId),
       roomId,
-      duration,
+      duration: parsedDuration,
       pricePerMinute,
       totalPrice,
-      status: 'pending',
+      status: 'accepted',
+      callRoomName,
       createdAt: Date.now(),
-      expiresAt: Date.now() + (60 * 1000) // 1 dakika içinde cevap vermeli
+      expiresAt: Date.now() + (2 * 60 * 60 * 1000) // 2 saat sonra temizlenebilir
     });
 
-    // Yayıncıya bildir (socket)
+    // Her iki tarafa da doğrudan başlatma bilgisini gönder (request/accept adımı yok)
     if (global.io) {
-      global.io.to(roomId).emit('paid_call_request', {
-        requestId,
-        callerId,
-        callerName: caller.name || caller.username,
-        callerImage: caller.profileImage,
-        duration,
-        totalPrice,
-        pricePerMinute
-      });
+      const callerSocketKey = String(callerId);
+      if (global.userSockets?.has(callerSocketKey)) {
+        global.userSockets.get(callerSocketKey).forEach(socketId => {
+          global.io.to(socketId).emit('paid_call_accepted', {
+            requestId,
+            callRoomName,
+            token: callerToken,
+            livekitUrl: process.env.LIVEKIT_URL,
+            duration: parsedDuration,
+            hostName: stream.host?.name || stream.host?.username,
+            directConnect: true
+          });
+        });
+      }
 
-      // Ayrıca host'un user socket'ına da gönder
+      // Host'un user socket'ına da doğrudan özel görüşme başlat bilgisini gönder
       const hostSocketKey = String(hostId);
       if (global.userSockets?.has(hostSocketKey)) {
         global.userSockets.get(hostSocketKey).forEach(socketId => {
-          global.io.to(socketId).emit('paid_call_request', {
+          const payload = {
             requestId,
             callerId,
             callerName: caller.name || caller.username,
             callerImage: caller.profileImage,
-            duration,
+            duration: parsedDuration,
             totalPrice,
-            pricePerMinute
-          });
+            pricePerMinute,
+            callRoomName,
+            token: hostToken,
+            livekitUrl: process.env.LIVEKIT_URL,
+            directConnect: true
+          };
+
+          global.io.to(socketId).emit('paid_call_direct_started', payload);
+          // Geriye dönük uyumluluk
+          global.io.to(socketId).emit('paid_call_accepted', payload);
         });
       }
+
+      // Odaya host'un özel görüşmede olduğunu bildir
+      global.io.to(roomId).emit('host_in_private_call', {
+        hostId,
+        duration: parsedDuration
+      });
     }
 
     // ✅ Mission tracking for making calls
@@ -1534,10 +1571,14 @@ exports.requestPaidCall = async (req, res) => {
     res.json({
       ok: true,
       requestId,
-      duration,
+      callRoomName,
+      token: callerToken,
+      livekitUrl: process.env.LIVEKIT_URL,
+      duration: parsedDuration,
       totalPrice,
       pricePerMinute,
-      message: "Arama talebi gönderildi"
+      directConnect: true,
+      message: "Özel görüşme başlatıldı"
     });
   } catch (err) {
     console.error("requestPaidCall error:", err);
