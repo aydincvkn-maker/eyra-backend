@@ -1,0 +1,8 @@
+{
+  "git.autoRepositoryDetection": "openEditors",
+  "git.ignoredRepositories": [
+    "c:\\Users\\Casper\\Desktop\\eyra-backend\\eyra-backend",
+    "c:\\Users\\Casper\\Desktop\\eyra-backend\\eyra-backend-new",
+    "c:\\Users\\Casper\\Desktop\\eyra-backend\\eyra-backend-new\\eyra-backend"
+  ]
+}
