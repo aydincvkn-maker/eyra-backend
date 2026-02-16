@@ -174,7 +174,7 @@ exports.getUsers = async (req, res) => {
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
 
-    console.log(`✅ ${formattedUsers.length} kullanıcı gönderiliyor`);
+    console.log(`✅ getUsers: ${formattedUsers.length} kullanıcı gönderiliyor`);
     res.json({
       success: true,
       users: formattedUsers,
