@@ -1495,7 +1495,8 @@ exports.requestPaidCall = async (req, res) => {
 
     // Call room oluştur ve token üret
     const callRoomName = `paid_call_${requestId}`;
-    const callerToken = await generateViewerToken(callerId, callRoomName);
+    // ✅ FIX: Both sides need canPublish:true for 1-on-1 video call
+    const callerToken = await generateHostToken(callerId, callRoomName);
     const hostToken = await generateHostToken(hostId, callRoomName);
 
     // Global state'e kaydet (gerçek uygulamada Redis kullanılmalı)
@@ -1517,7 +1518,7 @@ exports.requestPaidCall = async (req, res) => {
       expiresAt: Date.now() + (2 * 60 * 60 * 1000) // 2 saat sonra temizlenebilir
     });
 
-    // Her iki tarafa da doğrudan başlatma bilgisini gönder (request/accept adımı yok)
+    // Her iki tarafa da doğrudan başlatma bilgisini gönder
     if (global.io) {
       const callerSocketKey = String(callerId);
       if (global.userSockets?.has(callerSocketKey)) {
@@ -1534,27 +1535,29 @@ exports.requestPaidCall = async (req, res) => {
         });
       }
 
-      // Host'un user socket'ına da doğrudan özel görüşme başlat bilgisini gönder
+      // ✅ FIX: Host'a 'paid_call_request' event'i gönder (mobil bu event'i dinliyor)
       const hostSocketKey = String(hostId);
       if (global.userSockets?.has(hostSocketKey)) {
-        global.userSockets.get(hostSocketKey).forEach(socketId => {
-          const payload = {
-            requestId,
-            callerId,
-            callerName: caller.name || caller.username,
-            callerImage: caller.profileImage,
-            duration: parsedDuration,
-            totalPrice,
-            pricePerMinute,
-            callRoomName,
-            token: hostToken,
-            livekitUrl: process.env.LIVEKIT_URL,
-            directConnect: true
-          };
+        const hostPayload = {
+          requestId,
+          callerId: String(callerId),
+          callerName: caller.name || caller.username,
+          callerImage: caller.profileImage,
+          duration: parsedDuration,
+          totalPrice,
+          pricePerMinute,
+          callRoomName,
+          token: hostToken,
+          livekitUrl: process.env.LIVEKIT_URL,
+          directConnect: true
+        };
 
-          global.io.to(socketId).emit('paid_call_direct_started', payload);
+        global.userSockets.get(hostSocketKey).forEach(socketId => {
+          // ✅ Host mobilde 'paid_call_request' dinliyor - bunu gönder
+          global.io.to(socketId).emit('paid_call_request', hostPayload);
           // Geriye dönük uyumluluk
-          global.io.to(socketId).emit('paid_call_accepted', payload);
+          global.io.to(socketId).emit('paid_call_direct_started', hostPayload);
+          global.io.to(socketId).emit('paid_call_accepted', hostPayload);
         });
       }
 
@@ -1615,27 +1618,15 @@ exports.acceptPaidCall = async (req, res) => {
       return res.status(400).json({ ok: false, error: "request_expired" });
     }
 
-    // Caller'ın coin'ini düş
-    const caller = await User.findById(request.callerId);
-    if (!caller || caller.coins < request.totalPrice) {
-      global.callRequests.delete(requestId);
-      return res.status(400).json({ ok: false, error: "caller_insufficient_coins" });
-    }
-
-    caller.coins -= request.totalPrice;
-    await caller.save();
-
-    // Host'a coin ekle (%70)
-    const hostShare = Math.floor(request.totalPrice * 0.7);
-    await User.findByIdAndUpdate(hostId, {
-      $inc: { coins: hostShare, totalEarnings: hostShare }
-    });
+    // ✅ FIX: Coin zaten requestPaidCall'da peşin düşüldü, tekrar düşme!
+    // (Double charge bug fix)
 
     // Call room oluştur
     const callRoomName = `paid_call_${requestId}`;
     
     // Token oluştur (hem caller hem host için)
-    const callerToken = await generateViewerToken(request.callerId, callRoomName);
+    // ✅ FIX: Both sides need canPublish:true for 1-on-1 video call
+    const callerToken = await generateHostToken(request.callerId, callRoomName);
     const hostToken = await generateHostToken(hostId, callRoomName);
 
     // Request durumunu güncelle
