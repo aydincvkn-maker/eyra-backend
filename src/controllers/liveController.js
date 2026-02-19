@@ -1518,6 +1518,16 @@ exports.requestPaidCall = async (req, res) => {
       expiresAt: Date.now() + (2 * 60 * 60 * 1000) // 2 saat sonra temizlenebilir
     });
 
+    // ✅ FIX: activeCalls'a da kaydet - mesajlaşma getCounterpartyForRoom bunu kullanıyor
+    if (global.activeCalls) {
+      global.activeCalls.set(callRoomName, {
+        callerId: String(callerId),
+        targetUserId: String(hostId),
+        roomName: callRoomName,
+        createdAt: Date.now()
+      });
+    }
+
     // Her iki tarafa da doğrudan başlatma bilgisini gönder
     if (global.io) {
       const callerSocketKey = String(callerId);
@@ -1737,6 +1747,12 @@ exports.endPaidCall = async (req, res) => {
 
     // Talebi sil
     global.callRequests.delete(requestId);
+
+    // ✅ activeCalls'dan da temizle (mesajlaşma için eklenmişti)
+    const callRoomName = request.callRoomName || `paid_call_${requestId}`;
+    if (global.activeCalls) {
+      global.activeCalls.delete(callRoomName);
+    }
 
     // Her iki tarafa da bildir
     if (global.io) {

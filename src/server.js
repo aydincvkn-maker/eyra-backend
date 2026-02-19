@@ -1533,12 +1533,26 @@ const getCounterpartyForRoom = (roomName, senderId) => {
   const senderStr = String(senderId || "").trim();
   if (!senderStr) return null;
 
+  // 1) activeCalls map'inde ara (normal + paid call'lar)
   const info = activeCalls.get(roomName);
   if (info) {
     if (senderStr === String(info.callerId)) return String(info.targetUserId);
     if (senderStr === String(info.targetUserId)) return String(info.callerId);
   }
 
+  // 2) Paid call requests'te ara (paid_call_ prefix)
+  if (global.callRequests) {
+    for (const [, req] of global.callRequests) {
+      if (req.callRoomName === roomName) {
+        const cId = String(req.callerId);
+        const hId = String(req.hostId);
+        if (senderStr === cId) return hId;
+        if (senderStr === hId) return cId;
+      }
+    }
+  }
+
+  // 3) Room name'den parse et (call_CALLERID_TARGETID_TIMESTAMP formatı)
   const parsed = parseCallRoomName(roomName);
   if (parsed) {
     if (senderStr === String(parsed.callerId)) return String(parsed.targetUserId);
