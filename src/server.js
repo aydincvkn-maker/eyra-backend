@@ -1190,6 +1190,81 @@ io.on("connection", (socket) => {
   socket.on("call:end", ({ roomName }) => forwardCallEvent("call:ended", roomName));
   socket.on("call:cancel", ({ roomName }) => forwardCallEvent("call:cancelled", roomName));
 
+  // ============ PAID CALL COIN TICK (dakikalık ücretlendirme) ============
+  socket.on('call:coin_tick', async ({ roomName, requestId, minuteIndex }) => {
+    const senderId = socket.data.userId;
+    if (!senderId || !roomName) return;
+
+    try {
+      // callRequests veya activeCalls'dan bilgiyi bul
+      let callInfo = null;
+      if (global.callRequests) {
+        for (const [, req] of global.callRequests) {
+          if (req.callRoomName === roomName) {
+            callInfo = req;
+            break;
+          }
+        }
+      }
+
+      if (!callInfo) {
+        console.log(`⚠️ call:coin_tick - call info not found for room ${roomName}`);
+        return;
+      }
+
+      // Sadece caller'dan gelen tick'leri işle (çift tick önleme)
+      if (String(senderId) !== String(callInfo.callerId)) {
+        return;
+      }
+
+      // Duplicate tick önleme (aynı minuteIndex için)
+      if (!callInfo._lastTickMinute) callInfo._lastTickMinute = -1;
+      if (minuteIndex <= callInfo._lastTickMinute) {
+        return;
+      }
+      callInfo._lastTickMinute = minuteIndex;
+
+      const pricePerMinute = callInfo.pricePerMinute || 120;
+
+      // Caller'dan coin düş
+      const caller = await User.findById(callInfo.callerId);
+      if (!caller || caller.coins < pricePerMinute) {
+        // Yetersiz coin - aramayı sonlandır
+        emitToUserSockets(callInfo.callerId, 'call:insufficient_coins', { roomName });
+        emitToUserSockets(callInfo.hostId, 'call:insufficient_coins', { roomName });
+        console.log(`💰 Insufficient coins for call ${roomName}, ending call`);
+        return;
+      }
+
+      caller.coins -= pricePerMinute;
+      await caller.save();
+
+      // Host'a coin ekle (%70)
+      const hostShare = Math.floor(pricePerMinute * 0.7);
+      await User.findByIdAndUpdate(callInfo.hostId, {
+        $inc: { coins: hostShare, totalEarnings: hostShare }
+      });
+
+      // Her iki tarafa bildir
+      emitToUserSockets(callInfo.callerId, 'call:coin_charged', {
+        roomName,
+        amount: pricePerMinute,
+        remaining: caller.coins,
+        minute: minuteIndex + 1,
+      });
+      emitToUserSockets(callInfo.hostId, 'call:coin_charged', {
+        roomName,
+        amount: hostShare,
+        earned: true,
+        minute: minuteIndex + 1,
+      });
+
+      console.log(`💰 Call tick: ${callInfo.callerId} charged ${pricePerMinute} coins (minute ${minuteIndex + 1}), host earned ${hostShare}`);
+    } catch (e) {
+      console.error('❌ call:coin_tick error:', e.message);
+    }
+  });
+
   // ============ PRIVATE CHAT SOCKET EVENTS ============
   const chatService = require('./services/chatService');
   
