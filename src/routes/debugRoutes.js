@@ -8,7 +8,7 @@ const { PORT } = require("../config/env");
 const presenceService = require("../services/presenceService");
 
 // ✅ DEBUG ENDPOINTS
-router.get("/debug/test", (req, res) => {
+router.get("/test", (req, res) => {
   res.json({
     status: "OK",
     message: "Backend çalışıyor",
@@ -17,7 +17,7 @@ router.get("/debug/test", (req, res) => {
   });
 });
 
-router.get("/debug/user-counts", async (req, res) => {
+router.get("/user-counts", async (req, res) => {
   try {
     const total = await User.countDocuments({});
     const notBanned = await User.countDocuments({ isBanned: { $ne: true } });
@@ -37,7 +37,7 @@ router.get("/debug/user-counts", async (req, res) => {
   }
 });
 
-router.get("/debug/socket-status", (req, res) => {
+router.get("/socket-status", (req, res) => {
   const io = global.io;
   const userSockets = global.userSockets;
   const metrics = presenceService.getMetrics ? presenceService.getMetrics() : null;
@@ -58,7 +58,7 @@ router.get("/debug/socket-status", (req, res) => {
   });
 });
 
-router.get("/debug/presence", async (req, res) => {
+router.get("/presence", async (req, res) => {
   try {
     const onlineUsers = await presenceService.getOnlineUsers();
     const metrics = presenceService.getMetrics ? presenceService.getMetrics() : null;
