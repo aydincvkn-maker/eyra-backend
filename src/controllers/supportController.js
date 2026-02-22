@@ -91,7 +91,7 @@ exports.getAdminTickets = async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit || "50"), 1), 200);
     const status = req.query.status; // open, replied, closed
 
-    const query = {};
+    const query = { deletedByAdmin: { $ne: true } };
     if (status && ["open", "replied", "closed"].includes(status)) {
       query.status = status;
     }
@@ -121,7 +121,7 @@ exports.getAdminTickets = async (req, res) => {
 // GET /api/support/admin/:ticketId - Tek bir talebi getir (admin)
 exports.getTicketById = async (req, res) => {
   try {
-    const ticket = await SupportTicket.findById(req.params.ticketId)
+    const ticket = await SupportTicket.findOne({ _id: req.params.ticketId, deletedByAdmin: { $ne: true } })
       .populate("user", "username name email profileImage coins level country")
       .populate("replies.from", "username name role")
       .lean();
@@ -199,7 +199,10 @@ exports.adminSendToUser = async (req, res) => {
       });
     } else {
       // Mevcut ticket'a devam et, status'u replied yap
+      // Soft-deleted ise panelde tekrar görünür hale getir
       ticket.status = "replied";
+      ticket.deletedByAdmin = false;
+      ticket.deletedByAdminAt = undefined;
     }
 
     ticket.replies.push({
@@ -250,15 +253,20 @@ exports.updateTicketStatus = async (req, res) => {
   }
 };
 
-// DELETE /api/support/admin/:ticketId - Talebi sil (admin)
+// DELETE /api/support/admin/:ticketId - Talebi admin panelinden gizle (soft delete)
+// Kullanıcı kendi mesajlarını görmeye devam eder
 exports.deleteTicket = async (req, res) => {
   try {
-    const ticket = await SupportTicket.findByIdAndDelete(req.params.ticketId);
+    const ticket = await SupportTicket.findByIdAndUpdate(
+      req.params.ticketId,
+      { deletedByAdmin: true, deletedByAdminAt: new Date() },
+      { new: true }
+    );
     if (!ticket) {
       return res.status(404).json({ success: false, message: "Talep bulunamadı" });
     }
 
-    res.json({ success: true, message: "Talep silindi" });
+    res.json({ success: true, message: "Talep panelden kaldırıldı" });
   } catch (err) {
     console.error("deleteTicket error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });

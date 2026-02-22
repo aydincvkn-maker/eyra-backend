@@ -25,6 +25,9 @@ const supportTicketSchema = new mongoose.Schema(
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     closedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     closedAt: { type: Date },
+    // Soft delete: admin panelden silindi, kullanıcı hâlâ görebilir
+    deletedByAdmin: { type: Boolean, default: false },
+    deletedByAdminAt: { type: Date },
   },
   { timestamps: true }
 );
