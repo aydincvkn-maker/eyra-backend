@@ -36,6 +36,12 @@ const createRateLimiter = (options = {}) => {
   } = options;
 
   return (req, res, next) => {
+    // Admin ve super_admin rate limit'ten muaf
+    const userRole = req.user?.role;
+    if (userRole === 'admin' || userRole === 'super_admin') {
+      return next();
+    }
+
     // Get identifier (userId if authenticated, IP otherwise)
     const userId = req.user?.id;
     const ip = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
@@ -176,6 +182,17 @@ const reportLimiter = createRateLimiter({
   keyPrefix: "report"
 });
 
+/**
+ * Panel admin rate limiter (very relaxed)
+ * 500 requests per minute — panel many parallel API calls
+ */
+const panelAdminLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 500,
+  message: "Çok fazla istek. Lütfen bekleyin.",
+  keyPrefix: "panel_admin"
+});
+
 module.exports = {
   createRateLimiter,
   generalLimiter,
@@ -183,5 +200,6 @@ module.exports = {
   chatLimiter,
   giftLimiter,
   liveStartLimiter,
-  reportLimiter
+  reportLimiter,
+  panelAdminLimiter,
 };
