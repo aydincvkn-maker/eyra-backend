@@ -12,7 +12,9 @@ const supportTicketSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     subject: { type: String, required: true, maxlength: 200 },
-    message: { type: String, required: true, maxlength: 5000 },
+    // message is optional for admin-initiated tickets (admin starts the conversation)
+    message: { type: String, default: "", maxlength: 5000 },
+    initiatedByAdmin: { type: Boolean, default: false },
     status: {
       type: String,
       enum: ["open", "replied", "closed"],

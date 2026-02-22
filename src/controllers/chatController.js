@@ -220,8 +220,6 @@ exports.adminSendMessage = async (req, res) => {
     const message = await chatService.sendMessage(adminId, toUserId, { text, isAdmin: true });
 
     // Socket ile gerçek zamanlı bildirim
-    // ✅ `from` olarak gerçek adminId yerine sanal 'eyra_support' gönderiyoruz.
-    // Bu sayede Flutter tarafında mesaj admin hesabı değil "Eyra Destek" olarak görünür.
     if (global.io && global.userSockets) {
       const targetKey = String(toUserId);
       const targetSockets = global.userSockets.get(targetKey);
@@ -229,13 +227,11 @@ exports.adminSendMessage = async (req, res) => {
         targetSockets.forEach(socketId => {
           global.io.to(socketId).emit('chat:new_message', {
             messageId: message._id.toString(),
-            from: EYRA_SUPPORT_ID,
+            from: adminId,
             to: toUserId,
             text: message.content,
             timestamp: message.createdAt,
             isMe: false,
-            isAdminMessage: true,
-            senderName: 'Eyra Destek',
           });
         });
       }

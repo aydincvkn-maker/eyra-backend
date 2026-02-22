@@ -175,6 +175,49 @@ exports.adminReply = async (req, res) => {
   }
 };
 
+// POST /api/support/admin/send-to-user - Admin kullaniciya mesaj gonder (ticket uzerinden)
+exports.adminSendToUser = async (req, res) => {
+  try {
+    const { userId, text } = req.body;
+
+    if (!userId || !text || !text.trim()) {
+      return res.status(400).json({ success: false, message: "userId ve text gerekli" });
+    }
+
+    // Kullanicinin var olan acik/yanıtlanmis ticketini bul
+    let ticket = await SupportTicket.findOne({
+      user: userId,
+      status: { $in: ["open", "replied"] },
+    }).sort({ updatedAt: -1 });
+
+    if (!ticket) {
+      // Yoksa yeni ticket olustur (admin baslatmis)
+      ticket = await SupportTicket.create({
+        user: userId,
+        subject: "Eyra Destek",
+        message: "",
+        initiatedByAdmin: true,
+        status: "replied",
+      });
+    }
+
+    ticket.replies.push({
+      from: req.user.id,
+      fromRole: "admin",
+      content: text.trim(),
+    });
+    ticket.status = "replied";
+    ticket.assignedTo = req.user.id;
+    await ticket.save();
+
+    console.log(`💬 Admin ${req.user.username || req.user.id} kullaniciya mesaj gonderdi: ${userId}`);
+    res.json({ success: true, ticketId: ticket._id });
+  } catch (err) {
+    console.error("adminSendToUser error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatasi" });
+  }
+};
+
 // PATCH /api/support/admin/:ticketId/status - Durum güncelle (admin)
 exports.updateTicketStatus = async (req, res) => {
   try {

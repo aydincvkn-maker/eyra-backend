@@ -28,6 +28,9 @@ router.get("/admin", auth, requirePermission("reports:view"), supportController.
 // GET /api/support/admin/:ticketId - Tek talep detayı
 router.get("/admin/:ticketId", auth, requirePermission("reports:view"), supportController.getTicketById);
 
+// POST /api/support/admin/send-to-user - Admin proaktif mesaj (hosts bölümünden)
+router.post("/admin/send-to-user", auth, requirePermission("users:edit"), supportController.adminSendToUser);
+
 // POST /api/support/admin/:ticketId/reply - Admin yanıtı
 router.post("/admin/:ticketId/reply", auth, requirePermission("reports:view"), supportController.adminReply);
 
