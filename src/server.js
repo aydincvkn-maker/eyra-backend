@@ -1700,9 +1700,9 @@ if (NODE_ENV !== 'production' || process.env.DEBUG_ROUTES_ENABLED === 'true') {
   const allowPublicDebugInDev = NODE_ENV !== 'production' && process.env.ALLOW_PUBLIC_DEBUG_ROUTES === 'true';
 
   if (NODE_ENV === 'production' || !allowPublicDebugInDev) {
-    app.use("/api", authMiddleware, adminMiddleware, debugRoutes);
+    app.use("/api/debug", authMiddleware, adminMiddleware, debugRoutes);
   } else {
-    app.use("/api", debugRoutes);
+    app.use("/api/debug", debugRoutes);
   }
 }
 
