@@ -262,8 +262,22 @@ exports.getPanelAdmins = async (req, res) => {
     const userIds = adminUsers.map((u) => String(u._id));
     const presenceMap = await presenceService.getMultiplePresence(userIds);
 
+    // Panel'i aktif kullanan admin (isteği gönderen) online sayılır
+    const requestingUserId = req.user?.id ? String(req.user.id) : null;
+
     const formattedAdmins = adminUsers.map((user) => {
-      const presenceData = presenceMap[String(user._id)] || {
+      const uid = String(user._id);
+      // İsteği gönderen admin paneli aktif kullanıyor → online
+      if (requestingUserId && uid === requestingUserId) {
+        return {
+          _id: user._id,
+          username: user.username,
+          name: user.name,
+          role: user.role,
+          isOnline: true,
+        };
+      }
+      const presenceData = presenceMap[uid] || {
         online: false,
         status: "offline",
       };
@@ -360,9 +374,14 @@ exports.toggleBan = async (req, res) => {
       return res.status(400).json({ message: "Kendinizi banlayamazsınız" });
     }
 
-    // Super admin banlanamasın
-    if (user.role === "super_admin" || user.role === "admin") {
-      return res.status(403).json({ message: "Admin hesaplar banlanamaz" });
+    // Super admin hiçbir zaman banlanamaz
+    if (user.role === "super_admin") {
+      return res.status(403).json({ message: "Super admin banlanamaz" });
+    }
+
+    // Admin sadece super_admin tarafından banlanabilir
+    if (user.role === "admin" && req.user.role !== "super_admin") {
+      return res.status(403).json({ message: "Admin hesaplar sadece super admin tarafından banlanabilir" });
     }
 
     const newBanState = !user.isBanned;
@@ -411,9 +430,14 @@ exports.adminDeleteUser = async (req, res) => {
       return res.status(400).json({ success: false, message: "Kendinizi silemezsiniz" });
     }
 
-    // Super admin silinemesin
+    // Super admin hiçbir zaman silinemez
     if (user.role === "super_admin") {
       return res.status(403).json({ success: false, message: "Super admin silinemez" });
+    }
+
+    // Admin sadece super_admin tarafından silinebilir
+    if (user.role === "admin" && req.user.role !== "super_admin") {
+      return res.status(403).json({ success: false, message: "Admin hesaplar sadece super admin tarafından silinebilir" });
     }
 
     await User.findByIdAndDelete(userId);
