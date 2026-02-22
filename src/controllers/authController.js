@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
 const appleSignin = require("apple-signin-auth");
 const { normalizeGender } = require("../utils/gender");
-const { JWT_SECRET, NODE_ENV } = require("../config/env");
+const { JWT_SECRET, NODE_ENV, JWT_EXPIRES_IN } = require("../config/env");
 const presenceService = require("../services/presenceService");
 const SystemSettings = require("../models/SystemSettings");
 const Transaction = require("../models/Transaction");
@@ -26,7 +26,7 @@ const resolveGender = (gender) => {
   return normalized;
 };
 
-const createToken = (user, expiresIn = "90d") =>
+const createToken = (user, expiresIn = JWT_EXPIRES_IN || "30d") =>
   jwt.sign(
     { id: user._id, email: user.email, username: user.username },
     JWT_SECRET,

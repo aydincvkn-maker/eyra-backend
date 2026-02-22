@@ -2,24 +2,25 @@ const express = require("express");
 const router = express.Router();
 const authController = require("../controllers/authController");
 const authMiddleware = require("../middleware/auth");
+const { authLimiter } = require("../middleware/rateLimit");
 
 // Login
-router.post("/login", authController.login);
+router.post("/login", authLimiter, authController.login);
 
 // Register
-router.post("/register", authController.register);
+router.post("/register", authLimiter, authController.register);
 
 // Google Login (ESKİ - basit)
-router.post("/google-login", authController.googleLogin);
+router.post("/google-login", authLimiter, authController.googleLogin);
 
 // ✅ YENİ: Google Login (Token ile doğrulama)
-router.post("/google-login-token", authController.googleLoginWithToken);
+router.post("/google-login-token", authLimiter, authController.googleLoginWithToken);
 
 // ✅ YENİ: Apple Login
-router.post("/apple-login", authController.appleLogin);
+router.post("/apple-login", authLimiter, authController.appleLogin);
 
 // Guest Login
-router.post("/guest-login", authController.guestLogin);
+router.post("/guest-login", authLimiter, authController.guestLogin);
 
 // Logout
 router.post("/logout", authMiddleware, authController.logout);

@@ -52,6 +52,7 @@ module.exports = {
   })(),
   CLIENT_ORIGIN: required("CLIENT_ORIGIN", "http://localhost:3000"),
   MOBILE_ORIGIN: required("MOBILE_ORIGIN", ""),
+  JWT_EXPIRES_IN: required("JWT_EXPIRES_IN", "30d"),
 
   // 🔥 LIVEKIT Değerleri - Development'ta fallback, production'da mutlaka eklenmeli
   LIVEKIT_URL: required("LIVEKIT_URL", "wss://livekit.example.com"),
