@@ -7,12 +7,70 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Tüm repo'lar — hem backend hem panel
+$AllRepos = @(
+  "C:\Users\Casper\Desktop\eyra-backend",
+  "C:\Users\Casper\Desktop\eyrapanel\eyra-admin"
+)
+
 function Write-Log {
   param([string]$Message, [string]$Level = 'INFO')
   $ts = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
   $line = "[$ts][$Level] $Message"
   Write-Host $line
   Add-Content -Path $LogPath -Value $line
+}
+
+# R tuşuna basınca tüm repo'ları anında push et
+function Invoke-ManualPush {
+  Write-Log "=== MANUEL PUSH BASLADI (R tusu) ===" "INFO"
+  foreach ($repo in $AllRepos) {
+    if (-not (Test-Path $repo)) { Write-Log "Repo bulunamadi: $repo" "WARN"; continue }
+    Push-Location $repo
+    try {
+      $status = git status --porcelain 2>$null
+      if ($status) {
+        $ts = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+        git add -A 2>$null
+        git commit -m "manual: push at $ts" 2>$null | Out-Null
+        Write-Log "Commit yapildi: $repo"
+      }
+      git pull --rebase origin $Branch --autostash --quiet 2>$null | Out-Null
+      git push origin $Branch 2>$null | Out-Null
+      if ($LASTEXITCODE -eq 0) {
+        Write-Log "PUSH BASARILI: $repo" "INFO"
+        Write-Host ""
+        Write-Host "  ✅ $([System.IO.Path]::GetFileName($repo)) → pushed!" -ForegroundColor Green
+        Write-Host ""
+      } else {
+        Write-Log "Push basarisiz: $repo" "ERROR"
+      }
+    } catch {
+      Write-Log ("Manuel push hatasi ($repo): " + $_.Exception.Message) "ERROR"
+    }
+    Pop-Location
+  }
+  Write-Log "=== MANUEL PUSH TAMAMLANDI ===" "INFO"
+}
+
+# Bekleme süresince R tuşunu dinle
+function Start-InterruptibleSleep {
+  param([int]$Seconds)
+  $elapsed = 0
+  $tick = 500  # ms
+  while ($elapsed -lt ($Seconds * 1000)) {
+    if ([Console]::KeyAvailable) {
+      $key = [Console]::ReadKey($true)
+      if ($key.Key -eq [ConsoleKey]::R) {
+        Write-Host ""
+        Write-Host "  ⚡ R algilandi — aninda push yapiliyor..." -ForegroundColor Cyan
+        Invoke-ManualPush
+        return
+      }
+    }
+    Start-Sleep -Milliseconds $tick
+    $elapsed += $tick
+  }
 }
 
 # Tek instance çalışsın
