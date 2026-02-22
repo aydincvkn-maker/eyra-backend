@@ -38,7 +38,18 @@ module.exports = {
   NODE_ENV,
   PORT: Number(required("PORT", 5000)),
   MONGO_URI: required("MONGO_URI", "mongodb://127.0.0.1:27017/eyra"),
-  JWT_SECRET: required("JWT_SECRET", "super_secret_eyra_key"),
+  JWT_SECRET: (() => {
+    const secret = process.env.JWT_SECRET;
+    if (!isEmpty(secret)) return secret;
+
+    if (NODE_ENV === "production") {
+      throw new Error("[ENV] JWT_SECRET tanımlı değil (production)");
+    }
+
+    const devFallback = "dev_only_change_this_secret";
+    console.warn("[ENV] JWT_SECRET tanımlı değil, development fallback kullanılıyor");
+    return devFallback;
+  })(),
   CLIENT_ORIGIN: required("CLIENT_ORIGIN", "http://localhost:3000"),
   MOBILE_ORIGIN: required("MOBILE_ORIGIN", ""),
 
