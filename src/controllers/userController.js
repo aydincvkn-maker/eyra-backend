@@ -497,7 +497,6 @@ exports.getMyProfile = async (req, res) => {
         age: user.age || 0,
         location: user.location || "",
         country: user.country || "TR",
-        bio: user.bio || "",
         coins: user.coins || 0,
         level: user.level || 1,
         followers: user.followers || 0,
