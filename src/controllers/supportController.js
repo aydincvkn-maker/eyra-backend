@@ -18,6 +18,7 @@ exports.createTicket = async (req, res) => {
       user: req.user.id,
       subject: subject.trim(),
       message: message.trim(),
+      deletedByAdmin: false,
     });
 
     res.status(201).json({ success: true, ticket });
@@ -71,6 +72,9 @@ exports.userReply = async (req, res) => {
       content: content.trim(),
     });
     ticket.status = "open";
+    // Kullanıcı mesaj gönderince panelde tekrar görünsün
+    ticket.deletedByAdmin = false;
+    ticket.deletedByAdminAt = undefined;
     await ticket.save();
 
     res.json({ success: true, ticket });
