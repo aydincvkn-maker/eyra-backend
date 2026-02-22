@@ -187,14 +187,17 @@ exports.getUsers = async (req, res) => {
   }
 };
 
-// ADMIN: Tüm kullanıcıları listele (pagination destekli)
+// ADMIN: Tüm kullanıcıları listele (pagination destekli) - panel adminler hariç
 exports.getAdminUsers = async (req, res) => {
   try {
     const searchQuery = req.query.search ? String(req.query.search).trim() : null;
     const page = Math.max(parseInt(req.query.page || "1"), 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit || "50"), 1), 200);
 
-    const query = {};
+    // Panel admin rollerini (admin, super_admin, moderator) bu listeden hariç tut
+    const query = {
+      role: { $nin: ["admin", "super_admin", "moderator"] },
+    };
 
     if (searchQuery) {
       const escapedQuery = escapeRegex(searchQuery);
@@ -242,6 +245,42 @@ exports.getAdminUsers = async (req, res) => {
     });
   } catch (err) {
     console.error("❌ getAdminUsers error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+// ADMIN: Panel admin kullanıcılarını listele (admin, super_admin, moderator)
+exports.getPanelAdmins = async (req, res) => {
+  try {
+    const adminUsers = await User.find({
+      role: { $in: ["admin", "super_admin", "moderator"] },
+    })
+      .select("_id username name email role")
+      .sort({ role: 1, username: 1 })
+      .lean();
+
+    const userIds = adminUsers.map((u) => String(u._id));
+    const presenceMap = await presenceService.getMultiplePresence(userIds);
+
+    const formattedAdmins = adminUsers.map((user) => {
+      const presenceData = presenceMap[String(user._id)] || {
+        online: false,
+        status: "offline",
+      };
+      const presenceStatus = normalizePresenceStatus(presenceData);
+      const isOnline = presenceStatus !== "offline";
+      return {
+        _id: user._id,
+        username: user.username,
+        name: user.name,
+        role: user.role,
+        isOnline,
+      };
+    });
+
+    res.json({ success: true, admins: formattedAdmins });
+  } catch (err) {
+    console.error("❌ getPanelAdmins error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
