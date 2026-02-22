@@ -30,6 +30,8 @@ const messageSchema = new mongoose.Schema(
     isDeleted: { type: Boolean, default: false },
     deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     deletedAt: { type: Date },
+    // "Benim için sil" - bu dizideki kullanıcılara mesaj görünmez
+    deletedFor: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     
     // Metadata (gift detayları vb.)
     metadata: { type: mongoose.Schema.Types.Mixed },

@@ -82,6 +82,8 @@ exports.getConversation = async (userId, otherUserId, page = 0, limit = 50) => {
     const messages = await Message.find({
       roomId,
       isDeleted: false,
+      // ✅ Kullanıcının "benim için sil" yaptığı mesajları filtrele
+      deletedFor: { $nin: [userId] },
       type: { $in: ['text', 'image', 'video', 'audio', 'file', 'emoji', 'sticker', 'call_chat'] }
     })
       .sort({ createdAt: -1 })
@@ -93,6 +95,22 @@ exports.getConversation = async (userId, otherUserId, page = 0, limit = 50) => {
     return messages.reverse();
   } catch (error) {
     logger.error('getConversation error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete all messages in a conversation for one user ("clear for me")
+ */
+exports.deleteConversation = async (userId, otherUserId) => {
+  try {
+    const roomId = getChatRoomId(userId, otherUserId);
+    await Message.updateMany(
+      { roomId, isDeleted: false },
+      { $addToSet: { deletedFor: userId } }
+    );
+  } catch (error) {
+    logger.error('deleteConversation error:', error);
     throw error;
   }
 };

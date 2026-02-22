@@ -32,6 +32,7 @@ router.get("/room/:roomId", auth, chatController.getRoomMessages);
 // Private chat (used by Flutter ChatApiService)
 router.get("/users", auth, chatController.getChatUsers);
 router.get("/conversation/:userId", auth, chatController.getConversation);
+router.delete("/conversation/:userId", auth, chatController.deleteConversation);
 router.post("/send", auth, chatController.sendMessage);
 router.post("/read/:userId", auth, chatController.markAsRead);
 router.get("/unread/:userId", auth, chatController.getUnreadCount);

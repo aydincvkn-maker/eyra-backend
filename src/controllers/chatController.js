@@ -108,6 +108,21 @@ exports.sendMessage = async (req, res) => {
   }
 };
 
+exports.deleteConversation = async (req, res) => {
+  try {
+    const userId = String(req.user?.id || "");
+    const otherUserId = String(req.params.userId || "").trim();
+    if (!otherUserId) {
+      return res.status(400).json({ message: "Eksik userId" });
+    }
+    await chatService.deleteConversation(userId, otherUserId);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("deleteConversation error:", err);
+    return res.status(500).json({ message: "Sunucu hatası" });
+  }
+};
+
 exports.markAsRead = async (req, res) => {
   try {
     const userId = String(req.user?.id || "");
