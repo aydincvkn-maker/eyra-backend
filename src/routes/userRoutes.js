@@ -78,6 +78,9 @@ router.get("/me/blocked", auth, blockController.getBlockedUsers);
 // ADMIN: Tüm kullanıcıları listele (pagination + search)
 router.get("/admin", auth, requirePermission("users:view"), userController.getAdminUsers);
 
+// ADMIN: Panel admin kullanıcılarını listele (admin, super_admin, moderator)
+router.get("/panel-admins", auth, requirePermission("users:view"), userController.getPanelAdmins);
+
 // GET /api/users - Tüm kullanıcıları getir (search query destekli)
 router.get("/", optionalAuth, userController.getUsers);
 
