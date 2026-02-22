@@ -184,14 +184,12 @@ exports.adminSendToUser = async (req, res) => {
       return res.status(400).json({ success: false, message: "userId ve text gerekli" });
     }
 
-    // Kullanicinin var olan acik/yanıtlanmis ticketini bul
-    let ticket = await SupportTicket.findOne({
-      user: userId,
-      status: { $in: ["open", "replied"] },
-    }).sort({ updatedAt: -1 });
+    // Kullanicinin var olan herhangi bir ticketini bul (kapalı dahil)
+    let ticket = await SupportTicket.findOne({ user: userId })
+      .sort({ updatedAt: -1 });
 
     if (!ticket) {
-      // Yoksa yeni ticket olustur (admin baslatmis)
+      // Hiç ticket yoksa yeni oluştur (admin başlatımş)
       ticket = await SupportTicket.create({
         user: userId,
         subject: "Eyra Destek",
@@ -199,6 +197,9 @@ exports.adminSendToUser = async (req, res) => {
         initiatedByAdmin: true,
         status: "replied",
       });
+    } else {
+      // Mevcut ticket'a devam et, status'u replied yap
+      ticket.status = "replied";
     }
 
     ticket.replies.push({
@@ -206,7 +207,6 @@ exports.adminSendToUser = async (req, res) => {
       fromRole: "admin",
       content: text.trim(),
     });
-    ticket.status = "replied";
     ticket.assignedTo = req.user.id;
     await ticket.save();
 
