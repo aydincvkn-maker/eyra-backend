@@ -17,7 +17,7 @@ if (Test-Path $oldShortcutPath) {
 $wsh = New-Object -ComObject WScript.Shell
 $shortcut = $wsh.CreateShortcut($shortcutPath)
 $shortcut.TargetPath = "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe"
-$shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Minimized -File `"$scriptPath`""
+$shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Normal -File `"$scriptPath`""
 $shortcut.WorkingDirectory = 'C:\Users\Casper\Desktop\eyra-backend'
 $shortcut.IconLocation = "$env:WINDIR\System32\shell32.dll,220"
 $shortcut.Save()

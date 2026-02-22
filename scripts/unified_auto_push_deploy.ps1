@@ -99,6 +99,9 @@ try {
   }
 
   Write-Log "Unified auto push/deploy started. repo=$RepoPath branch=$Branch interval=${CheckIntervalSec}s"
+  Write-Host ""
+  Write-Host "  💡 R tuşuna bas → anında tüm repo'ları push eder" -ForegroundColor Yellow
+  Write-Host ""
 
   while ($true) {
     try {
@@ -130,7 +133,7 @@ try {
       }
 
       if ($filtered.Count -eq 0) {
-        Start-Sleep -Seconds $CheckIntervalSec
+        Start-InterruptibleSleep -Seconds $CheckIntervalSec
         continue
       }
 
@@ -145,7 +148,7 @@ try {
       $staged = git diff --cached --name-only
       if (-not $staged) {
         Write-Log "No valid staged files after filtering; skipping commit" "WARN"
-        Start-Sleep -Seconds $CheckIntervalSec
+        Start-InterruptibleSleep -Seconds $CheckIntervalSec
         continue
       }
 
@@ -156,7 +159,7 @@ try {
       git commit -m "$commitMsg" | Out-Null
       if ($LASTEXITCODE -ne 0) {
         Write-Log "Commit failed, skipping this cycle" "ERROR"
-        Start-Sleep -Seconds $CheckIntervalSec
+        Start-InterruptibleSleep -Seconds $CheckIntervalSec
         continue
       }
 
@@ -164,14 +167,14 @@ try {
       git pull --rebase origin $Branch --autostash | Out-Null
       if ($LASTEXITCODE -ne 0) {
         Write-Log "Rebase failed, please resolve manually" "ERROR"
-        Start-Sleep -Seconds $CheckIntervalSec
+        Start-InterruptibleSleep -Seconds $CheckIntervalSec
         continue
       }
 
       git push origin $Branch | Out-Null
       if ($LASTEXITCODE -ne 0) {
         Write-Log "Push failed" "ERROR"
-        Start-Sleep -Seconds $CheckIntervalSec
+        Start-InterruptibleSleep -Seconds $CheckIntervalSec
         continue
       }
 
@@ -190,7 +193,7 @@ try {
       Write-Log ("Cycle error: " + $_.Exception.Message) "ERROR"
     }
 
-    Start-Sleep -Seconds $CheckIntervalSec
+    Start-InterruptibleSleep -Seconds $CheckIntervalSec
   }
 }
 finally {
