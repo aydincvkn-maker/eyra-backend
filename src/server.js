@@ -1697,7 +1697,9 @@ app.use("/api/vip", vipRoutes);
 
 // Debug/maintenance endpoints (disabled in production unless explicitly enabled)
 if (NODE_ENV !== 'production' || process.env.DEBUG_ROUTES_ENABLED === 'true') {
-  if (NODE_ENV === 'production') {
+  const allowPublicDebugInDev = NODE_ENV !== 'production' && process.env.ALLOW_PUBLIC_DEBUG_ROUTES === 'true';
+
+  if (NODE_ENV === 'production' || !allowPublicDebugInDev) {
     app.use("/api", authMiddleware, adminMiddleware, debugRoutes);
   } else {
     app.use("/api", debugRoutes);

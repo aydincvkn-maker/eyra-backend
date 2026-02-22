@@ -18,7 +18,7 @@ services:
       - key: CLIENT_ORIGIN
         sync: false
       - key: MOBILE_ORIGIN
-        value: "*"
+        sync: false
       - key: LIVEKIT_URL
         sync: false
       - key: LIVEKIT_API_KEY
