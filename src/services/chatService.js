@@ -163,14 +163,18 @@ exports.sendMessage = async (fromUserId, toUserId, data) => {
         mediaUrl: data.mediaUrl,
         mediaType: data.mediaType,
         isForwarded: data.isForwarded || false,
+        // ✅ Flag admin-panel messages so they can be retrieved as 'eyra_support' conversation
+        ...(data.isAdmin ? { isAdminMessage: true } : {}),
       }
     });
     
     await message.save();
     console.log(`✅ Message saved: ${message._id}`);
     
-    // ✅ Mission tracking for sending messages
-    try { await trackMissionProgress(fromUserId, 'send_message'); } catch (_) {}
+    // ✅ Mission tracking for sending messages (skip for admin system messages)
+    if (!data.isAdmin) {
+      try { await trackMissionProgress(fromUserId, 'send_message'); } catch (_) {}
+    }
     
     // Populate sender info
     await message.populate('from', 'username name profileImage');

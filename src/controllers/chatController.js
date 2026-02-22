@@ -34,6 +34,9 @@ exports.getChatUsers = async (req, res) => {
   }
 };
 
+// Virtual sender ID for all admin-panel messages (shown as "Eyra Destek" in app)
+const EYRA_SUPPORT_ID = 'eyra_support';
+
 exports.getConversation = async (req, res) => {
   try {
     const userId = String(req.user?.id || "");
@@ -43,6 +46,29 @@ exports.getConversation = async (req, res) => {
 
     if (!otherUserId) {
       return res.status(400).json({ message: "Eksik userId" });
+    }
+
+    // ✅ Special case: fetch all admin-panel messages sent to this user
+    if (otherUserId === EYRA_SUPPORT_ID) {
+      const messages = await Message.find({
+        to: userId,
+        'metadata.isAdminMessage': true,
+        isDeleted: false,
+      })
+        .sort({ createdAt: -1 })
+        .skip(page * limit)
+        .limit(limit)
+        .select('-__v')
+        .lean();
+
+      // Normalise: expose virtual sender id so Flutter groups them correctly
+      const normalised = messages.reverse().map(m => ({
+        ...m,
+        from: EYRA_SUPPORT_ID,
+        isAdminMessage: true,
+        senderName: 'Eyra Destek',
+      }));
+      return res.json({ messages: normalised });
     }
 
     const messages = await chatService.getConversation(userId, otherUserId, page, limit);
@@ -194,6 +220,8 @@ exports.adminSendMessage = async (req, res) => {
     const message = await chatService.sendMessage(adminId, toUserId, { text, isAdmin: true });
 
     // Socket ile gerçek zamanlı bildirim
+    // ✅ `from` olarak gerçek adminId yerine sanal 'eyra_support' gönderiyoruz.
+    // Bu sayede Flutter tarafında mesaj admin hesabı değil "Eyra Destek" olarak görünür.
     if (global.io && global.userSockets) {
       const targetKey = String(toUserId);
       const targetSockets = global.userSockets.get(targetKey);
@@ -201,11 +229,13 @@ exports.adminSendMessage = async (req, res) => {
         targetSockets.forEach(socketId => {
           global.io.to(socketId).emit('chat:new_message', {
             messageId: message._id.toString(),
-            from: adminId,
+            from: EYRA_SUPPORT_ID,
             to: toUserId,
             text: message.content,
             timestamp: message.createdAt,
             isMe: false,
+            isAdminMessage: true,
+            senderName: 'Eyra Destek',
           });
         });
       }
