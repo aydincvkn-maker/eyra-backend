@@ -1,4 +1,5 @@
 const axios = require("axios");
+const crypto = require("crypto");
 
 const STRIPE_API_BASE = "https://api.stripe.com/v1";
 
@@ -76,7 +77,49 @@ const retrieveCheckoutSession = async ({ secretKey, sessionId }) => {
   return response.data;
 };
 
+const verifyWebhookSignature = ({ payload, signatureHeader, webhookSecret, toleranceSeconds = 300 }) => {
+  const secret = String(webhookSecret || "").trim();
+  const rawPayload = typeof payload === "string" ? payload : "";
+  const header = String(signatureHeader || "").trim();
+
+  if (!secret || !rawPayload || !header) return false;
+
+  const pairs = header
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const [key, value] = part.split("=");
+      return { key, value };
+    });
+
+  const timestamp = pairs.find((p) => p.key === "t")?.value;
+  const signatures = pairs.filter((p) => p.key === "v1").map((p) => p.value).filter(Boolean);
+
+  if (!timestamp || signatures.length === 0) return false;
+
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts)) return false;
+
+  const now = Math.floor(Date.now() / 1000);
+  if (Math.abs(now - ts) > toleranceSeconds) {
+    return false;
+  }
+
+  const signedPayload = `${timestamp}.${rawPayload}`;
+  const expected = crypto.createHmac("sha256", secret).update(signedPayload).digest("hex");
+
+  return signatures.some((sig) => {
+    try {
+      return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(String(sig)));
+    } catch {
+      return false;
+    }
+  });
+};
+
 module.exports = {
   createCheckout,
   retrieveCheckoutSession,
+  verifyWebhookSignature,
 };
