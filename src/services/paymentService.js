@@ -12,6 +12,7 @@ const {
   PAYMENT_SUCCESS_URL,
   PAYMENT_CANCEL_URL,
   STRIPE_SECRET_KEY,
+  STRIPE_WEBHOOK_SECRET,
 } = require("../config/env");
 
 const ACTIVE_PAYMENT_PROVIDER = String(PAYMENT_PROVIDER || "mock").trim().toLowerCase();
@@ -217,6 +218,73 @@ const applyPaidEffects = async (paymentDoc) => {
 
 const processWebhook = async ({ provider, eventId, eventType, providerPaymentId, orderId, status, amountMinor, signature, payload }) => {
   const providerName = String(provider || "").trim().toLowerCase();
+  if (providerName === "stripe") {
+    const stripeEventId = String(eventId || "").trim();
+    if (!stripeEventId) {
+      const err = new Error("Stripe webhook eventId zorunlu");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const sessionId = String(providerPaymentId || "").trim();
+    if (!sessionId) {
+      const err = new Error("Stripe webhook providerPaymentId(session.id) zorunlu");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const existingStripeEvent = await PaymentEvent.findOne({ eventId: stripeEventId }).lean();
+    if (existingStripeEvent) {
+      const existingPayment = await Payment.findOne({ provider: "stripe", providerPaymentId: sessionId }).lean();
+      return { payment: existingPayment, duplicate: true };
+    }
+
+    const isSignatureValid = stripeProvider.verifyWebhookSignature({
+      payload: String(payload?.rawBody || ""),
+      signatureHeader: signature,
+      webhookSecret: STRIPE_WEBHOOK_SECRET,
+    });
+
+    if (!isSignatureValid) {
+      const err = new Error("Geçersiz Stripe webhook signature");
+      err.statusCode = 401;
+      throw err;
+    }
+
+    const payment = await Payment.findOne({ provider: "stripe", providerPaymentId: sessionId });
+    if (!payment) {
+      const err = new Error("Stripe webhook için ödeme bulunamadı");
+      err.statusCode = 404;
+      throw err;
+    }
+
+    await PaymentEvent.create({
+      payment: payment._id,
+      provider: "stripe",
+      eventId: stripeEventId,
+      eventType: String(eventType || "stripe.event"),
+      providerPaymentId: sessionId,
+      isSignatureValid: true,
+      payload: payload || {},
+      processedAt: new Date(),
+    });
+
+    const normalizedType = String(eventType || "").trim().toLowerCase();
+
+    if (normalizedType === "checkout.session.completed") {
+      await applyPaidEffects(payment);
+    }
+
+    if (normalizedType === "checkout.session.expired" || normalizedType === "checkout.session.async_payment_failed") {
+      payment.status = "failed";
+      payment.failedAt = new Date();
+      await payment.save();
+    }
+
+    const latestStripePayment = await Payment.findById(payment._id).lean();
+    return { payment: latestStripePayment, duplicate: false };
+  }
+
   if (providerName !== "mock") {
     const err = new Error("Bilinmeyen provider");
     err.statusCode = 400;

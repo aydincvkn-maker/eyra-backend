@@ -1650,7 +1650,12 @@ app.use(helmet({
 app.use(compression());
 
 // ✅ JSON BODY PARSER
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({
+  limit: '1mb',
+  verify: (req, _res, buf) => {
+    req.rawBody = buf ? buf.toString('utf8') : '';
+  },
+}));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // ✅ Static file serving (uploads - verification selfies, avatars, etc.)

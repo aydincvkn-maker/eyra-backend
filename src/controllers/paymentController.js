@@ -73,8 +73,43 @@ exports.confirmMyPaymentByOrderId = async (req, res) => {
 
 exports.webhook = async (req, res) => {
   try {
-    const { provider, eventId, eventType, providerPaymentId, orderId, status, amountMinor, payload } = req.body || {};
-    const signature = req.headers["x-eyra-signature"];
+    const body = req.body || {};
+    const normalizedProvider = String(body.provider || req.query.provider || "").trim().toLowerCase();
+
+    const provider = normalizedProvider || (body.type && String(body.type).startsWith("checkout.session") ? "stripe" : "mock");
+
+    const signature = provider === "stripe"
+      ? req.headers["stripe-signature"]
+      : req.headers["x-eyra-signature"];
+
+    let mappedPayload = body;
+    let eventId = body.eventId;
+    let eventType = body.eventType;
+    let providerPaymentId = body.providerPaymentId;
+    let orderId = body.orderId;
+    let status = body.status;
+    let amountMinor = body.amountMinor;
+
+    if (provider === "stripe") {
+      eventId = body.id;
+      eventType = body.type;
+
+      const object = body.data?.object || {};
+      providerPaymentId = object.id;
+      orderId = object.client_reference_id || object.metadata?.orderId;
+      amountMinor = object.amount_total;
+
+      if (eventType === "checkout.session.completed") {
+        status = "paid";
+      } else if (eventType === "checkout.session.expired" || eventType === "checkout.session.async_payment_failed") {
+        status = "failed";
+      }
+
+      mappedPayload = {
+        ...body,
+        rawBody: req.rawBody || "",
+      };
+    }
 
     const result = await paymentService.processWebhook({
       provider,
@@ -85,7 +120,7 @@ exports.webhook = async (req, res) => {
       status,
       amountMinor,
       signature,
-      payload,
+      payload: mappedPayload,
     });
 
     res.json({ success: true, duplicate: result.duplicate, payment: result.payment });
