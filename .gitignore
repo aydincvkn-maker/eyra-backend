@@ -1,6 +1,9 @@
 node_modules/
 .env
 .env.local
+.env.production*
+.env.*.ready
+.env.*.secret
 serviceAccountKey.json
 uploads/
 .next/

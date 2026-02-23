@@ -10,7 +10,9 @@
     "payments:validate": "node scripts/validate-payments.js",
     "payments:readiness": "node scripts/payment-readiness-check.js",
     "payments:readiness:prod": "set ENV_FILE=.env.production.ready&& node scripts/payment-readiness-check.js",
-    "payments:smoke": "node scripts/payment-smoke-test.js"
+    "payments:smoke": "node scripts/payment-smoke-test.js",
+    "stripe:setup-webhook": "node scripts/stripe-setup-webhook.js",
+    "deploy:check": "node scripts/post-deploy-check.js"
   },
   "keywords": [],
   "author": "",

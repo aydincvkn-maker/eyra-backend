@@ -7,27 +7,56 @@ services:
     buildCommand: npm install
     startCommand: npm start
     envVars:
+      # ── Core ──────────────────────────────────────────────
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 5000
+
+      # ── Database (set in Render dashboard) ────────────────
       - key: MONGO_URI
         sync: false
+
+      # ── Auth ──────────────────────────────────────────────
       - key: JWT_SECRET
         sync: false
+      - key: JWT_EXPIRES_IN
+        value: 30d
+
+      # ── CORS Origins ──────────────────────────────────────
       - key: CLIENT_ORIGIN
         sync: false
       - key: MOBILE_ORIGIN
-        sync: false
+        value: eyra://app
+
+      # ── LiveKit ───────────────────────────────────────────
       - key: LIVEKIT_URL
         sync: false
       - key: LIVEKIT_API_KEY
         sync: false
       - key: LIVEKIT_API_SECRET
         sync: false
+
+      # ── Firebase ──────────────────────────────────────────
       - key: FIREBASE_DATABASE_URL
         sync: false
       - key: FIREBASE_SERVICE_ACCOUNT
         sync: false
       - key: GOOGLE_TRANSLATE_API_KEY
+        sync: false
+
+      # ── Payments ──────────────────────────────────────────
+      - key: PAYMENT_PROVIDER
+        value: stripe
+      - key: PAYMENT_SUCCESS_URL
+        value: eyra://payment/success
+      - key: PAYMENT_CANCEL_URL
+        value: eyra://payment/cancel
+
+      # ── Stripe (set in Render dashboard) ──────────────────
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: PAYMENT_WEBHOOK_SECRET
         sync: false
