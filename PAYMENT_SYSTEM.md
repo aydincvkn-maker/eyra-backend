@@ -129,3 +129,22 @@ Not: `PAYMENT_PROVIDER=stripe` iken kart ödemeleri Stripe üzerinden açılır,
 2. Stripe checkout'u tamamla.
 3. Backend'de ödeme `paid` ve kullanıcı coin/vip etkisi işlendiğini doğrula.
 4. `payment_events` içinde Stripe event kaydının tekil işlendiğini kontrol et.
+
+## 8) Otomasyon Komutları
+
+Backend klasöründe:
+
+```bash
+npm run payments:validate
+npm run payments:readiness
+npm run payments:smoke
+```
+
+`payments:smoke` için auth gerektiren adımların çalışması adına env set edebilirsin:
+
+```bash
+BACKEND_URL=https://YOUR_BACKEND
+E2E_AUTH_TOKEN=BearerTokenWithoutPrefix
+PAYMENT_METHOD=card
+PAYMENT_PRODUCT_CODE=coin_1000_try
+```

@@ -6,7 +6,10 @@
   "type": "commonjs",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "payments:validate": "node scripts/validate-payments.js",
+    "payments:readiness": "node scripts/payment-readiness-check.js",
+    "payments:smoke": "node scripts/payment-smoke-test.js"
   },
   "keywords": [],
   "author": "",
