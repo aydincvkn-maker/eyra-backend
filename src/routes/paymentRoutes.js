@@ -9,6 +9,9 @@ router.get("/catalog", paymentController.getCatalog);
 router.post("/intents", auth, paymentController.createIntent);
 router.get("/me", auth, paymentController.getMyPayments);
 
+router.get("/admin/stats", auth, requirePermission("finance:view"), paymentController.adminGetStats);
+router.get("/admin", auth, requirePermission("finance:view"), paymentController.adminGetPayments);
+
 router.get("/mock-checkout", paymentController.mockCheckout);
 router.get("/mock-complete", paymentController.mockComplete);
 router.post("/webhook", paymentController.webhook);
