@@ -1,5 +1,6 @@
 const paymentService = require("../services/paymentService");
 const Payment = require("../models/Payment");
+const { PAYMENT_WEBHOOK_SECRET, PAYMENT_SUCCESS_URL, PAYMENT_CANCEL_URL } = require("../config/env");
 
 exports.getCatalog = async (_req, res) => {
   try {
@@ -145,7 +146,7 @@ exports.mockComplete = async (req, res) => {
       providerPaymentId: payment.providerPaymentId,
       status,
       amountMinor: payment.amountMinor,
-    }, process.env.PAYMENT_WEBHOOK_SECRET || "dev_payment_webhook_secret");
+    }, PAYMENT_WEBHOOK_SECRET || "dev_payment_webhook_secret");
 
     const result = await paymentService.processWebhook({
       provider: "mock",
@@ -162,8 +163,8 @@ exports.mockComplete = async (req, res) => {
     });
 
     const target = status === "paid"
-      ? (process.env.PAYMENT_SUCCESS_URL || "eyra://payment/success")
-      : (process.env.PAYMENT_CANCEL_URL || "eyra://payment/cancel");
+      ? (PAYMENT_SUCCESS_URL || "eyra://payment/success")
+      : (PAYMENT_CANCEL_URL || "eyra://payment/cancel");
 
     if (target.startsWith("http://") || target.startsWith("https://")) {
       return res.redirect(target);

@@ -5,12 +5,13 @@ const Transaction = require("../models/Transaction");
 const User = require("../models/User");
 const { getCatalogItem, getPublicCatalog } = require("../config/paymentCatalog");
 const mockProvider = require("./paymentProviders/mockProvider");
+const { PAYMENT_PROVIDER, PAYMENT_WEBHOOK_SECRET, PAYMENT_SUCCESS_URL, PAYMENT_CANCEL_URL } = require("../config/env");
 
-const PAYMENT_PROVIDER = String(process.env.PAYMENT_PROVIDER || "mock").trim().toLowerCase();
-const WEBHOOK_SECRET = String(process.env.PAYMENT_WEBHOOK_SECRET || "dev_payment_webhook_secret");
+const ACTIVE_PAYMENT_PROVIDER = String(PAYMENT_PROVIDER || "mock").trim().toLowerCase();
+const WEBHOOK_SECRET = String(PAYMENT_WEBHOOK_SECRET || "dev_payment_webhook_secret");
 
 const pickProvider = () => {
-  if (PAYMENT_PROVIDER !== "mock") {
+  if (ACTIVE_PAYMENT_PROVIDER !== "mock") {
     throw new Error("Henüz sadece mock payment provider destekleniyor");
   }
   return "mock";
@@ -47,8 +48,8 @@ const createPaymentIntent = async ({ userId, productCode, method, idempotencyKey
   const provider = pickProvider();
   const orderId = makeOrderId();
 
-  const successUrl = process.env.PAYMENT_SUCCESS_URL || "eyra://payment/success";
-  const cancelUrl = process.env.PAYMENT_CANCEL_URL || "eyra://payment/cancel";
+  const successUrl = PAYMENT_SUCCESS_URL || "eyra://payment/success";
+  const cancelUrl = PAYMENT_CANCEL_URL || "eyra://payment/cancel";
 
   const checkout = await mockProvider.createCheckout({
     orderId,
