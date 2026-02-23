@@ -105,6 +105,8 @@ STRIPE_SECRET_KEY=sk_live_xxx
 STRIPE_WEBHOOK_SECRET=whsec_xxx
 ```
 
+Tam şablon için: `.env.production.example`
+
 Not: `PAYMENT_PROVIDER=stripe` iken kart ödemeleri Stripe üzerinden açılır, `crypto` method seçimi mock akışta kalır.
 
 ### Stripe Dashboard ayarları
