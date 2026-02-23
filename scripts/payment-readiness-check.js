@@ -2,7 +2,8 @@ const path = require("path");
 const dotenv = require("dotenv");
 const axios = require("axios");
 
-dotenv.config({ path: path.join(__dirname, "../.env") });
+const envFile = String(process.env.ENV_FILE || ".env").trim();
+dotenv.config({ path: path.join(__dirname, `../${envFile}`) });
 
 const BACKEND_URL = String(process.env.BACKEND_URL || `http://127.0.0.1:${process.env.PORT || 5000}`).replace(/\/$/, "");
 const provider = String(process.env.PAYMENT_PROVIDER || "mock").trim().toLowerCase();
@@ -16,23 +17,43 @@ const requiredBase = [
 const requiredStripe = ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"];
 const requiredMock = ["PAYMENT_WEBHOOK_SECRET"];
 
+const looksPlaceholder = (value = "") => {
+  const v = String(value || "").trim().toLowerCase();
+  if (!v) return true;
+  if (v.includes("change_me")) return true;
+  if (v.includes("replace_with")) return true;
+  if (v.includes("example")) return true;
+  if (v === "sk_live_xxx" || v === "whsec_xxx") return true;
+  return false;
+};
+
 const missing = [];
+const placeholders = [];
 for (const key of requiredBase) {
-  if (!String(process.env[key] || "").trim()) {
+  const value = String(process.env[key] || "").trim();
+  if (!value) {
     missing.push(key);
+  } else if (looksPlaceholder(value)) {
+    placeholders.push(key);
   }
 }
 
 if (provider === "stripe") {
   for (const key of requiredStripe) {
-    if (!String(process.env[key] || "").trim()) {
+    const value = String(process.env[key] || "").trim();
+    if (!value) {
       missing.push(key);
+    } else if (looksPlaceholder(value)) {
+      placeholders.push(key);
     }
   }
 } else {
   for (const key of requiredMock) {
-    if (!String(process.env[key] || "").trim()) {
+    const value = String(process.env[key] || "").trim();
+    if (!value) {
       missing.push(key);
+    } else if (looksPlaceholder(value)) {
+      placeholders.push(key);
     }
   }
 }
@@ -63,10 +84,16 @@ const run = async () => {
     print(true, "Env değişkenleri tam");
   }
 
+  if (placeholders.length > 0) {
+    print(false, "Placeholder env", placeholders.join(", "));
+  } else {
+    print(true, "Placeholder env yok");
+  }
+
   const healthOk = await checkEndpoint(`${BACKEND_URL}/api/health`, "Health endpoint");
   const catalogOk = await checkEndpoint(`${BACKEND_URL}/api/payments/catalog`, "Catalog endpoint");
 
-  const overall = missing.length === 0 && healthOk && catalogOk;
+  const overall = missing.length === 0 && placeholders.length === 0 && healthOk && catalogOk;
   if (!overall) {
     console.error("\n🚫 Payment readiness check FAIL");
     process.exit(1);

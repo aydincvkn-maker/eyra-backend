@@ -139,6 +139,7 @@ Backend klasöründe:
 ```bash
 npm run payments:validate
 npm run payments:readiness
+npm run payments:readiness:prod
 npm run payments:smoke
 ```
 
