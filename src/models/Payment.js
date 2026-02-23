@@ -6,7 +6,7 @@ const paymentSchema = new mongoose.Schema(
     orderId: { type: String, required: true, unique: true, index: true },
     idempotencyKey: { type: String, default: null, index: true },
 
-    provider: { type: String, enum: ["mock"], default: "mock", index: true },
+    provider: { type: String, enum: ["mock", "stripe"], default: "mock", index: true },
     method: { type: String, enum: ["card", "crypto"], required: true },
 
     productCode: { type: String, required: true },
