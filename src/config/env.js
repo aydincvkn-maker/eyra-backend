@@ -58,4 +58,9 @@ module.exports = {
   LIVEKIT_URL: required("LIVEKIT_URL", "wss://livekit.example.com"),
   LIVEKIT_API_KEY: required("LIVEKIT_API_KEY", ""),
   LIVEKIT_API_SECRET: required("LIVEKIT_API_SECRET", ""),
+
+  PAYMENT_PROVIDER: required("PAYMENT_PROVIDER", "mock"),
+  PAYMENT_WEBHOOK_SECRET: required("PAYMENT_WEBHOOK_SECRET", "dev_payment_webhook_secret"),
+  PAYMENT_SUCCESS_URL: required("PAYMENT_SUCCESS_URL", "eyra://payment/success"),
+  PAYMENT_CANCEL_URL: required("PAYMENT_CANCEL_URL", "eyra://payment/cancel"),
 };
