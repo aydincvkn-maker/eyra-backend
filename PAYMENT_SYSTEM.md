@@ -91,3 +91,41 @@ Status destekleri:
 - PSP callback URL: `/api/payments/webhook`
 - Kart verisi backend'de tutulmamalı (PCI scope azaltma).
 - Günlük mutabakat job'u (PSP vs DB) ayrı cron olarak eklenmeli.
+
+## 7) Stripe Dashboard + Production Env (Adım adım)
+
+### Backend `.env` (production)
+
+```dotenv
+PAYMENT_PROVIDER=stripe
+PAYMENT_WEBHOOK_SECRET=unused_for_stripe
+PAYMENT_SUCCESS_URL=eyra://payment/success
+PAYMENT_CANCEL_URL=eyra://payment/cancel
+STRIPE_SECRET_KEY=sk_live_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+```
+
+Not: `PAYMENT_PROVIDER=stripe` iken kart ödemeleri Stripe üzerinden açılır, `crypto` method seçimi mock akışta kalır.
+
+### Stripe Dashboard ayarları
+
+1. `Developers -> API keys` içinden live `Secret key` alın ve `STRIPE_SECRET_KEY` olarak backend'e girin.
+2. `Developers -> Webhooks -> Add endpoint`:
+   - URL: `https://YOUR_BACKEND_DOMAIN/api/payments/webhook?provider=stripe`
+   - Events:
+     - `checkout.session.completed`
+     - `checkout.session.expired`
+     - `checkout.session.async_payment_failed`
+3. Oluşan endpoint için `Signing secret (whsec...)` değerini alın ve `STRIPE_WEBHOOK_SECRET` olarak backend'e girin.
+
+### Redirect URL ayarları
+
+- `PAYMENT_SUCCESS_URL` ve `PAYMENT_CANCEL_URL` mobil deep link (`eyra://...`) veya web URL olabilir.
+- Mobilde deep link kullanılmıyorsa uygulama polling ile `POST /api/payments/:orderId/confirm` çağırarak sonucu doğrular.
+
+### Canlı smoke test
+
+1. Uygulamada kart yöntemiyle intent oluştur.
+2. Stripe checkout'u tamamla.
+3. Backend'de ödeme `paid` ve kullanıcı coin/vip etkisi işlendiğini doğrula.
+4. `payment_events` içinde Stripe event kaydının tekil işlendiğini kontrol et.
