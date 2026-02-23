@@ -175,6 +175,75 @@ exports.mockCheckout = async (req, res) => {
   }
 };
 
+exports.adminGetPayments = async (req, res) => {
+  try {
+    const Payment = require("../models/Payment");
+    const page = Math.max(Number(req.query.page || 1), 1);
+    const limit = Math.min(Math.max(Number(req.query.limit || 20), 1), 100);
+    const status = req.query.status ? String(req.query.status).trim() : null;
+    const productType = req.query.productType ? String(req.query.productType).trim() : null;
+    const userId = req.query.userId ? String(req.query.userId).trim() : null;
+
+    const query = {};
+    if (status) query.status = status;
+    if (productType) query.productType = productType;
+    if (userId) query.user = userId;
+
+    const total = await Payment.countDocuments(query);
+    const payments = await Payment.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate("user", "username name email coins")
+      .lean();
+
+    res.json({
+      success: true,
+      payments,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
+  } catch (err) {
+    console.error("adminGetPayments error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+exports.adminGetStats = async (req, res) => {
+  try {
+    const Payment = require("../models/Payment");
+
+    const [total, paid, failed, refunded, pending] = await Promise.all([
+      Payment.countDocuments({}),
+      Payment.countDocuments({ status: "paid" }),
+      Payment.countDocuments({ status: "failed" }),
+      Payment.countDocuments({ status: "refunded" }),
+      Payment.countDocuments({ status: { $in: ["created", "pending"] } }),
+    ]);
+
+    const revenueAgg = await Payment.aggregate([
+      { $match: { status: "paid" } },
+      { $group: { _id: "$currency", total: { $sum: "$amountMinor" }, count: { $sum: 1 } } },
+    ]);
+
+    const byProductType = await Payment.aggregate([
+      { $match: { status: "paid" } },
+      { $group: { _id: "$productType", total: { $sum: "$amountMinor" }, count: { $sum: 1 } } },
+    ]);
+
+    res.json({
+      success: true,
+      stats: {
+        total, paid, failed, refunded, pending,
+        revenue: revenueAgg,
+        byProductType,
+      },
+    });
+  } catch (err) {
+    console.error("adminGetStats error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
 exports.mockComplete = async (req, res) => {
   try {
     const providerPaymentId = String(req.query.providerPaymentId || "").trim();
