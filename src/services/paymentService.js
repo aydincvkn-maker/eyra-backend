@@ -435,38 +435,91 @@ const confirmPaymentByOrderId = async ({ userId, orderId }) => {
 };
 
 const refundPayment = async ({ orderId }) => {
-  const payment = await Payment.findOne({ orderId: String(orderId || "") });
-  if (!payment) {
+  const paymentToRefund = await Payment.findOne({ orderId: String(orderId || "") });
+  if (!paymentToRefund) {
     const err = new Error("Ödeme bulunamadı");
     err.statusCode = 404;
     throw err;
   }
 
-  if (payment.status !== "paid") {
+  if (paymentToRefund.status !== "paid") {
     const err = new Error("Sadece paid ödemeler iade edilebilir");
     err.statusCode = 409;
     throw err;
   }
 
-  payment.status = "refunded";
-  payment.refundedAt = new Date();
-  await payment.save();
+  const session = await Payment.startSession();
+  try {
+    await session.withTransaction(async () => {
+      const lockedPayment = await Payment.findById(paymentToRefund._id).session(session);
+      if (!lockedPayment || lockedPayment.status !== "paid") return;
 
-  await Transaction.create({
-    user: payment.user,
-    type: "refund",
-    amount: 0,
-    status: "completed",
-    description: `Refund işlendi: ${payment.orderId}`,
-    metadata: {
-      orderId: payment.orderId,
-      providerPaymentId: payment.providerPaymentId,
-      amountMinor: payment.amountMinor,
-      currency: payment.currency,
-    },
-  });
+      const user = await User.findById(lockedPayment.user).session(session);
+      if (!user) {
+        const err = new Error("Kullanıcı bulunamadı");
+        err.statusCode = 404;
+        throw err;
+      }
 
-  return payment.toObject();
+      let refundDescription = `Refund işlendi: ${lockedPayment.orderId}`;
+      let refundAmount = 0;
+
+      if (lockedPayment.productType === "coin_topup") {
+        const coins = Number(lockedPayment.metadata?.coins || 0);
+        if (coins > 0) {
+          user.coins = Math.max(0, Number(user.coins || 0) - coins);
+          await user.save({ session });
+          refundAmount = coins;
+          refundDescription = `Coin iadesi: ${lockedPayment.metadata?.title || lockedPayment.productCode} — ${coins} coin geri alındı`;
+        }
+      }
+
+      if (lockedPayment.productType === "vip") {
+        const vipDays = Number(lockedPayment.metadata?.vipDays || 0);
+        if (vipDays > 0 && user.vipExpiresAt) {
+          const newExpiry = new Date(user.vipExpiresAt.getTime() - vipDays * 24 * 60 * 60 * 1000);
+          if (newExpiry <= new Date()) {
+            user.isVip = false;
+            user.vipExpiresAt = null;
+          } else {
+            user.vipExpiresAt = newExpiry;
+          }
+          await user.save({ session });
+          refundDescription = `VIP iadesi: ${lockedPayment.metadata?.title || lockedPayment.productCode} — ${vipDays} gün geri alındı`;
+        }
+      }
+
+      lockedPayment.status = "refunded";
+      lockedPayment.refundedAt = new Date();
+      await lockedPayment.save({ session });
+
+      await Transaction.create(
+        [
+          {
+            user: lockedPayment.user,
+            type: "refund",
+            amount: refundAmount,
+            balanceAfter: Number(user.coins || 0),
+            status: "completed",
+            description: refundDescription,
+            metadata: {
+              orderId: lockedPayment.orderId,
+              providerPaymentId: lockedPayment.providerPaymentId,
+              amountMinor: lockedPayment.amountMinor,
+              currency: lockedPayment.currency,
+              productType: lockedPayment.productType,
+            },
+          },
+        ],
+        { session }
+      );
+    });
+  } finally {
+    await session.endSession();
+  }
+
+  const updated = await Payment.findById(paymentToRefund._id).lean();
+  return updated;
 };
 
 module.exports = {
