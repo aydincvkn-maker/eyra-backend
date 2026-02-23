@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "backend-payments-sanity",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"-e",
+				"require('./src/services/paymentProviders/stripeProvider'); require('./src/services/paymentService'); require('./src/controllers/paymentController'); require('./src/routes/paymentRoutes'); console.log('payments-backend-ok')"
+			],
+			"isBackground": false
+		}
+	]
+}

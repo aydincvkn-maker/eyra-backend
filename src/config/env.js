@@ -63,4 +63,7 @@ module.exports = {
   PAYMENT_WEBHOOK_SECRET: required("PAYMENT_WEBHOOK_SECRET", "dev_payment_webhook_secret"),
   PAYMENT_SUCCESS_URL: required("PAYMENT_SUCCESS_URL", "eyra://payment/success"),
   PAYMENT_CANCEL_URL: required("PAYMENT_CANCEL_URL", "eyra://payment/cancel"),
+
+  STRIPE_SECRET_KEY: required("STRIPE_SECRET_KEY", ""),
+  STRIPE_WEBHOOK_SECRET: required("STRIPE_WEBHOOK_SECRET", ""),
 };

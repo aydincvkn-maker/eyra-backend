@@ -37,6 +37,7 @@ PAYMENT_CANCEL_URL=eyra://payment/cancel
 - `POST /api/payments/intents`
 - `GET /api/payments/me`
 - `GET /api/payments/:orderId`
+- `POST /api/payments/:orderId/confirm`
 
 ### Admin Permission (`finance:view`)
 
@@ -60,6 +61,13 @@ POST /api/payments/intents
 4. Mock checkout ekranından başarılı/başarısız tamamla.
 5. Durumu doğrula: `GET /api/payments/:orderId`
 6. Kullanıcı coin değişimini doğrula (`Transaction type: purchase`).
+
+### Stripe Notu
+
+- `PAYMENT_PROVIDER=stripe` iken kart ödemeleri Stripe Checkout ile açılır.
+- Mobil uygulama checkout sonrası `POST /api/payments/:orderId/confirm` çağırarak
+  stripe session durumunu backend'de doğrular ve ödeme `paid` ise etkiler uygulanır.
+- Kripto method seçimi şu an sandbox `mock` provider üzerinden çalışır.
 
 ## 5) Webhook Güvenliği
 
