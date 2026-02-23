@@ -5,16 +5,32 @@ const Transaction = require("../models/Transaction");
 const User = require("../models/User");
 const { getCatalogItem, getPublicCatalog } = require("../config/paymentCatalog");
 const mockProvider = require("./paymentProviders/mockProvider");
-const { PAYMENT_PROVIDER, PAYMENT_WEBHOOK_SECRET, PAYMENT_SUCCESS_URL, PAYMENT_CANCEL_URL } = require("../config/env");
+const stripeProvider = require("./paymentProviders/stripeProvider");
+const {
+  PAYMENT_PROVIDER,
+  PAYMENT_WEBHOOK_SECRET,
+  PAYMENT_SUCCESS_URL,
+  PAYMENT_CANCEL_URL,
+  STRIPE_SECRET_KEY,
+} = require("../config/env");
 
 const ACTIVE_PAYMENT_PROVIDER = String(PAYMENT_PROVIDER || "mock").trim().toLowerCase();
 const WEBHOOK_SECRET = String(PAYMENT_WEBHOOK_SECRET || "dev_payment_webhook_secret");
 
-const pickProvider = () => {
-  if (ACTIVE_PAYMENT_PROVIDER !== "mock") {
-    throw new Error("Henüz sadece mock payment provider destekleniyor");
+const pickProvider = (paymentMethod) => {
+  const method = String(paymentMethod || "").trim().toLowerCase();
+
+  if (method === "crypto") {
+    return "mock";
   }
-  return "mock";
+
+  if (!["mock", "stripe"].includes(ACTIVE_PAYMENT_PROVIDER)) {
+    const err = new Error("Geçersiz PAYMENT_PROVIDER. Desteklenen: mock, stripe");
+    err.statusCode = 500;
+    throw err;
+  }
+
+  return ACTIVE_PAYMENT_PROVIDER;
 };
 
 const makeOrderId = () => `ord_${Date.now()}_${randomUUID().slice(0, 8)}`;
@@ -45,20 +61,50 @@ const createPaymentIntent = async ({ userId, productCode, method, idempotencyKey
     }
   }
 
-  const provider = pickProvider();
+  const provider = pickProvider(paymentMethod);
   const orderId = makeOrderId();
 
   const successUrl = PAYMENT_SUCCESS_URL || "eyra://payment/success";
   const cancelUrl = PAYMENT_CANCEL_URL || "eyra://payment/cancel";
 
-  const checkout = await mockProvider.createCheckout({
-    orderId,
-    method: paymentMethod,
-    amountMinor: item.amountMinor,
-    currency: item.currency,
-    successUrl,
-    cancelUrl,
-  });
+  let checkout;
+  if (provider === "mock") {
+    checkout = await mockProvider.createCheckout({
+      orderId,
+      method: paymentMethod,
+      amountMinor: item.amountMinor,
+      currency: item.currency,
+      successUrl,
+      cancelUrl,
+    });
+  } else if (provider === "stripe") {
+    if (paymentMethod !== "card") {
+      const err = new Error("Stripe provider şu an yalnızca card method destekliyor");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    checkout = await stripeProvider.createCheckout({
+      secretKey: STRIPE_SECRET_KEY,
+      orderId,
+      amountMinor: item.amountMinor,
+      currency: item.currency,
+      title: item.title,
+      successUrl,
+      cancelUrl,
+      metadata: {
+        orderId,
+        productCode: item.code,
+        productType: item.productType,
+      },
+    });
+  }
+
+  if (!checkout) {
+    const err = new Error("Checkout oluşturulamadı");
+    err.statusCode = 500;
+    throw err;
+  }
 
   const created = await Payment.create({
     user: userId,
@@ -282,6 +328,44 @@ const getMyPaymentByOrderId = async ({ userId, orderId }) => {
   return Payment.findOne({ user: userId, orderId: String(orderId || "") }).lean();
 };
 
+const confirmPaymentByOrderId = async ({ userId, orderId }) => {
+  const payment = await Payment.findOne({ user: userId, orderId: String(orderId || "") });
+  if (!payment) {
+    const err = new Error("Ödeme bulunamadı");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  if (payment.status === "paid" || payment.status === "failed" || payment.status === "refunded") {
+    return payment.toObject();
+  }
+
+  if (payment.provider === "stripe") {
+    const session = await stripeProvider.retrieveCheckoutSession({
+      secretKey: STRIPE_SECRET_KEY,
+      sessionId: payment.providerPaymentId,
+    });
+
+    const sessionStatus = String(session.status || "").trim().toLowerCase();
+    const paymentStatus = String(session.payment_status || "").trim().toLowerCase();
+
+    if (sessionStatus === "complete" && paymentStatus === "paid") {
+      await applyPaidEffects(payment);
+      const latestPaid = await Payment.findById(payment._id).lean();
+      return latestPaid;
+    }
+
+    if (sessionStatus === "expired") {
+      payment.status = "failed";
+      payment.failedAt = new Date();
+      await payment.save();
+      return payment.toObject();
+    }
+  }
+
+  return payment.toObject();
+};
+
 const refundPayment = async ({ orderId }) => {
   const payment = await Payment.findOne({ orderId: String(orderId || "") });
   if (!payment) {
@@ -323,6 +407,7 @@ module.exports = {
   processWebhook,
   getMyPayments,
   getMyPaymentByOrderId,
+  confirmPaymentByOrderId,
   refundPayment,
   signMockWebhook: mockProvider.signWebhook,
 };

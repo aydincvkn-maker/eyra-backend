@@ -57,6 +57,20 @@ exports.getMyPaymentByOrderId = async (req, res) => {
   }
 };
 
+exports.confirmMyPaymentByOrderId = async (req, res) => {
+  try {
+    const payment = await paymentService.confirmPaymentByOrderId({
+      userId: req.user.id,
+      orderId: req.params.orderId,
+    });
+
+    res.json({ success: true, payment });
+  } catch (err) {
+    console.error("confirmMyPaymentByOrderId error:", err);
+    res.status(err.statusCode || 500).json({ success: false, message: err.message || "Sunucu hatası" });
+  }
+};
+
 exports.webhook = async (req, res) => {
   try {
     const { provider, eventId, eventType, providerPaymentId, orderId, status, amountMinor, payload } = req.body || {};

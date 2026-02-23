@@ -14,6 +14,7 @@ router.get("/mock-complete", paymentController.mockComplete);
 router.post("/webhook", paymentController.webhook);
 
 router.get("/:orderId", auth, paymentController.getMyPaymentByOrderId);
+router.post("/:orderId/confirm", auth, paymentController.confirmMyPaymentByOrderId);
 router.post("/:orderId/refund", auth, requirePermission("finance:view"), paymentController.refundPayment);
 
 module.exports = router;
