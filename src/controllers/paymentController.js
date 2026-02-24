@@ -293,11 +293,11 @@ exports.iapPurchase = async (req, res) => {
 
     // ─── Transaction kaydı ────────────────────────────────────
     const payment = await Payment.create({
-      userId,
+      user: userId,
       orderId: `iap_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       productCode: productId,
       productType: "coin_topup",
-      amountMinor: 0, // Gerçek fiyat bilgisi RevenueCat webhook'tan alınabilir
+      amountMinor: 0,
       currency: "USD",
       method: platform === "ios" ? "apple_iap" : "google_iap",
       provider: "revenuecat",
@@ -306,6 +306,7 @@ exports.iapPurchase = async (req, res) => {
       coinsAwarded: coinAmount,
       balanceAfter: user.coins,
       platform: platform || "unknown",
+      paidAt: new Date(),
     });
 
     return res.json({
