@@ -97,6 +97,18 @@ const userSchema = new mongoose.Schema(
     vipExpiresAt: { type: Date, default: null },
     vipPurchasedAt: { type: Date, default: null },
 
+    // YAYINCI BİLGİLERİ (Kadın kullanıcılar)
+    broadcasterContract: {
+      signed: { type: Boolean, default: false },
+      signedAt: { type: Date, default: null },
+      ipAddress: { type: String, default: "" },
+      userAgent: { type: String, default: "" },
+      version: { type: String, default: "" },
+    },
+    iban: { type: String, default: null },
+    bankName: { type: String, default: null },
+    accountHolder: { type: String, default: null },
+
     // PUSH BİLDİRİMLER
     fcmToken: { type: String, default: null },
     fcmTokenUpdatedAt: { type: Date, default: null },
