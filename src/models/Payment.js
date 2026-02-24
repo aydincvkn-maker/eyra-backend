@@ -6,8 +6,8 @@ const paymentSchema = new mongoose.Schema(
     orderId: { type: String, required: true, unique: true, index: true },
     idempotencyKey: { type: String, default: null, index: true },
 
-    provider: { type: String, enum: ["mock", "stripe"], default: "mock", index: true },
-    method: { type: String, enum: ["card", "crypto"], required: true },
+    provider: { type: String, enum: ["mock", "stripe", "revenuecat"], default: "mock", index: true },
+    method: { type: String, enum: ["card", "crypto", "apple_iap", "google_iap"], required: true },
 
     productCode: { type: String, required: true },
     productType: { type: String, enum: ["coin_topup", "vip"], required: true },
@@ -28,6 +28,10 @@ const paymentSchema = new mongoose.Schema(
     paidAt: { type: Date, default: null },
     failedAt: { type: Date, default: null },
     refundedAt: { type: Date, default: null },
+
+    coinsAwarded: { type: Number, default: null },
+    balanceAfter: { type: Number, default: null },
+    platform: { type: String, default: null },
 
     metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
   },

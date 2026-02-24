@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.get("/catalog", paymentController.getCatalog);
 router.post("/intents", auth, paymentController.createIntent);
+router.post("/iap", auth, paymentController.iapPurchase);
 router.get("/me", auth, paymentController.getMyPayments);
 
 router.get("/admin/stats", auth, requirePermission("finance:view"), paymentController.adminGetStats);
