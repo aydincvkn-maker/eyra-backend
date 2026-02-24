@@ -7,7 +7,7 @@ const User = require("../models/User");
 // =============================================
 
 /**
- * Bildirim oluştur ve (opsiyonel) push gönder
+ * Bildirim oluştur (in-app polling tabanlı — FCM/push kullanılmıyor)
  */
 exports.createNotification = async ({
   recipientId,
@@ -39,94 +39,10 @@ exports.createNotification = async ({
       imageUrl: imageUrl || null,
     });
 
-    // FCM Push Notification gönderme
-    try {
-      const recipient = await User.findById(recipientId).select("fcmToken settings");
-      if (
-        recipient?.fcmToken &&
-        recipient.settings?.pushNotifications !== false
-      ) {
-        await sendPushNotification(recipient.fcmToken, {
-          title: title,
-          body: body,
-          data: {
-            type,
-            notificationId: String(notification._id),
-            relatedId: relatedId || "",
-            relatedType: relatedType || "",
-          },
-        });
-        
-        // isPushed güncelle
-        await Notification.findByIdAndUpdate(notification._id, {
-          $set: { isPushed: true, pushedAt: new Date() },
-        });
-      }
-    } catch (pushErr) {
-      console.warn("Push notification gönderilemedi:", pushErr.message);
-    }
-
     return notification;
   } catch (err) {
     console.error("createNotification error:", err);
-    return null;
-  }
-};
-
-/**
- * FCM Push Notification gönder
- * NOT: Firebase Admin SDK konfigürasyonu gerekir
- */
-const sendPushNotification = async (fcmToken, { title, body, data }) => {
-  try {
-    // Firebase Admin SDK kullan
-    const admin = require("firebase-admin");
-    
-    // Firebase Admin başlatılmamışsa başlat
-    if (!admin.apps.length) {
-      const serviceAccount = require("../../serviceAccountKey.json");
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-      });
-    }
-
-    const message = {
-      notification: { title, body },
-      data: data || {},
-      token: fcmToken,
-      android: {
-        priority: "high",
-        notification: {
-          sound: "default",
-          channelId: "eyra_notifications",
-        },
-      },
-      apns: {
-        payload: {
-          aps: {
-            sound: "default",
-            badge: 1,
-          },
-        },
-      },
-    };
-
-    const result = await admin.messaging().send(message);
-    console.log("📱 Push notification gönderildi:", result);
-    return result;
-  } catch (err) {
-    // Token geçersizse temizle
-    if (
-      err.code === "messaging/invalid-registration-token" ||
-      err.code === "messaging/registration-token-not-registered"
-    ) {
-      console.log("🗑️ Geçersiz FCM token temizleniyor");
-      await User.findOneAndUpdate(
-        { fcmToken },
-        { $set: { fcmToken: null, fcmTokenUpdatedAt: null } }
-      );
-    }
-    throw err;
+    throw err; // Hatayı yukarı fırlat, sessizce yutma
   }
 };
 
@@ -272,7 +188,7 @@ exports.removeFcmToken = async (req, res) => {
 // POST /api/notifications/admin/send - Admin toplu bildirim gönder
 exports.adminSendNotification = async (req, res) => {
   try {
-    const { title, body, type, recipientIds } = req.body;
+    const { title, body, type, recipientIds, targetUserId } = req.body;
 
     if (!title || !body) {
       return res
@@ -281,14 +197,25 @@ exports.adminSendNotification = async (req, res) => {
     }
 
     let recipients;
-    if (recipientIds && recipientIds.length > 0) {
+    if (targetUserId) {
+      // Admin panelden tek kullanıcıya gönderim
+      recipients = await User.find({ _id: targetUserId }).select("_id");
+      if (!recipients.length) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Kullanıcı bulunamadı" });
+      }
+    } else if (recipientIds && recipientIds.length > 0) {
+      // Birden fazla kullanıcıya gönderim (API desteği)
       recipients = await User.find({
         _id: { $in: recipientIds },
-      }).select("_id fcmToken settings");
+      }).select("_id");
     } else {
-      // Tüm kullanıcılara gönder (in-app bildirim için ayar/FCM filtresi yok)
-      recipients = await User.find({}).select("_id fcmToken settings");
+      // Tüm kullanıcılara toplu gönderim
+      recipients = await User.find({}).select("_id");
     }
+
+    console.log(`📢 Admin bildirim gönderiliyor: ${recipients.length} alıcı, başlık: "${title}"`);
 
     let sent = 0;
     let failed = 0;
@@ -304,9 +231,12 @@ exports.adminSendNotification = async (req, res) => {
         });
         sent++;
       } catch (e) {
+        console.error(`Bildirim oluşturulamadı (user: ${recipient._id}):`, e.message);
         failed++;
       }
     }
+
+    console.log(`✅ Admin bildirim sonuç: ${sent} başarılı, ${failed} başarısız`);
 
     res.json({
       success: true,
