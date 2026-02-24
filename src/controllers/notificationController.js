@@ -286,10 +286,8 @@ exports.adminSendNotification = async (req, res) => {
         _id: { $in: recipientIds },
       }).select("_id fcmToken settings");
     } else {
-      // Tüm kullanıcılara gönder (in-app bildirim için FCM token şartı yok)
-      recipients = await User.find({
-        "settings.pushNotifications": { $ne: false },
-      }).select("_id fcmToken settings");
+      // Tüm kullanıcılara gönder (in-app bildirim için ayar/FCM filtresi yok)
+      recipients = await User.find({}).select("_id fcmToken settings");
     }
 
     let sent = 0;
