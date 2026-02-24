@@ -1,5 +1,6 @@
 const paymentService = require("../services/paymentService");
 const Payment = require("../models/Payment");
+const User = require("../models/User");
 const { PAYMENT_WEBHOOK_SECRET, PAYMENT_SUCCESS_URL, PAYMENT_CANCEL_URL } = require("../config/env");
 
 exports.getCatalog = async (_req, res) => {
@@ -241,6 +242,81 @@ exports.adminGetStats = async (req, res) => {
   } catch (err) {
     console.error("adminGetStats error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+// ─── IAP (RevenueCat / App Store / Play Store) ────────────────
+const IAP_COIN_MAP = {
+  eyra_coins_500: 500,
+  eyra_coins_1000: 1000,
+  eyra_coins_2500: 2500,
+  eyra_coins_5000: 5000,
+  eyra_coins_8000: 8000,
+  eyra_coins_15000: 15000,
+};
+
+exports.iapPurchase = async (req, res) => {
+  try {
+    const { productId, coins, transactionId, platform } = req.body || {};
+    const userId = req.user.id;
+
+    if (!productId || !transactionId) {
+      return res.status(400).json({ success: false, message: "productId ve transactionId gerekli" });
+    }
+
+    const coinAmount = IAP_COIN_MAP[productId] || coins;
+    if (!coinAmount || coinAmount <= 0) {
+      return res.status(400).json({ success: false, message: "Geçersiz ürün: " + productId });
+    }
+
+    // ─── Duplicate kontrol ────────────────────────────────────
+    const existing = await Payment.findOne({ providerPaymentId: transactionId }).lean();
+    if (existing) {
+      return res.json({
+        success: true,
+        message: "Zaten işlendi",
+        coins: coinAmount,
+        payment: existing,
+      });
+    }
+
+    // ─── Coin ekle ────────────────────────────────────────────
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $inc: { coins: coinAmount } },
+      { new: true, select: "coins" }
+    );
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+    }
+
+    // ─── Transaction kaydı ────────────────────────────────────
+    const payment = await Payment.create({
+      userId,
+      orderId: `iap_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      productCode: productId,
+      productType: "coin_topup",
+      amountMinor: 0, // Gerçek fiyat bilgisi RevenueCat webhook'tan alınabilir
+      currency: "USD",
+      method: platform === "ios" ? "apple_iap" : "google_iap",
+      provider: "revenuecat",
+      status: "paid",
+      providerPaymentId: transactionId,
+      coinsAwarded: coinAmount,
+      balanceAfter: user.coins,
+      platform: platform || "unknown",
+    });
+
+    return res.json({
+      success: true,
+      coins: coinAmount,
+      balanceAfter: user.coins,
+      payment: { orderId: payment.orderId, status: "paid" },
+    });
+  } catch (err) {
+    console.error("iapPurchase error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Sunucu hatası" });
   }
 };
 
