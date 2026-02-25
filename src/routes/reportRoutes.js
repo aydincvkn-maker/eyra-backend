@@ -3,6 +3,7 @@ const router = express.Router();
 const auth = require("../middleware/auth");
 const requirePermission = require("../middleware/requirePermission");
 const Report = require("../models/Report");
+const { sendError } = require("../utils/response");
 
 // Tüm raporları getir (admin only) + pagination
 router.get("/", auth, requirePermission("reports:view"), async (req, res) => {
@@ -129,7 +130,7 @@ router.put("/:id", auth, requirePermission("reports:manage"), async (req, res) =
       .populate("target", "username email")
       .lean();
 
-    if (!updated) return res.status(404).json({ message: "Rapor bulunamadı" });
+    if (!updated) return sendError(res, 404, "Rapor bulunamadı");
 
     res.json({
       success: true,

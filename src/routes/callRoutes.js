@@ -19,13 +19,14 @@ router.post('/initiate', auth, async (req, res) => {
     const { targetUserId } = req.body;
     const callerId = req.user.id;
     const User = require('../models/User');
+const { sendError } = require("../utils/response");
 
     if (!targetUserId) {
-      return res.status(400).json({ message: 'targetUserId gerekli' });
+      return sendError(res, 400, "targetUserId gerekli");
     }
 
     if (callerId === targetUserId) {
-      return res.status(400).json({ message: 'Kendinizi arayamazsınız' });
+      return sendError(res, 400, "Kendinizi arayamazsınız");
     }
 
     // Check if target user is available (socket-driven, in-memory)
@@ -127,7 +128,7 @@ router.post('/initiate', auth, async (req, res) => {
 
   } catch (error) {
     console.error('❌ Call initiate error:', error);
-    res.status(500).json({ message: 'Sunucu hatası' });
+    sendError(res, 500, "Sunucu hatası");
   }
 });
 
@@ -141,7 +142,7 @@ router.post('/end', auth, async (req, res) => {
     const userId = req.user.id;
 
     if (!roomName) {
-      return res.status(400).json({ message: 'roomName gerekli' });
+      return sendError(res, 400, "roomName gerekli");
     }
 
     // Get call info
@@ -188,7 +189,7 @@ router.post('/end', auth, async (req, res) => {
 
   } catch (error) {
     console.error('❌ Call end error:', error);
-    res.status(500).json({ message: 'Sunucu hatası' });
+    sendError(res, 500, "Sunucu hatası");
   }
 });
 
@@ -202,7 +203,7 @@ router.post('/reject', auth, async (req, res) => {
     const userId = req.user.id;
 
     if (!roomName) {
-      return res.status(400).json({ message: 'roomName gerekli' });
+      return sendError(res, 400, "roomName gerekli");
     }
 
     // Get call info
@@ -253,7 +254,7 @@ router.post('/reject', auth, async (req, res) => {
 
   } catch (error) {
     console.error('❌ Call reject error:', error);
-    res.status(500).json({ message: 'Sunucu hatası' });
+    sendError(res, 500, "Sunucu hatası");
   }
 });
 
@@ -308,7 +309,7 @@ router.get('/active', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Get active calls error:', error);
-    res.status(500).json({ message: 'Sunucu hatası' });
+    sendError(res, 500, "Sunucu hatası");
   }
 });
 
@@ -360,7 +361,7 @@ router.get('/history', auth, async (req, res) => {
     res.json({ success: true, calls: result });
   } catch (error) {
     console.error('❌ Call history error:', error);
-    res.status(500).json({ message: 'Sunucu hatası' });
+    sendError(res, 500, "Sunucu hatası");
   }
 });
 

@@ -1,4 +1,5 @@
 // src/controllers/userController.js
+const { sendError } = require("../utils/response");
 const mongoose = require("mongoose");
 const User = require("../models/User");
 const LiveStream = require("../models/LiveStream");
@@ -367,21 +368,21 @@ exports.toggleBan = async (req, res) => {
   try {
     const { userId } = req.params;
     const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+    if (!user) return sendError(res, 404, "Kullanıcı bulunamadı");
 
     // Admin kendini banlamasın
     if (String(user._id) === String(req.user.id)) {
-      return res.status(400).json({ message: "Kendinizi banlayamazsınız" });
+      return sendError(res, 400, "Kendinizi banlayamazsınız");
     }
 
     // Super admin hiçbir zaman banlanamaz
     if (user.role === "super_admin") {
-      return res.status(403).json({ message: "Super admin banlanamaz" });
+      return sendError(res, 403, "Super admin banlanamaz");
     }
 
     // Admin sadece super_admin tarafından banlanabilir
     if (user.role === "admin" && req.user.role !== "super_admin") {
-      return res.status(403).json({ message: "Admin hesaplar sadece super admin tarafından banlanabilir" });
+      return sendError(res, 403, "Admin hesaplar sadece super admin tarafından banlanabilir");
     }
 
     const newBanState = !user.isBanned;
@@ -394,7 +395,7 @@ exports.toggleBan = async (req, res) => {
     res.json({ message: "Ban durumu güncellendi", isBanned: updated.isBanned });
   } catch (err) {
     console.error("toggleBan error:", err);
-    res.status(500).json({ message: "Sunucu hatası" });
+    sendError(res, 500, "Sunucu hatası");
   }
 };
 
@@ -407,12 +408,12 @@ exports.unbanUser = async (req, res) => {
       { new: true }
     ).select("-password");
 
-    if (!updated) return res.status(404).json({ message: "Kullanıcı yok" });
+    if (!updated) return sendError(res, 404, "Kullanıcı yok");
 
     res.json({ message: "Ban kaldırıldı", isBanned: false });
   } catch (err) {
     console.error("unbanUser error:", err);
-    res.status(500).json({ message: "Sunucu hatası" });
+    sendError(res, 500, "Sunucu hatası");
   }
 };
 
@@ -472,12 +473,12 @@ exports.updateCoins = async (req, res) => {
       { new: true, runValidators: false }
     ).select("-password");
 
-    if (!user) return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+    if (!user) return sendError(res, 404, "Kullanıcı bulunamadı");
 
     res.json(user);
   } catch (err) {
     console.error("updateCoins error:", err);
-    res.status(500).json({ message: "Sunucu hatası" });
+    sendError(res, 500, "Sunucu hatası");
   }
 };
 

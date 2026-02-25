@@ -145,12 +145,12 @@ exports.mockCheckout = async (req, res) => {
   try {
     const providerPaymentId = String(req.query.providerPaymentId || "").trim();
     if (!providerPaymentId) {
-      return res.status(400).send("providerPaymentId zorunlu");
+      return sendError(res, 400, "providerPaymentId zorunlu");
     }
 
     const payment = await Payment.findOne({ providerPaymentId }).lean();
     if (!payment) {
-      return res.status(404).send("Ödeme bulunamadı");
+      return sendError(res, 404, "Ödeme bulunamadı");
     }
 
     const completePaid = `/api/payments/mock-complete?providerPaymentId=${encodeURIComponent(providerPaymentId)}&status=paid`;
@@ -172,7 +172,7 @@ exports.mockCheckout = async (req, res) => {
 </html>`);
   } catch (err) {
     console.error("mockCheckout error:", err);
-    return res.status(500).send("Sunucu hatası");
+    return sendError(res, 500, "Sunucu hatası");
   }
 };
 

@@ -53,7 +53,11 @@ exports.getVipPackages = async (req, res) => {
     res.json({ success: true, packages });
   } catch (err) {
     console.error("getVipPackages error:", err);
-    res.status(500).json({ success: false, error: "Paketler alınamadı" });
+    res.status(500).json({
+      success: false,
+      message: "Paketler alınamadı",
+      error: "Paketler alınamadı",
+    });
   }
 };
 
@@ -64,7 +68,11 @@ exports.purchaseVip = async (req, res) => {
     const { tier } = req.body;
 
     if (!["silver", "gold", "diamond"].includes(tier)) {
-      return res.status(400).json({ success: false, error: "Geçersiz VIP tipi" });
+      return res.status(400).json({
+      success: false,
+      message: "Geçersiz VIP tipi",
+      error: "Geçersiz VIP tipi",
+    });
     }
 
     const settings = await SystemSettings.findOne().lean();
@@ -84,7 +92,11 @@ exports.purchaseVip = async (req, res) => {
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ success: false, error: "Kullanıcı bulunamadı" });
+      return res.status(404).json({
+      success: false,
+      message: "Kullanıcı bulunamadı",
+      error: "Kullanıcı bulunamadı",
+    });
     }
 
     if (user.coins < price) {
@@ -166,7 +178,11 @@ exports.purchaseVip = async (req, res) => {
     });
   } catch (err) {
     console.error("purchaseVip error:", err);
-    res.status(500).json({ success: false, error: "VIP satın alınamadı" });
+    res.status(500).json({
+      success: false,
+      message: "VIP satın alınamadı",
+      error: "VIP satın alınamadı",
+    });
   }
 };
 
@@ -177,7 +193,11 @@ exports.getVipStatus = async (req, res) => {
     const user = await User.findById(userId).select("isVip vipTier vipExpiresAt vipPurchasedAt").lean();
 
     if (!user) {
-      return res.status(404).json({ success: false, error: "Kullanıcı bulunamadı" });
+      return res.status(404).json({
+      success: false,
+      message: "Kullanıcı bulunamadı",
+      error: "Kullanıcı bulunamadı",
+    });
     }
 
     const now = new Date();
@@ -198,7 +218,11 @@ exports.getVipStatus = async (req, res) => {
     });
   } catch (err) {
     console.error("getVipStatus error:", err);
-    res.status(500).json({ success: false, error: "VIP durumu alınamadı" });
+    res.status(500).json({
+      success: false,
+      message: "VIP durumu alınamadı",
+      error: "VIP durumu alınamadı",
+    });
   }
 };
 
@@ -233,7 +257,11 @@ exports.adminGetVipStats = async (req, res) => {
     res.json({ success: true, stats: result });
   } catch (err) {
     console.error("adminGetVipStats error:", err);
-    res.status(500).json({ success: false, error: "İstatistikler alınamadı" });
+    res.status(500).json({
+      success: false,
+      message: "İstatistikler alınamadı",
+      error: "İstatistikler alınamadı",
+    });
   }
 };
 
@@ -243,12 +271,20 @@ exports.adminSetVip = async (req, res) => {
     const { userId, tier, days } = req.body;
 
     if (!userId) {
-      return res.status(400).json({ success: false, error: "userId gerekli" });
+      return res.status(400).json({
+      success: false,
+      message: "userId gerekli",
+      error: "userId gerekli",
+    });
     }
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ success: false, error: "Kullanıcı bulunamadı" });
+      return res.status(404).json({
+      success: false,
+      message: "Kullanıcı bulunamadı",
+      error: "Kullanıcı bulunamadı",
+    });
     }
 
     if (tier === "none" || !tier) {
@@ -262,7 +298,11 @@ exports.adminSetVip = async (req, res) => {
     }
 
     if (!["silver", "gold", "diamond"].includes(tier)) {
-      return res.status(400).json({ success: false, error: "Geçersiz tier" });
+      return res.status(400).json({
+      success: false,
+      message: "Geçersiz tier",
+      error: "Geçersiz tier",
+    });
     }
 
     const grantDays = days || 30;
@@ -294,6 +334,10 @@ exports.adminSetVip = async (req, res) => {
     });
   } catch (err) {
     console.error("adminSetVip error:", err);
-    res.status(500).json({ success: false, error: "VIP ayarlanamadı" });
+    res.status(500).json({
+      success: false,
+      message: "VIP ayarlanamadı",
+      error: "VIP ayarlanamadı",
+    });
   }
 };
