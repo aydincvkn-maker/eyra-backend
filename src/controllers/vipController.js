@@ -102,6 +102,7 @@ exports.purchaseVip = async (req, res) => {
     if (user.coins < price) {
       return res.status(400).json({
         success: false,
+        message: "Yetersiz coin",
         error: "Yetersiz coin",
         required: price,
         current: user.coins,
@@ -137,6 +138,7 @@ exports.purchaseVip = async (req, res) => {
       // Coin sonradan d├╝┼şm├╝┼ş olabilir (e┼ş zamanl─▒ i┼şlem)
       return res.status(400).json({
         success: false,
+        message: "Yetersiz coin (e┼ş zamanl─▒ i┼şlem)",
         error: "Yetersiz coin (e┼ş zamanl─▒ i┼şlem)",
         required: price,
       });
