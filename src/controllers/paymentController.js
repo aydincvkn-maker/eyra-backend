@@ -255,16 +255,92 @@ const IAP_COIN_MAP = {
   eyra_coins_15000: 15000,
 };
 
+// 🔒 RevenueCat REST API ile transaction doğrulama
+const REVENUECAT_API_KEY = process.env.REVENUECAT_API_KEY || "";
+
+/**
+ * RevenueCat subscriber bilgisinden transaction'ın gerçek olup olmadığını doğrular.
+ * @param {string} userId - RevenueCat user ID (= app userId)
+ * @param {string} transactionId - Store transaction ID
+ * @param {string} productId - Beklenen ürün ID'si
+ * @returns {{ valid: boolean, reason?: string }}
+ */
+async function verifyIapWithRevenueCat(userId, transactionId, productId) {
+  if (!REVENUECAT_API_KEY) {
+    // API key yoksa doğrulama yapılamaz — production'da zorunlu olmalı
+    const { NODE_ENV } = require("../config/env");
+    if (NODE_ENV === "production") {
+      console.error("❌ REVENUECAT_API_KEY tanımlı değil — IAP doğrulama imkansız");
+      return { valid: false, reason: "Server configuration error" };
+    }
+    console.warn("⚠️ REVENUECAT_API_KEY tanımlı değil — development modunda doğrulama atlanıyor");
+    return { valid: true, reason: "dev_skip" };
+  }
+
+  try {
+    const axios = require("axios");
+    const response = await axios.get(
+      `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(userId)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${REVENUECAT_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        timeout: 10000,
+      }
+    );
+
+    const subscriber = response.data?.subscriber;
+    if (!subscriber) {
+      return { valid: false, reason: "Subscriber not found" };
+    }
+
+    // non_subscriptions altında productId'yi ara
+    const purchases = subscriber.non_subscriptions?.[productId] || [];
+    const found = purchases.some((p) => {
+      // RevenueCat store_transaction_id veya id ile eşleştir
+      return (
+        p.store_transaction_id === transactionId ||
+        p.id === transactionId
+      );
+    });
+
+    if (!found) {
+      // Alternatif: tüm non_subscriptions içinde transactionId ara
+      const allPurchases = Object.values(subscriber.non_subscriptions || {}).flat();
+      const foundAnywhere = allPurchases.some(
+        (p) => p.store_transaction_id === transactionId || p.id === transactionId
+      );
+
+      if (foundAnywhere) {
+        // Transaction var ama productId eşleşmiyor — muhtemelen manipülasyon
+        console.warn(`⚠️ IAP productId uyuşmazlığı: ${productId}, txId=${transactionId}`);
+        return { valid: false, reason: "Product ID mismatch" };
+      }
+
+      return { valid: false, reason: "Transaction not found in RevenueCat" };
+    }
+
+    return { valid: true };
+  } catch (err) {
+    console.error("RevenueCat doğrulama hatası:", err.message || err);
+    // Network hatası — güvenli tarafta kal, reddet
+    return { valid: false, reason: `Verification failed: ${err.message}` };
+  }
+}
+
 exports.iapPurchase = async (req, res) => {
   try {
-    const { productId, coins, transactionId, platform } = req.body || {};
+    // 🔒 client'ın gönderdiği "coins" alanı YOKSAYILIR — sadece server-side map kullanılır
+    const { productId, transactionId, platform } = req.body || {};
     const userId = req.user.id;
 
     if (!productId || !transactionId) {
       return res.status(400).json({ success: false, message: "productId ve transactionId gerekli" });
     }
 
-    const coinAmount = IAP_COIN_MAP[productId] || coins;
+    // 🔒 Coin miktarı SADECE sunucu tarafı map'ten belirlenir — client değerlerine güvenilmez
+    const coinAmount = IAP_COIN_MAP[productId];
     if (!coinAmount || coinAmount <= 0) {
       return res.status(400).json({ success: false, message: "Geçersiz ürün: " + productId });
     }
@@ -277,6 +353,16 @@ exports.iapPurchase = async (req, res) => {
         message: "Zaten işlendi",
         coins: coinAmount,
         payment: existing,
+      });
+    }
+
+    // 🔒 RevenueCat ile transaction doğrulama
+    const verification = await verifyIapWithRevenueCat(userId, transactionId, productId);
+    if (!verification.valid) {
+      console.warn(`❌ IAP doğrulama başarısız: userId=${userId}, txId=${transactionId}, reason=${verification.reason}`);
+      return res.status(403).json({
+        success: false,
+        message: "Satın alma doğrulanamadı: " + (verification.reason || "Unknown"),
       });
     }
 
