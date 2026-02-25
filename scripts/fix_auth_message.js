@@ -50,4 +50,6 @@ function addMessageKey(filePath) {
   console.log(filePath + ': added ' + count + ' message keys');
 }
 
-addMessageKey('src/controllers/authController.js');
+// authController already fixed, only run vipController
+// addMessageKey('src/controllers/authController.js');
+addMessageKey('src/controllers/vipController.js');
