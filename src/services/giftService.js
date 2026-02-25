@@ -50,30 +50,19 @@ exports.getAllGifts = async (category = null) => {
  * Hediye gönder - coin düş, yayıncıya ekle
  */
 exports.sendGift = async ({ senderId, recipientId, giftId, liveId, roomId }) => {
-  // 1. Kullanıcıyı bul
-  const sender = await User.findById(senderId);
-  if (!sender) {
-    throw new Error("Gönderici bulunamadı");
-  }
-  
-  // 2. Hediyeyi bul
+  // 1. Hediyeyi bul
   const gift = await Gift.findById(giftId);
   if (!gift || !gift.isActive) {
     throw new Error("Hediye bulunamadı veya aktif değil");
   }
   
-  // 3. Rate limit kontrolü
+  // 2. Rate limit kontrolü
   const rateCheck = checkRateLimit(senderId, giftId);
   if (!rateCheck.allowed) {
     throw new Error("Çok hızlı hediye gönderiyorsunuz. Lütfen bekleyin.");
   }
   
-  // 4. Coin kontrolü
-  if (sender.coins < gift.valueCoins) {
-    throw new Error("Yetersiz coin");
-  }
-  
-  // 5. LiveStream bul (varsa)
+  // 3. LiveStream bul (varsa)
   let live = null;
   if (liveId) {
     live = await LiveStream.findById(liveId);
@@ -85,35 +74,47 @@ exports.sendGift = async ({ senderId, recipientId, giftId, liveId, roomId }) => 
     throw new Error("Yayın bulunamadı veya aktif değil");
   }
   
-  // 6. Alıcı kontrolü
-  const recipient = await User.findById(recipientId || live.host);
-  if (!recipient) {
+  const actualRecipientId = recipientId || live.host;
+  
+  // 4. Atomik coin transferi — sender'dan düş, recipient'e ekle
+  //    $inc + filter ile TOCTOU race condition önlenir
+  const recipientShare = Math.floor(gift.valueCoins * 0.7);
+
+  // Sender: atomik coin düşürme (coins >= valueCoins kontrolü filter'da)
+  const updatedSender = await User.findOneAndUpdate(
+    { _id: senderId, coins: { $gte: gift.valueCoins } },
+    { $inc: { coins: -gift.valueCoins } },
+    { new: true, select: "coins name username profileImage" }
+  );
+  if (!updatedSender) {
+    // Ya kullanıcı yok ya da yetersiz coin
+    const exists = await User.exists({ _id: senderId });
+    throw new Error(exists ? "Yetersiz coin" : "Gönderici bulunamadı");
+  }
+
+  // Recipient: atomik coin ekleme
+  const updatedRecipient = await User.findByIdAndUpdate(
+    actualRecipientId,
+    { $inc: { coins: recipientShare, totalEarnings: recipientShare } },
+    { new: true, select: "coins" }
+  );
+  if (!updatedRecipient) {
+    // Recipient bulunamadı — sender'a coin'i geri ver
+    await User.findByIdAndUpdate(senderId, { $inc: { coins: gift.valueCoins } });
     throw new Error("Alıcı bulunamadı");
   }
   
-  // 7. Transaction - coin düşür, ekle
-  const actualRecipientId = recipientId || live.host;
+  // LiveStream toplam hediye değerini güncelle (atomik)
+  await LiveStream.findByIdAndUpdate(live._id, {
+    $inc: { totalGiftsValue: gift.valueCoins }
+  });
   
-  // Sender'dan coin düş
-  sender.coins -= gift.valueCoins;
-  await sender.save();
+  // Gift istatistiklerini güncelle (atomik)
+  await Gift.findByIdAndUpdate(giftId, {
+    $inc: { totalSent: 1, totalCoinsSpent: gift.valueCoins }
+  });
   
-  // Recipient'e coin ekle (%70'i - platform komisyonu %30)
-  const recipientShare = Math.floor(gift.valueCoins * 0.7);
-  recipient.coins += recipientShare;
-  recipient.totalEarnings = (recipient.totalEarnings || 0) + recipientShare;
-  await recipient.save();
-  
-  // LiveStream toplam hediye değerini güncelle
-  live.totalGiftsValue = (live.totalGiftsValue || 0) + gift.valueCoins;
-  await live.save();
-  
-  // Gift istatistiklerini güncelle
-  gift.totalSent += 1;
-  gift.totalCoinsSpent += gift.valueCoins;
-  await gift.save();
-  
-  // 8. Mesaj olarak kaydet (chat'te görünsün)
+  // 5. Mesaj olarak kaydet (chat'te görünsün)
   const message = await Message.create({
     roomId: live.roomId,
     from: senderId,
@@ -125,8 +126,8 @@ exports.sendGift = async ({ senderId, recipientId, giftId, liveId, roomId }) => 
       giftImage: gift.imageUrl,
       giftAnimation: gift.animationUrl,
       valueCoins: gift.valueCoins,
-      senderName: sender.name || sender.username,
-      senderImage: sender.profileImage
+      senderName: updatedSender.name || updatedSender.username,
+      senderImage: updatedSender.profileImage
     }),
   });
   
@@ -140,8 +141,8 @@ exports.sendGift = async ({ senderId, recipientId, giftId, liveId, roomId }) => 
       giftAnimation: gift.animationUrl,
       valueCoins: gift.valueCoins,
       senderId: senderId,
-      senderName: sender.name || sender.username,
-      senderImage: sender.profileImage,
+      senderName: updatedSender.name || updatedSender.username,
+      senderImage: updatedSender.profileImage,
       recipientId: actualRecipientId,
       roomId: live.roomId,
       timestamp: new Date().toISOString()
@@ -158,7 +159,7 @@ exports.sendGift = async ({ senderId, recipientId, giftId, liveId, roomId }) => 
       animationUrl: gift.animationUrl,
       valueCoins: gift.valueCoins
     },
-    senderCoins: sender.coins,
+    senderCoins: updatedSender.coins,
     recipientEarnings: recipientShare
   };
 };
