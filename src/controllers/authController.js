@@ -140,7 +140,6 @@ exports.login = async (req, res) => {
     if (!normalizedEmail || !password) {
       return res.status(400).json({
         success: false,
-        message: "Email ve ┼şifre gerekli",
         error: "Email ve ┼şifre gerekli",
       });
     }
@@ -149,7 +148,6 @@ exports.login = async (req, res) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Email veya ┼şifre hatal─▒",
         error: "Email veya ┼şifre hatal─▒",
       });
     }
@@ -158,7 +156,6 @@ exports.login = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: "Email veya ┼şifre hatal─▒",
         error: "Email veya ┼şifre hatal─▒",
       });
     }
@@ -178,7 +175,6 @@ exports.login = async (req, res) => {
     if (user.isBanned) {
       return res.status(403).json({
         success: false,
-        message: "Hesab─▒n─▒z ask─▒ya al─▒nm─▒┼ş",
         error: "Hesab─▒n─▒z ask─▒ya al─▒nm─▒┼ş",
       });
     }
@@ -216,7 +212,6 @@ exports.login = async (req, res) => {
     console.error("Login error:", err);
     res.status(500).json({
       success: false,
-      message: "Sunucu hatas─▒",
       error: "Sunucu hatas─▒",
     });
   }
@@ -231,7 +226,6 @@ exports.register = async (req, res) => {
     if (!normalizedEmail || !password || !username || !name) {
       return res.status(400).json({
         success: false,
-        message: "Gerekli alanlar─▒ doldurun",
         error: "Gerekli alanlar─▒ doldurun",
       });
     }
@@ -248,7 +242,6 @@ exports.register = async (req, res) => {
     if (existingUsername) {
       return res.status(400).json({
         success: false,
-        message: "Bu kullan─▒c─▒ ad─▒ al─▒nm─▒┼ş",
         error: "Bu kullan─▒c─▒ ad─▒ al─▒nm─▒┼ş",
       });
     }
@@ -281,7 +274,6 @@ exports.register = async (req, res) => {
     console.error("Register error:", err);
     res.status(500).json({
       success: false,
-      message: "Kay─▒t ba┼şar─▒s─▒z",
       error: "Kay─▒t ba┼şar─▒s─▒z",
     });
   }
@@ -332,7 +324,6 @@ exports.guestLogin = async (req, res) => {
     console.error("Guest login error:", err);
     res.status(500).json({
       success: false,
-      message: "Misafir giri┼şi ba┼şar─▒s─▒z",
       error: "Misafir giri┼şi ba┼şar─▒s─▒z",
     });
   }
@@ -358,7 +349,6 @@ exports.googleLoginWithToken = async (req, res) => {
     if (!idToken || !normalizedEmail) {
       return res.status(400).json({
         success: false,
-        message: "ID token ve email gerekli",
         error: "ID token ve email gerekli",
       });
     }
@@ -368,7 +358,6 @@ exports.googleLoginWithToken = async (req, res) => {
       console.error("ÔØî GOOGLE_CLIENT_ID tan─▒ml─▒ de─şil ÔÇö Google login kullan─▒lamaz");
       return res.status(500).json({
         success: false,
-        message: "Sunucu yap─▒land─▒rma hatas─▒. L├╝tfen y├Âneticiyle ileti┼şime ge├ğin.",
         error: "Sunucu yap─▒land─▒rma hatas─▒. L├╝tfen y├Âneticiyle ileti┼şime ge├ğin.",
       });
     }
@@ -391,7 +380,6 @@ exports.googleLoginWithToken = async (req, res) => {
         console.warn(`ÔÜá´©Å Google token email uyu┼şmazl─▒─ş─▒: token=${tokenEmail}, istek=${normalizedEmail}`);
         return res.status(401).json({
           success: false,
-          message: "Google hesap bilgileri uyu┼şmuyor",
           error: "Google hesap bilgileri uyu┼şmuyor",
         });
       }
@@ -474,7 +462,6 @@ exports.googleLoginWithToken = async (req, res) => {
     console.error("Google token login error:", err);
     res.status(500).json({
       success: false,
-      message: "Google giri┼şi ba┼şar─▒s─▒z",
       error: "Google giri┼şi ba┼şar─▒s─▒z",
     });
   }
@@ -487,7 +474,6 @@ exports.appleLogin = async (req, res) => {
     if (!identityToken) {
       return res.status(400).json({
         success: false,
-        message: "Identity token gerekli",
         error: "Identity token gerekli",
       });
     }
@@ -512,7 +498,6 @@ exports.appleLogin = async (req, res) => {
     if (!appleEmail) {
       return res.status(400).json({
         success: false,
-        message: "Apple email bilgisi al─▒namad─▒",
         error: "Apple email bilgisi al─▒namad─▒",
       });
     }
@@ -578,7 +563,6 @@ exports.appleLogin = async (req, res) => {
     console.error("Apple login error:", err);
     res.status(500).json({
       success: false,
-      message: "Apple giri┼şi ba┼şar─▒s─▒z",
       error: "Apple giri┼şi ba┼şar─▒s─▒z",
     });
   }
@@ -650,7 +634,6 @@ exports.logout = async (req, res) => {
     console.error("Logout error:", err);
     res.status(500).json({
       success: false,
-      message: "├ç─▒k─▒┼ş ba┼şar─▒s─▒z",
       error: "├ç─▒k─▒┼ş ba┼şar─▒s─▒z",
     });
   }
@@ -675,7 +658,6 @@ exports.me = async (req, res) => {
     console.error("Me error:", err);
     res.status(500).json({
       success: false,
-      message: "Sunucu hatas─▒",
       error: "Sunucu hatas─▒",
     });
   }
@@ -690,7 +672,6 @@ exports.refreshToken = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "Kullan─▒c─▒ bulunamad─▒",
         error: "Kullan─▒c─▒ bulunamad─▒",
       });
     }
@@ -716,7 +697,6 @@ exports.refreshToken = async (req, res) => {
     console.error("Refresh token error:", err);
     res.status(500).json({
       success: false,
-      message: "Sunucu hatas─▒",
       error: "Sunucu hatas─▒",
     });
   }
