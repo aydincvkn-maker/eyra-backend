@@ -34,7 +34,7 @@ router.get("/user-counts", async (req, res) => {
       visibleForFemaleViewer: notBanned - 1,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, message: err.message, error: err.message });
   }
 });
 
@@ -71,7 +71,7 @@ router.get("/presence", async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, message: err.message, error: err.message });
   }
 });
 
@@ -98,7 +98,7 @@ router.delete("/delete-fake-users", async (req, res) => {
       users: remainingUsers,
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, message: error.message, error: error.message });
   }
 });
 
@@ -113,7 +113,7 @@ router.get("/list-all-users", async (req, res) => {
       users: users,
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, message: error.message, error: error.message });
   }
 });
 
@@ -146,7 +146,7 @@ router.get("/check-online-status", async (req, res) => {
       note: "DB ve Memory arasında uyumsuzluk varsa, socket'ler bağlantısız demektir",
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, message: error.message, error: error.message });
   }
 });
 
@@ -171,7 +171,7 @@ router.post("/reset-all-offline", async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, message: error.message, error: error.message });
   }
 });
 
@@ -203,7 +203,7 @@ router.post("/update-user-gender", async (req, res) => {
       user,
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, message: error.message, error: error.message });
   }
 });
 
@@ -223,7 +223,7 @@ router.delete("/delete-guest-users", async (req, res) => {
       users: remaining,
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, message: error.message, error: error.message });
   }
 });
 
