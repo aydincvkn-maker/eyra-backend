@@ -100,19 +100,20 @@ function register(socket, io) {
 
       const pricePerMinute = callInfo.pricePerMinute || 120;
 
-      // Caller'dan coin düş
-      const caller = await User.findById(callInfo.callerId);
-      if (!caller || caller.coins < pricePerMinute) {
+      // Caller'dan atomik coin düşürme (coins >= pricePerMinute kontrolü filter'da)
+      const updatedCaller = await User.findOneAndUpdate(
+        { _id: callInfo.callerId, coins: { $gte: pricePerMinute } },
+        { $inc: { coins: -pricePerMinute } },
+        { new: true, select: "coins" }
+      );
+      if (!updatedCaller) {
         emitToUserSockets(callInfo.callerId, 'call:insufficient_coins', { roomName });
         emitToUserSockets(callInfo.hostId, 'call:insufficient_coins', { roomName });
         console.log(`💰 Insufficient coins for call ${roomName}, ending call`);
         return;
       }
 
-      caller.coins -= pricePerMinute;
-      await caller.save();
-
-      // Host'a coin ekle (%70)
+      // Host'a coin ekle (%70) — zaten atomik
       const hostShare = Math.floor(pricePerMinute * 0.7);
       await User.findByIdAndUpdate(callInfo.hostId, {
         $inc: { coins: hostShare, totalEarnings: hostShare },
@@ -122,7 +123,7 @@ function register(socket, io) {
       emitToUserSockets(callInfo.callerId, 'call:coin_charged', {
         roomName,
         amount: pricePerMinute,
-        remaining: caller.coins,
+        remaining: updatedCaller.coins,
         minute: minuteIndex + 1,
       });
       emitToUserSockets(callInfo.hostId, 'call:coin_charged', {

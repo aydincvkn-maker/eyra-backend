@@ -1470,28 +1470,34 @@ exports.requestPaidCall = async (req, res) => {
     const flatEntryPrice = 899;
     const totalPrice = parsedDuration > 0 ? pricePerMinute * parsedDuration : flatEntryPrice;
 
-    // Coin kontrolü
-    if (caller.coins < totalPrice) {
+    // Coin kontrolü + atomik düşürme (TOCTOU race condition önleme)
+    const updatedCaller = await User.findOneAndUpdate(
+      { _id: callerId, coins: { $gte: totalPrice } },
+      { $inc: { coins: -totalPrice } },
+      { new: true, select: "coins name username profileImage" }
+    );
+    if (!updatedCaller) {
+      // Tekrar bak: kullanıcı var mı yoksa coin mi yetersiz?
+      const callerCheck = await User.findById(callerId).select("coins").lean();
+      if (!callerCheck) {
+        return res.status(404).json({ ok: false, error: "caller_not_found" });
+      }
       return res.status(400).json({ 
         ok: false, 
         error: "insufficient_coins",
         required: totalPrice,
-        available: caller.coins
+        available: callerCheck.coins
       });
     }
 
-    // Talep ID oluştur
-    const requestId = `call_request_${Date.now()}_${uuidv4().slice(0, 8)}`;
-
-    // Peşin coin düş
-    caller.coins -= totalPrice;
-    await caller.save();
-
-    // Host'a coin ekle (%70)
+    // Host'a coin ekle (%70) — zaten atomik
     const hostShare = Math.floor(totalPrice * 0.7);
     await User.findByIdAndUpdate(hostId, {
       $inc: { coins: hostShare, totalEarnings: hostShare }
     });
+
+    // Talep ID oluştur
+    const requestId = `call_request_${Date.now()}_${uuidv4().slice(0, 8)}`;
 
     // Call room oluştur ve token üret
     const callRoomName = `paid_call_${requestId}`;
