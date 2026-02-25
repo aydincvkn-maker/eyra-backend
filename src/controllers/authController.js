@@ -329,82 +329,15 @@ exports.guestLogin = async (req, res) => {
   }
 };
 
+// 🔒 DEPRECATED: Token doğrulaması olmayan Google login güvenlik açığı oluşturur.
+// Tüm istemciler /google-login-token endpoint'ini kullanmalıdır.
 exports.googleLogin = async (req, res) => {
-  try {
-    const { email, name, googleId, photoUrl, gender } = req.body;
-
-    const normalizedEmail = String(email || "").trim().toLowerCase();
-
-    if (!normalizedEmail) {
-      return res.status(400).json({
-        success: false,
-        error: "Email gerekli",
-      });
-    }
-
-    const normalizedGender = resolveGender(gender);
-
-    let user = await User.findOne({ email: normalizedEmail });
-    let isNewUser = false;
-
-    if (!user) {
-      isNewUser = true;
-      const username = `${normalizedEmail.split("@")[0]}${Math.floor(Math.random() * 1000)}`;
-
-      user = await User.create({
-        username,
-        name: name || "Google User",
-        email: normalizedEmail,
-        password: googleId || Math.random().toString(36),
-        gender: normalizedGender,
-        profileImage: photoUrl || "",
-        coins: 1000,
-        isGuest: false,
-        isOnline: false,  // Socket bağlantısında true yapılacak
-        lastSeen: new Date(),
-        lastOnlineAt: new Date(),
-        isBusy: false,
-        busyUntil: null,
-      });
-    } else {
-      // Var olan user - online durumunu socket yönetecek, burada değiştirmiyoruz
-      user.lastSeen = new Date();
-      user.lastOnlineAt = new Date();
-      user.isBusy = false;
-      user.busyUntil = null;
-      if (photoUrl && !user.profileImage) {
-        user.profileImage = photoUrl;
-      }
-      if (normalizedGender !== "other" && user.gender === "other") {
-        user.gender = normalizedGender;
-      }
-      if (user.isGuest) {
-        user.isGuest = false;
-      }
-      await user.save();
-    }
-
-    const token = createToken(user);
-    const needsProfileSetup = !user.gender || user.gender === "other";
-
-    // Günlük giriş bonusu
-    const dailyBonus = await checkDailyLoginBonus(user);
-
-    res.json({
-      success: true,
-      token,
-      isNewUser,
-      needsProfileSetup,
-      user: buildUserPayload(user),
-      dailyBonus: dailyBonus.granted ? dailyBonus : undefined,
-    });
-  } catch (err) {
-    console.error("Google login error:", err);
-    res.status(500).json({
-      success: false,
-      error: "Google girişi başarısız",
-    });
-  }
+  console.warn("⚠️ DEPRECATED: /google-login çağrıldı (token doğrulaması yok). İstemci güncellenmeli.");
+  return res.status(403).json({
+    success: false,
+    error: "Bu giriş yöntemi artık desteklenmiyor. Lütfen uygulamayı güncelleyin.",
+    code: "GOOGLE_LOGIN_DEPRECATED",
+  });
 };
 
 exports.googleLoginWithToken = async (req, res) => {
@@ -420,6 +353,15 @@ exports.googleLoginWithToken = async (req, res) => {
       });
     }
 
+    // 🔒 GOOGLE_CLIENT_ID kontrol — ayarlanmamışsa token doğrulama imkansız
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      console.error("❌ GOOGLE_CLIENT_ID tanımlı değil — Google login kullanılamaz");
+      return res.status(500).json({
+        success: false,
+        error: "Sunucu yapılandırma hatası. Lütfen yöneticiyle iletişime geçin.",
+      });
+    }
+
     let googleId = null;
     let payloadGender = null;
     let payloadName = null;
@@ -431,13 +373,28 @@ exports.googleLoginWithToken = async (req, res) => {
         audience: process.env.GOOGLE_CLIENT_ID,
       });
       const payload = ticket.getPayload();
+
+      // 🔒 Token'daki email ile gönderilen email eşleşmeli
+      const tokenEmail = (payload?.email || "").trim().toLowerCase();
+      if (tokenEmail && tokenEmail !== normalizedEmail) {
+        console.warn(`⚠️ Google token email uyuşmazlığı: token=${tokenEmail}, istek=${normalizedEmail}`);
+        return res.status(401).json({
+          success: false,
+          error: "Google hesap bilgileri uyuşmuyor",
+        });
+      }
+
       googleId = payload?.sub || null;
       payloadGender = payload?.gender || null;
       payloadName = payload?.name || null;
       payloadPhoto = payload?.picture || null;
     } catch (verifyErr) {
-      console.error("Google token doğrulama hatası:", verifyErr);
-      googleId = (normalizedEmail.split("@")[0] || "google") + Date.now();
+      // 🔒 Token doğrulama başarısızsa GİRİŞ REDDEDİLİR — fallback yok
+      console.error("❌ Google token doğrulama başarısız:", verifyErr.message || verifyErr);
+      return res.status(401).json({
+        success: false,
+        error: "Google token doğrulanamadı. Lütfen tekrar deneyin.",
+      });
     }
 
     const normalizedGender = resolveGender(payloadGender || gender);

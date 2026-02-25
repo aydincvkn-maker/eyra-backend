@@ -10,10 +10,10 @@ router.post("/login", authLimiter, authController.login);
 // Register
 router.post("/register", authLimiter, authController.register);
 
-// Google Login (ESKİ - basit)
+// Google Login (DEPRECATED - token doğrulaması yok, 403 döndürür)
 router.post("/google-login", authLimiter, authController.googleLogin);
 
-// ✅ YENİ: Google Login (Token ile doğrulama)
+// ✅ Google Login (Token ile doğrulama - TEK GÜVENLİ YOL)
 router.post("/google-login-token", authLimiter, authController.googleLoginWithToken);
 
 // ✅ YENİ: Apple Login
