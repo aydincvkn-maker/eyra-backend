@@ -16,7 +16,7 @@ exports.getRoomMessages = async (req, res) => {
     res.json(messages);
   } catch (err) {
     console.error("getRoomMessages error:", err);
-    res.status(500).json({ message: "Sunucu hatası" });
+    sendError(res, 500, "Sunucu hatası");
   }
 };
 
@@ -31,7 +31,7 @@ exports.getChatUsers = async (req, res) => {
     return res.json({ users });
   } catch (err) {
     console.error("getChatUsers error:", err);
-    return res.status(500).json({ message: "Sunucu hatası" });
+    return sendError(res, 500, "Sunucu hatası");
   }
 };
 
@@ -46,7 +46,7 @@ exports.getConversation = async (req, res) => {
     const limit = Number(req.query.limit || 50);
 
     if (!otherUserId) {
-      return res.status(400).json({ message: "Eksik userId" });
+      return sendError(res, 400, "Eksik userId");
     }
 
     // ✅ Special case: fetch all admin-panel messages sent to this user
@@ -76,7 +76,7 @@ exports.getConversation = async (req, res) => {
     return res.json({ messages });
   } catch (err) {
     console.error("getConversation error:", err);
-    return res.status(500).json({ message: "Sunucu hatası" });
+    return sendError(res, 500, "Sunucu hatası");
   }
 };
 
@@ -86,7 +86,7 @@ exports.sendMessage = async (req, res) => {
     const toUserId = String(req.body?.to || "").trim();
 
     if (!toUserId) {
-      return res.status(400).json({ message: "Eksik alıcı (to)" });
+      return sendError(res, 400, "Eksik alıcı (to)");
     }
 
     const message = await chatService.sendMessage(fromUserId, toUserId, {
@@ -100,12 +100,12 @@ exports.sendMessage = async (req, res) => {
   } catch (err) {
     console.error("sendMessage error:", err);
     if (err.message === "RATE_LIMIT_EXCEEDED") {
-      return res.status(429).json({ message: "RATE_LIMIT" });
+      return sendError(res, 429, "RATE_LIMIT");
     }
     if (err.message === "USER_BLOCKED") {
-      return res.status(403).json({ message: "USER_BLOCKED" });
+      return sendError(res, 403, "USER_BLOCKED");
     }
-    return res.status(500).json({ message: "Sunucu hatası" });
+    return sendError(res, 500, "Sunucu hatası");
   }
 };
 
@@ -114,13 +114,13 @@ exports.deleteConversation = async (req, res) => {
     const userId = String(req.user?.id || "");
     const otherUserId = String(req.params.userId || "").trim();
     if (!otherUserId) {
-      return res.status(400).json({ message: "Eksik userId" });
+      return sendError(res, 400, "Eksik userId");
     }
     await chatService.deleteConversation(userId, otherUserId);
     return res.json({ ok: true });
   } catch (err) {
     console.error("deleteConversation error:", err);
-    return res.status(500).json({ message: "Sunucu hatası" });
+    return sendError(res, 500, "Sunucu hatası");
   }
 };
 
@@ -129,13 +129,13 @@ exports.markAsRead = async (req, res) => {
     const userId = String(req.user?.id || "");
     const otherUserId = String(req.params.userId || "").trim();
     if (!otherUserId) {
-      return res.status(400).json({ message: "Eksik userId" });
+      return sendError(res, 400, "Eksik userId");
     }
     await chatService.markAsRead(userId, otherUserId);
     return res.json({ ok: true });
   } catch (err) {
     console.error("markAsRead error:", err);
-    return res.status(500).json({ message: "Sunucu hatası" });
+    return sendError(res, 500, "Sunucu hatası");
   }
 };
 
@@ -144,7 +144,7 @@ exports.getUnreadCount = async (req, res) => {
     const userId = String(req.user?.id || "");
     const otherUserId = String(req.params.userId || "").trim();
     if (!otherUserId) {
-      return res.status(400).json({ message: "Eksik userId" });
+      return sendError(res, 400, "Eksik userId");
     }
 
     const roomId = getChatRoomId(userId, otherUserId);
@@ -159,7 +159,7 @@ exports.getUnreadCount = async (req, res) => {
     return res.json({ unreadCount });
   } catch (err) {
     console.error("getUnreadCount error:", err);
-    return res.status(500).json({ message: "Sunucu hatası" });
+    return sendError(res, 500, "Sunucu hatası");
   }
 };
 
@@ -167,14 +167,14 @@ exports.deleteMessage = async (req, res) => {
   try {
     const userId = String(req.user?.id || "");
     const messageId = String(req.params.messageId || "").trim();
-    if (!messageId) return res.status(400).json({ message: "Eksik messageId" });
+    if (!messageId) return sendError(res, 400, "Eksik messageId");
     await chatService.deleteMessage(messageId, userId);
     return res.json({ ok: true });
   } catch (err) {
     console.error("deleteMessage error:", err);
-    if (err.message === 'MESSAGE_NOT_FOUND') return res.status(404).json({ message: 'MESSAGE_NOT_FOUND' });
-    if (err.message === 'UNAUTHORIZED') return res.status(403).json({ message: 'UNAUTHORIZED' });
-    return res.status(500).json({ message: "Sunucu hatası" });
+    if (err.message === 'MESSAGE_NOT_FOUND') return sendError(res, 404, "MESSAGE_NOT_FOUND");
+    if (err.message === 'UNAUTHORIZED') return sendError(res, 403, "UNAUTHORIZED");
+    return sendError(res, 500, "Sunucu hatası");
   }
 };
 
@@ -183,14 +183,14 @@ exports.editMessage = async (req, res) => {
     const userId = String(req.user?.id || "");
     const messageId = String(req.params.messageId || "").trim();
     const newText = String(req.body?.text || "");
-    if (!messageId) return res.status(400).json({ message: "Eksik messageId" });
+    if (!messageId) return sendError(res, 400, "Eksik messageId");
     const message = await chatService.editMessage(messageId, userId, newText);
     return res.json({ message });
   } catch (err) {
     console.error("editMessage error:", err);
-    if (err.message === 'MESSAGE_NOT_FOUND') return res.status(404).json({ message: 'MESSAGE_NOT_FOUND' });
-    if (err.message === 'UNAUTHORIZED') return res.status(403).json({ message: 'UNAUTHORIZED' });
-    return res.status(500).json({ message: "Sunucu hatası" });
+    if (err.message === 'MESSAGE_NOT_FOUND') return sendError(res, 404, "MESSAGE_NOT_FOUND");
+    if (err.message === 'UNAUTHORIZED') return sendError(res, 403, "UNAUTHORIZED");
+    return sendError(res, 500, "Sunucu hatası");
   }
 };
 
@@ -199,13 +199,13 @@ exports.addReaction = async (req, res) => {
     const userId = String(req.user?.id || "");
     const messageId = String(req.params.messageId || "").trim();
     const emoji = String(req.body?.emoji || "");
-    if (!messageId) return res.status(400).json({ message: "Eksik messageId" });
+    if (!messageId) return sendError(res, 400, "Eksik messageId");
     const message = await chatService.addReaction(messageId, userId, emoji);
     return res.json({ message });
   } catch (err) {
     console.error("addReaction error:", err);
-    if (err.message === 'MESSAGE_NOT_FOUND') return res.status(404).json({ message: 'MESSAGE_NOT_FOUND' });
-    return res.status(500).json({ message: "Sunucu hatası" });
+    if (err.message === 'MESSAGE_NOT_FOUND') return sendError(res, 404, "MESSAGE_NOT_FOUND");
+    return sendError(res, 500, "Sunucu hatası");
   }
 };
 
@@ -213,13 +213,13 @@ exports.removeReaction = async (req, res) => {
   try {
     const userId = String(req.user?.id || "");
     const messageId = String(req.params.messageId || "").trim();
-    if (!messageId) return res.status(400).json({ message: "Eksik messageId" });
+    if (!messageId) return sendError(res, 400, "Eksik messageId");
     const message = await chatService.removeReaction(messageId, userId);
     return res.json({ message });
   } catch (err) {
     console.error("removeReaction error:", err);
-    if (err.message === 'MESSAGE_NOT_FOUND') return res.status(404).json({ message: 'MESSAGE_NOT_FOUND' });
-    return res.status(500).json({ message: "Sunucu hatası" });
+    if (err.message === 'MESSAGE_NOT_FOUND') return sendError(res, 404, "MESSAGE_NOT_FOUND");
+    return sendError(res, 500, "Sunucu hatası");
   }
 };
 
@@ -230,7 +230,7 @@ exports.adminSendMessage = async (req, res) => {
     const { toUserId, text } = req.body;
 
     if (!toUserId || !text) {
-      return res.status(400).json({ message: "toUserId ve text gerekli" });
+      return sendError(res, 400, "toUserId ve text gerekli");
     }
 
     const message = await chatService.sendMessage(adminId, toUserId, { text, isAdmin: true });
@@ -256,7 +256,7 @@ exports.adminSendMessage = async (req, res) => {
     return res.json({ success: true, message });
   } catch (err) {
     console.error("adminSendMessage error:", err);
-    return res.status(500).json({ message: "Sunucu hatası" });
+    return sendError(res, 500, "Sunucu hatası");
   }
 };
 
