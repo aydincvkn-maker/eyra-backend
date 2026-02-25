@@ -1458,13 +1458,7 @@ exports.requestPaidCall = async (req, res) => {
       return res.status(400).json({ ok: false, error: "cannot_call_yourself" });
     }
 
-    // Caller'ı kontrol et
-    const caller = await User.findById(callerId);
-    if (!caller) {
-      return res.status(404).json({ ok: false, error: "caller_not_found" });
-    }
-
-    // Fiyat hesapla (doğrudan bağlantı: peşin ödeme)
+    // Caller'ı kontrol et + Fiyat hesapla
     const pricePerMinute = stream.host.callPricePerMinute || 100; // Default: 100 coin/dk
     const parsedDuration = Number(duration) || 0;
     const flatEntryPrice = 899;
