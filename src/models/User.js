@@ -35,7 +35,7 @@ const userSchema = new mongoose.Schema(
     }],
 
     // COIN VE SEVİYE
-    coins: { type: Number, default: 1000 },
+    coins: { type: Number, default: 1000, min: 0 },
     level: { type: Number, default: 1 },
     xp: { type: Number, default: 0 },
     totalEarnings: { type: Number, default: 0 },

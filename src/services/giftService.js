@@ -1,4 +1,5 @@
 // src/services/giftService.js
+const mongoose = require("mongoose");
 const Gift = require("../models/Gift");
 const User = require("../models/User");
 const LiveStream = require("../models/LiveStream");
