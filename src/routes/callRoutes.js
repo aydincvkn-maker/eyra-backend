@@ -9,6 +9,7 @@ const { LIVEKIT_URL } = require('../config/env');
 const { generateLiveKitToken } = require('../services/liveService');
 const CallHistory = require('../models/CallHistory');
 const User = require('../models/User');
+const { sendError } = require("../utils/response");
 
 /**
  * POST /api/calls/initiate
@@ -18,8 +19,6 @@ router.post('/initiate', auth, async (req, res) => {
   try {
     const { targetUserId } = req.body;
     const callerId = req.user.id;
-    const User = require('../models/User');
-const { sendError } = require("../utils/response");
 
     if (!targetUserId) {
       return sendError(res, 400, "targetUserId gerekli");
