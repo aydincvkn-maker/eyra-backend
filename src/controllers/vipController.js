@@ -107,12 +107,28 @@ exports.purchaseVip = async (req, res) => {
     const tierRank = { none: 0, silver: 1, gold: 2, diamond: 3 };
     const newTier = tierRank[tier] >= tierRank[user.vipTier || "none"] ? tier : user.vipTier;
 
-    user.coins -= price;
-    user.isVip = true;
-    user.vipTier = newTier;
-    user.vipExpiresAt = newExpiry;
-    user.vipPurchasedAt = now;
-    await user.save();
+    // Atomik coin düşürme + VIP güncelleme (TOCTOU race condition önleme)
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: userId, coins: { $gte: price } },
+      {
+        $inc: { coins: -price },
+        $set: {
+          isVip: true,
+          vipTier: newTier,
+          vipExpiresAt: newExpiry,
+          vipPurchasedAt: now,
+        },
+      },
+      { new: true, select: "coins isVip vipTier vipExpiresAt" }
+    );
+    if (!updatedUser) {
+      // Coin sonradan düşmüş olabilir (eş zamanlı işlem)
+      return res.status(400).json({
+        success: false,
+        error: "Yetersiz coin (eş zamanlı işlem)",
+        required: price,
+      });
+    }
 
     // Transaction kaydı
     await Transaction.create({

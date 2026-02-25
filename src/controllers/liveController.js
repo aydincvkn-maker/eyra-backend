@@ -1505,8 +1505,8 @@ exports.requestPaidCall = async (req, res) => {
     global.callRequests.set(requestId, {
       requestId,
       callerId,
-      callerName: caller.name || caller.username,
-      callerImage: caller.profileImage,
+      callerName: updatedCaller.name || updatedCaller.username,
+      callerImage: updatedCaller.profileImage,
       hostId: String(hostId),
       roomId,
       duration: parsedDuration,
@@ -1551,8 +1551,8 @@ exports.requestPaidCall = async (req, res) => {
         const hostPayload = {
           requestId,
           callerId: String(callerId),
-          callerName: caller.name || caller.username,
-          callerImage: caller.profileImage,
+          callerName: updatedCaller.name || updatedCaller.username,
+          callerImage: updatedCaller.profileImage,
           duration: parsedDuration,
           totalPrice,
           pricePerMinute,
