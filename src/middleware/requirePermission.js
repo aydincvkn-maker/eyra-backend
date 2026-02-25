@@ -17,7 +17,7 @@ const hasPermission = (permissionList, permission) => {
 module.exports = function requirePermission(permission) {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ message: "Yetkilendirme gerekli" });
+      return res.status(401).json({ success: false, message: "Yetkilendirme gerekli", error: "Yetkilendirme gerekli" });
     }
 
     const role = req.user.role || "viewer";
@@ -34,6 +34,6 @@ module.exports = function requirePermission(permission) {
       return next();
     }
 
-    return res.status(403).json({ message: "Yetki gerekli" });
+    return res.status(403).json({ success: false, message: "Yetki gerekli", error: "Yetki gerekli" });
   };
 };

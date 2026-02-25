@@ -2,6 +2,7 @@
 const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("../config/env");
 const User = require("../models/User");
+const { sendError } = require("../utils/response");
 
 async function auth(req, res, next) {
   try {
@@ -28,7 +29,7 @@ async function auth(req, res, next) {
     }
 
     if (!token) {
-      return res.status(401).json({ message: "Token bulunamadı" });
+      return sendError(res, 401, "Token bulunamadı");
     }
     
     // 2. Token'ı doğrula
@@ -38,11 +39,11 @@ async function auth(req, res, next) {
     const user = await User.findById(decoded.id).select("-password");
     
     if (!user) {
-      return res.status(401).json({ message: "Kullanıcı bulunamadı" });
+      return sendError(res, 401, "Kullanıcı bulunamadı");
     }
 
     if (user.isBanned || user.isActive === false || user.isFrozen === true) {
-      return res.status(403).json({ message: "Hesap erişimi kısıtlı" });
+      return sendError(res, 403, "Hesap erişimi kısıtlı");
     }
     
     // 4. req.user'a ekle
@@ -59,14 +60,14 @@ async function auth(req, res, next) {
     console.error("Auth middleware error:", err.message);
     
     if (err.name === 'JsonWebTokenError') {
-      return res.status(401).json({ message: "Geçersiz token" });
+      return sendError(res, 401, "Geçersiz token");
     }
     
     if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: "Token süresi dolmuş" });
+      return sendError(res, 401, "Token süresi dolmuş");
     }
     
-    return res.status(500).json({ message: "Sunucu hatası" });
+    return sendError(res, 500, "Sunucu hatası");
   }
 }
 
