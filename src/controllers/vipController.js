@@ -199,8 +199,8 @@ exports.purchaseVip = async (req, res) => {
       message: `${tier} VIP aktif edildi`,
       vip: {
         isVip: true,
-        vipTier: newTier,
-        vipExpiresAt: newExpiry,
+        vipTier: updatedUser.vipTier,
+        vipExpiresAt: updatedUser.vipExpiresAt,
         daysRemaining: days,
       },
       coins: updatedUser.coins,
