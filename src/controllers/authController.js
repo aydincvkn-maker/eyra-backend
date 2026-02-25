@@ -139,28 +139,40 @@ exports.login = async (req, res) => {
 
     if (!normalizedEmail || !password) {
       return res.status(400).json({
-      success: false,
-      message: "Email ve şifre gerekli",
-      error: "Email ve şifre gerekli",
-    });
+
+        success: false,
+
+        message: "Email ve şifre gerekli",
+
+        error: "Email ve şifre gerekli",
+
+      });
     }
 
     const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       return res.status(401).json({
-      success: false,
-      message: "Email veya şifre hatalı",
-      error: "Email veya şifre hatalı",
-    });
+
+        success: false,
+
+        message: "Email veya şifre hatalı",
+
+        error: "Email veya şifre hatalı",
+
+      });
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({
-      success: false,
-      message: "Email veya şifre hatalı",
-      error: "Email veya şifre hatalı",
-    });
+
+        success: false,
+
+        message: "Email veya şifre hatalı",
+
+        error: "Email veya şifre hatalı",
+
+      });
     }
 
     // ✅ Upgrade legacy plaintext passwords to bcrypt on successful login
@@ -177,10 +189,14 @@ exports.login = async (req, res) => {
 
     if (user.isBanned) {
       return res.status(403).json({
-      success: false,
-      message: "Hesabınız askıya alınmış",
-      error: "Hesabınız askıya alınmış",
-    });
+
+        success: false,
+
+        message: "Hesabınız askıya alınmış",
+
+        error: "Hesabınız askıya alınmış",
+
+      });
     }
 
     // NOT: isOnline durumu socket bağlantısında güncellenecek
@@ -215,9 +231,13 @@ exports.login = async (req, res) => {
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({
+
       success: false,
+
       message: "Sunucu hatası",
+
       error: "Sunucu hatası",
+
     });
   }
 };
@@ -230,28 +250,40 @@ exports.register = async (req, res) => {
 
     if (!normalizedEmail || !password || !username || !name) {
       return res.status(400).json({
-      success: false,
-      message: "Gerekli alanları doldurun",
-      error: "Gerekli alanları doldurun",
-    });
+
+        success: false,
+
+        message: "Gerekli alanları doldurun",
+
+        error: "Gerekli alanları doldurun",
+
+      });
     }
 
     const existingEmail = await User.findOne({ email: normalizedEmail });
     if (existingEmail) {
       return res.status(400).json({
-      success: false,
-      message: "Bu email zaten kayıtlı",
-      error: "Bu email zaten kayıtlı",
-    });
+
+        success: false,
+
+        message: "Bu email zaten kayıtlı",
+
+        error: "Bu email zaten kayıtlı",
+
+      });
     }
 
     const existingUsername = await User.findOne({ username });
     if (existingUsername) {
       return res.status(400).json({
-      success: false,
-      message: "Bu kullanıcı adı alınmış",
-      error: "Bu kullanıcı adı alınmış",
-    });
+
+        success: false,
+
+        message: "Bu kullanıcı adı alınmış",
+
+        error: "Bu kullanıcı adı alınmış",
+
+      });
     }
 
     const normalizedGender = resolveGender(gender);
@@ -281,9 +313,13 @@ exports.register = async (req, res) => {
   } catch (err) {
     console.error("Register error:", err);
     res.status(500).json({
+
       success: false,
+
       message: "Kayıt başarısız",
+
       error: "Kayıt başarısız",
+
     });
   }
 };
@@ -294,10 +330,14 @@ exports.guestLogin = async (req, res) => {
 
     if (!gender) {
       return res.status(400).json({
-      success: false,
-      message: "Cinsiyet seçmek zorunlu",
-      error: "Cinsiyet seçmek zorunlu",
-    });
+
+        success: false,
+
+        message: "Cinsiyet seçmek zorunlu",
+
+        error: "Cinsiyet seçmek zorunlu",
+
+      });
     }
 
     const normalizedGender = resolveGender(gender);
@@ -333,9 +373,13 @@ exports.guestLogin = async (req, res) => {
   } catch (err) {
     console.error("Guest login error:", err);
     res.status(500).json({
+
       success: false,
+
       message: "Misafir girişi başarısız",
+
       error: "Misafir girişi başarısız",
+
     });
   }
 };
@@ -359,20 +403,28 @@ exports.googleLoginWithToken = async (req, res) => {
 
     if (!idToken || !normalizedEmail) {
       return res.status(400).json({
-      success: false,
-      message: "ID token ve email gerekli",
-      error: "ID token ve email gerekli",
-    });
+
+        success: false,
+
+        message: "ID token ve email gerekli",
+
+        error: "ID token ve email gerekli",
+
+      });
     }
 
     // 🔒 GOOGLE_CLIENT_ID kontrol — ayarlanmamışsa token doğrulama imkansız
     if (!process.env.GOOGLE_CLIENT_ID) {
       console.error("❌ GOOGLE_CLIENT_ID tanımlı değil — Google login kullanılamaz");
       return res.status(500).json({
-      success: false,
-      message: "Sunucu yapılandırma hatası. Lütfen yöneticiyle iletişime geçin.",
-      error: "Sunucu yapılandırma hatası. Lütfen yöneticiyle iletişime geçin.",
-    });
+
+        success: false,
+
+        message: "Sunucu yapılandırma hatası. Lütfen yöneticiyle iletişime geçin.",
+
+        error: "Sunucu yapılandırma hatası. Lütfen yöneticiyle iletişime geçin.",
+
+      });
     }
 
     let googleId = null;
@@ -392,10 +444,14 @@ exports.googleLoginWithToken = async (req, res) => {
       if (tokenEmail && tokenEmail !== normalizedEmail) {
         console.warn(`⚠️ Google token email uyuşmazlığı: token=${tokenEmail}, istek=${normalizedEmail}`);
         return res.status(401).json({
-      success: false,
-      message: "Google hesap bilgileri uyuşmuyor",
-      error: "Google hesap bilgileri uyuşmuyor",
-    });
+
+          success: false,
+
+          message: "Google hesap bilgileri uyuşmuyor",
+
+          error: "Google hesap bilgileri uyuşmuyor",
+
+        });
       }
 
       googleId = payload?.sub || null;
@@ -406,10 +462,14 @@ exports.googleLoginWithToken = async (req, res) => {
       // 🔒 Token doğrulama başarısızsa GİRİŞ REDDEDİLİR — fallback yok
       console.error("❌ Google token doğrulama başarısız:", verifyErr.message || verifyErr);
       return res.status(401).json({
-      success: false,
-      message: "Google token doğrulanamadı. Lütfen tekrar deneyin.",
-      error: "Google token doğrulanamadı. Lütfen tekrar deneyin.",
-    });
+
+        success: false,
+
+        message: "Google token doğrulanamadı. Lütfen tekrar deneyin.",
+
+        error: "Google token doğrulanamadı. Lütfen tekrar deneyin.",
+
+      });
     }
 
     const normalizedGender = resolveGender(payloadGender || gender);
@@ -476,9 +536,13 @@ exports.googleLoginWithToken = async (req, res) => {
   } catch (err) {
     console.error("Google token login error:", err);
     res.status(500).json({
+
       success: false,
+
       message: "Google girişi başarısız",
+
       error: "Google girişi başarısız",
+
     });
   }
 };
@@ -489,10 +553,14 @@ exports.appleLogin = async (req, res) => {
 
     if (!identityToken) {
       return res.status(400).json({
-      success: false,
-      message: "Identity token gerekli",
-      error: "Identity token gerekli",
-    });
+
+        success: false,
+
+        message: "Identity token gerekli",
+
+        error: "Identity token gerekli",
+
+      });
     }
 
     let appleId = null;
@@ -514,10 +582,14 @@ exports.appleLogin = async (req, res) => {
 
     if (!appleEmail) {
       return res.status(400).json({
-      success: false,
-      message: "Apple email bilgisi alınamadı",
-      error: "Apple email bilgisi alınamadı",
-    });
+
+        success: false,
+
+        message: "Apple email bilgisi alınamadı",
+
+        error: "Apple email bilgisi alınamadı",
+
+      });
     }
 
     const normalizedGender = resolveGender(gender);
@@ -580,9 +652,13 @@ exports.appleLogin = async (req, res) => {
   } catch (err) {
     console.error("Apple login error:", err);
     res.status(500).json({
+
       success: false,
+
       message: "Apple girişi başarısız",
+
       error: "Apple girişi başarısız",
+
     });
   }
 };
@@ -652,9 +728,13 @@ exports.logout = async (req, res) => {
   } catch (err) {
     console.error("Logout error:", err);
     res.status(500).json({
+
       success: false,
+
       message: "Çıkış başarısız",
+
       error: "Çıkış başarısız",
+
     });
   }
 };
@@ -665,10 +745,14 @@ exports.me = async (req, res) => {
 
     if (!user) {
       return res.status(404).json({
-      success: false,
-      message: "Kullanıcı bulunamadı",
-      error: "Kullanıcı bulunamadı",
-    });
+
+        success: false,
+
+        message: "Kullanıcı bulunamadı",
+
+        error: "Kullanıcı bulunamadı",
+
+      });
     }
 
     res.json({
@@ -678,9 +762,13 @@ exports.me = async (req, res) => {
   } catch (err) {
     console.error("Me error:", err);
     res.status(500).json({
+
       success: false,
+
       message: "Sunucu hatası",
+
       error: "Sunucu hatası",
+
     });
   }
 };
@@ -693,18 +781,26 @@ exports.refreshToken = async (req, res) => {
     
     if (!user) {
       return res.status(404).json({
-      success: false,
-      message: "Kullanıcı bulunamadı",
-      error: "Kullanıcı bulunamadı",
-    });
+
+        success: false,
+
+        message: "Kullanıcı bulunamadı",
+
+        error: "Kullanıcı bulunamadı",
+
+      });
     }
 
     if (user.isBanned) {
       return res.status(403).json({
-      success: false,
-      message: "Hesabınız askıya alınmış",
-      error: "Hesabınız askıya alınmış",
-    });
+
+        success: false,
+
+        message: "Hesabınız askıya alınmış",
+
+        error: "Hesabınız askıya alınmış",
+
+      });
     }
 
     // Generate new token with extended expiration
@@ -720,9 +816,13 @@ exports.refreshToken = async (req, res) => {
   } catch (err) {
     console.error("Refresh token error:", err);
     res.status(500).json({
+
       success: false,
+
       message: "Sunucu hatası",
+
       error: "Sunucu hatası",
+
     });
   }
 };
