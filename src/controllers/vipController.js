@@ -135,7 +135,7 @@ exports.purchaseVip = async (req, res) => {
       user: userId,
       type: "vip_purchase",
       amount: -price,
-      balanceAfter: user.coins,
+      balanceAfter: updatedUser.coins,
       description: `${tier.charAt(0).toUpperCase() + tier.slice(1)} VIP satın alındı (${days} gün)`,
       status: "completed",
     });
@@ -162,7 +162,7 @@ exports.purchaseVip = async (req, res) => {
         vipExpiresAt: newExpiry,
         daysRemaining: days,
       },
-      coins: user.coins,
+      coins: updatedUser.coins,
     });
   } catch (err) {
     console.error("purchaseVip error:", err);

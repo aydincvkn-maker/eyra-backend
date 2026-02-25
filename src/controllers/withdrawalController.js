@@ -382,22 +382,23 @@ exports.adminApproveWithdrawal = async (req, res) => {
       return res.status(400).json({ success: false, message: `Bu talep zaten '${withdrawal.status}' durumunda` });
     }
 
-    // Kullanıcının coin'ini düş
-    const user = await User.findById(withdrawal.user);
+    // Kullanıcının coin'ini atomik düşür (TOCTOU race condition önleme)
+    const user = await User.findOneAndUpdate(
+      { _id: withdrawal.user, coins: { $gte: withdrawal.amountCoins } },
+      { $inc: { coins: -withdrawal.amountCoins } },
+      { new: true, select: "coins username" }
+    );
     if (!user) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
-    }
-
-    if (user.coins < withdrawal.amountCoins) {
+      // Kullanıcı var mı yoksa coin mi yetersiz?
+      const userCheck = await User.findById(withdrawal.user).select("coins").lean();
+      if (!userCheck) {
+        return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+      }
       return res.status(400).json({
         success: false,
-        message: `Kullanıcının yeterli coin'i yok (mevcut: ${user.coins}, talep: ${withdrawal.amountCoins})`,
+        message: `Kullanıcının yeterli coin'i yok (mevcut: ${userCheck.coins}, talep: ${withdrawal.amountCoins})`,
       });
     }
-
-    // Coin düş
-    user.coins -= withdrawal.amountCoins;
-    await user.save();
 
     // Transaction kaydı
     await Transaction.create({
