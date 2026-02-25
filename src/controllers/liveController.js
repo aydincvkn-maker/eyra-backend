@@ -1495,9 +1495,18 @@ exports.requestPaidCall = async (req, res) => {
 
     // Call room oluştur ve token üret
     const callRoomName = `paid_call_${requestId}`;
-    // ✅ FIX: Both sides need canPublish:true for 1-on-1 video call
-    const callerToken = await generateHostToken(callerId, callRoomName);
-    const hostToken = await generateHostToken(hostId, callRoomName);
+    let callerToken, hostToken;
+    try {
+      // ✅ FIX: Both sides need canPublish:true for 1-on-1 video call
+      callerToken = await generateHostToken(callerId, callRoomName);
+      hostToken = await generateHostToken(hostId, callRoomName);
+    } catch (tokenErr) {
+      // 🛡️ Token üretilemezse coin'leri geri iade et
+      console.error("❌ Token generation failed, rolling back coins:", tokenErr.message);
+      await User.findByIdAndUpdate(callerId, { $inc: { coins: totalPrice } });
+      await User.findByIdAndUpdate(hostId, { $inc: { coins: -hostShare, totalEarnings: -hostShare } });
+      return res.status(500).json({ ok: false, error: "token_generation_failed" });
+    }
 
     // Global state'e kaydet (gerçek uygulamada Redis kullanılmalı)
     if (!global.callRequests) global.callRequests = new Map();

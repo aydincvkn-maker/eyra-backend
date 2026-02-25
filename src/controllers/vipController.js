@@ -109,30 +109,57 @@ exports.purchaseVip = async (req, res) => {
       });
     }
 
-    // Mevcut VIP s├╝resi varsa uzat, yoksa ┼şimdiden ba┼şlat
     const now = new Date();
-    const currentExpiry = user.vipExpiresAt && user.vipExpiresAt > now
-      ? user.vipExpiresAt
-      : now;
-    const newExpiry = new Date(currentExpiry.getTime() + days * 24 * 60 * 60 * 1000);
-
-    // Tier upgrade kontrol├╝
+    const daysMs = days * 24 * 60 * 60 * 1000;
     const tierRank = { none: 0, silver: 1, gold: 2, diamond: 3 };
-    const newTier = tierRank[tier] >= tierRank[user.vipTier || "none"] ? tier : user.vipTier;
+    const purchasedTierRank = tierRank[tier];
 
-    // Atomik coin d├╝┼ş├╝rme + VIP g├╝ncelleme (TOCTOU race condition ├Ânleme)
+    // 🛡️ Atomik coin düşürme + VIP güncelleme (aggregation pipeline ile TOCTOU önleme)
+    // vipExpiresAt ve vipTier DB'deki GÜNCEL değerden hesaplanır, stale read yok
     const updatedUser = await User.findOneAndUpdate(
       { _id: userId, coins: { $gte: price } },
-      {
-        $inc: { coins: -price },
-        $set: {
-          isVip: true,
-          vipTier: newTier,
-          vipExpiresAt: newExpiry,
-          vipPurchasedAt: now,
-        },
-      },
-      { new: true, select: "coins isVip vipTier vipExpiresAt" }
+      [
+        {
+          $set: {
+            coins: { $subtract: ["$coins", price] },
+            isVip: true,
+            vipPurchasedAt: now,
+            // Mevcut süre dolmamışsa uzat, dolmuşsa şimdiden başlat
+            vipExpiresAt: {
+              $add: [
+                { $cond: {
+                  if: { $and: [
+                    { $ne: ["$vipExpiresAt", null] },
+                    { $gt: ["$vipExpiresAt", now] }
+                  ]},
+                  then: "$vipExpiresAt",
+                  else: now
+                }},
+                daysMs
+              ]
+            },
+            // Tier upgrade: sadece eşit veya yüksek tier'e geçiş
+            vipTier: {
+              $cond: {
+                if: { $gte: [
+                  purchasedTierRank,
+                  { $switch: {
+                    branches: [
+                      { case: { $eq: ["$vipTier", "silver"] }, then: 1 },
+                      { case: { $eq: ["$vipTier", "gold"] }, then: 2 },
+                      { case: { $eq: ["$vipTier", "diamond"] }, then: 3 },
+                    ],
+                    default: 0
+                  }}
+                ]},
+                then: tier,
+                else: "$vipTier"
+              }
+            }
+          }
+        }
+      ],
+      { new: true, projection: { coins: 1, isVip: 1, vipTier: 1, vipExpiresAt: 1 } }
     );
     if (!updatedUser) {
       // Coin sonradan d├╝┼şm├╝┼ş olabilir (e┼ş zamanl─▒ i┼şlem)

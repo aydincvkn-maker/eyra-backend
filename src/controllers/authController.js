@@ -508,9 +508,13 @@ exports.appleLogin = async (req, res) => {
       appleId = appleIdToken?.sub || null;
       appleEmail = (appleIdToken?.email ? String(appleIdToken.email).trim().toLowerCase() : null) || appleEmail;
     } catch (verifyErr) {
-      console.error("Apple token do─şrulama hatas─▒:", verifyErr);
-      appleId = authorizationCode || Math.random().toString(36);
-      appleEmail = appleEmail || `${appleId}@privaterelay.appleid.com`;
+      // 🛡️ Token doğrulama başarısızsa GİRİŞ REDDEDİLİR — fallback yok
+      console.error("❌ Apple token doğrulama başarısız:", verifyErr.message || verifyErr);
+      return res.status(401).json({
+        success: false,
+        message: "Apple token doğrulanamadı. Lütfen tekrar deneyin.",
+        error: "Apple token doğrulanamadı. Lütfen tekrar deneyin.",
+      });
     }
 
     if (!appleEmail) {
