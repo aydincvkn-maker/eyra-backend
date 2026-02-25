@@ -2,6 +2,7 @@
 const Message = require("../models/Message");
 const chatService = require("../services/chatService");
 const { getChatRoomId } = require("../utils/chatUtils");
+const { sendError } = require("../utils/response");
 const path = require("path");
 const fs = require("fs");
 
