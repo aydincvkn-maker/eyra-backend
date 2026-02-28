@@ -42,6 +42,9 @@ const presenceSync = require('./jobs/presenceSync');
 const cleanupJobs = require('./jobs/cleanup');
 const salaryCron = require('./jobs/salaryCron');
 
+// ---- Firebase Admin (push notifications only) ----
+const { initFirebaseAdmin } = require('./config/firebaseAdmin');
+
 // ---- Route imports ----
 const authRoutes = require('./routes/authRoutes');
 const authMiddleware = require('./middleware/auth');
@@ -156,6 +159,9 @@ const cleanupTimers = cleanupJobs.startAll(io, closeActiveLiveStreamsForHost);
 
 // ---- Salary cron (Her Pazartesi 00:05 UTC) ----
 salaryCron.start();
+
+// ---- Firebase Admin SDK (push bildirimleri için) ----
+initFirebaseAdmin();
 
 // ---- Socket auth middleware ----
 io.use(createAuthMiddleware());
