@@ -4,6 +4,9 @@ const User = require("../models/User");
 const Transaction = require("../models/Transaction");
 const salaryService = require("../services/salaryService");
 
+// Seviye sabitleri ve fonksiyonu salaryService'ten alınır (tek kaynak)
+const { HOST_SALARY_LEVELS, calculateHostLevel } = salaryService;
+
 // =============================================
 // SABITLER
 // =============================================
@@ -25,76 +28,10 @@ const SAVINGS_MILESTONES = [
 // =============================================
 // HAFTALIK SEVİYE & MAAŞ SİSTEMİ
 // =============================================
-// Fotoğraftaki tabloya göre: Liveroom hediye + Özel görüşme dahil haftalık
-const HOST_SALARY_LEVELS = [
-  {
-    level: 1,
-    minGifts: 0,
-    maxGifts: 34999,
-    minGiftsWithCalls: 0,
-    maxGiftsWithCalls: 34999,
-    salaryPerHour: 0,
-    salaryPerDay: 0,
-    hoursPerDayLabel: "-",
-    salaryPerWeek: 0,
-    salaryType: "none",
-    label: "Seviye 1",
-    description: "Başlangıç seviyesi",
-    icon: "⭐",
-    color: "#9E9E9E",
-  },
-  {
-    level: 2,
-    minGifts: 35000,
-    maxGifts: 69999,
-    minGiftsWithCalls: 35000,
-    maxGiftsWithCalls: 99999,
-    salaryPerHour: 0,
-    salaryPerDay: 5,
-    hoursPerDayLabel: "2 Saat/gün",
-    salaryPerWeek: 35,
-    salaryType: "daily",
-    label: "Seviye 2",
-    description: "$5/Gün • 2 Saat/gün • $35/Hafta",
-    icon: "🌟",
-    color: "#FF9800",
-  },
-  {
-    level: 3,
-    minGifts: 70000,
-    maxGifts: 174999,
-    minGiftsWithCalls: 100000,
-    maxGiftsWithCalls: 209999,
-    salaryPerHour: 5,
-    salaryPerDay: 10,
-    hoursPerDayLabel: "2 Saat/gün",
-    salaryPerWeek: 70,
-    salaryType: "hourly",
-    label: "Seviye 3",
-    description: "$5/Saat • 2 Saat/gün • $70/Hafta",
-    icon: "💫",
-    color: "#4CAF50",
-  },
-  {
-    level: 4,
-    minGifts: 175000,
-    maxGifts: 209999,
-    minGiftsWithCalls: 210000,
-    maxGiftsWithCalls: 299999,
-    salaryPerHour: 6,
-    salaryPerDay: 18,
-    hoursPerDayLabel: "2-3 Saat/gün",
-    salaryPerWeek: 126,
-    salaryType: "hourly",
-    label: "Seviye 4",
-    description: "$6/Saat • 2-3 Saat/gün • $126/Hafta",
-    icon: "🔥",
-    color: "#2196F3",
-  },
-  {
-    level: 5,
-    minGifts: 210000,
-    maxGifts: 499999,
+// HOST_SALARY_LEVELS ve calculateHostLevel artık salaryService'ten import edilir.
+// Aşağıdaki sabitler sadece API response mapping için kullanılır.
+// (Bkz: dosya başındaki import)
+
     minGiftsWithCalls: 300000,
     maxGiftsWithCalls: 499999,
     salaryPerHour: 7,
