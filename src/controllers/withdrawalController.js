@@ -32,58 +32,6 @@ const SAVINGS_MILESTONES = [
 // Aşağıdaki sabitler sadece API response mapping için kullanılır.
 // (Bkz: dosya başındaki import)
 
-    minGiftsWithCalls: 300000,
-    maxGiftsWithCalls: 499999,
-    salaryPerHour: 7,
-    salaryPerDay: 21,
-    hoursPerDayLabel: "2-3 Saat/gün",
-    salaryPerWeek: 147,
-    salaryType: "hourly",
-    label: "Seviye 5",
-    description: "$7/Saat • 2-3 Saat/gün • $147/Hafta",
-    icon: "💎",
-    color: "#9C27B0",
-  },
-  {
-    level: 6,
-    minGifts: 500000,
-    maxGifts: Infinity,
-    minGiftsWithCalls: 500000,
-    maxGiftsWithCalls: Infinity,
-    salaryPerHour: 10,
-    salaryPerDay: 30,
-    hoursPerDayLabel: "2-3 Saat/gün",
-    salaryPerWeek: 210,
-    salaryType: "hourly",
-    label: "Seviye 6",
-    description: "$10/Saat • 2-3 Saat/gün • $210/Hafta",
-    icon: "👑",
-    color: "#FFD700",
-  },
-];
-
-/**
- * Haftalık hediye miktarına göre seviye hesapla
- * İki kriter var: sadece liveroom hediye VE hediye+özel görüşme
- * İkisinden yüksek olanı baz alır
- */
-function calculateHostLevel(weeklyGifts, weeklyGiftsWithCalls) {
-  let bestLevel = HOST_SALARY_LEVELS[0]; // Default Level 1
-  
-  for (const lvl of HOST_SALARY_LEVELS) {
-    // Sadece hediye kriteri
-    const meetsGiftReq = weeklyGifts >= lvl.minGifts;
-    // Hediye + özel görüşme kriteri
-    const meetsCallReq = weeklyGiftsWithCalls >= lvl.minGiftsWithCalls;
-    
-    if (meetsGiftReq || meetsCallReq) {
-      bestLevel = lvl;
-    }
-  }
-  
-  return bestLevel;
-}
-
 // =============================================
 // YAYINCI BİLGİLERİ
 // =============================================
@@ -147,13 +95,11 @@ exports.getBroadcasterInfo = async (req, res) => {
     ]);
 
     // ── Haftalık seviye sistemi ──────────────────────────────
-    // Son 7 günlük hediye geliri (liveroom gifts)
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - 7);
-    weekStart.setHours(0, 0, 0, 0);
+    // Sabit Pazartesi→Pazar hafta aralığı (salaryService ile aynı)
+    const { weekStart, weekEnd: currentWeekEnd } = salaryService.getCurrentWeekRange();
 
     const weeklyGiftAgg = await Transaction.aggregate([
-      { $match: { user: user._id, type: "gift_received", createdAt: { $gte: weekStart } } },
+      { $match: { user: user._id, type: "gift_received", createdAt: { $gte: weekStart, $lte: currentWeekEnd } } },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
     const weeklyGifts = weeklyGiftAgg[0]?.total || 0;
@@ -163,18 +109,18 @@ exports.getBroadcasterInfo = async (req, res) => {
       { $match: { 
         user: user._id, 
         type: { $in: ["gift_received", "call_earning", "paid_call_earning"] },
-        createdAt: { $gte: weekStart } 
+        createdAt: { $gte: weekStart, $lte: currentWeekEnd } 
       }},
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
     const weeklyGiftsWithCalls = weeklyTotalAgg[0]?.total || 0;
 
-    // Günlük kırılım (son 7 gün)
+    // Günlük kırılım (bu haftanın günleri)
     const dailyBreakdown = await Transaction.aggregate([
       { $match: { 
         user: user._id, 
         type: { $in: ["gift_received", "call_earning", "paid_call_earning"] },
-        createdAt: { $gte: weekStart } 
+        createdAt: { $gte: weekStart, $lte: currentWeekEnd } 
       }},
       { $group: { 
         _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
