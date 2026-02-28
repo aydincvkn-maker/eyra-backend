@@ -719,3 +719,106 @@ exports.adminMarkPaid = async (req, res) => {
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
+
+// =============================================
+// MAAŞ SİSTEMİ ENDPOINTLERİ
+// =============================================
+
+// GET /api/withdrawals/salary-history — Yayıncının maaş geçmişi
+exports.getSalaryHistory = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const limit = Math.min(parseInt(req.query.limit) || 12, 52);
+
+    const history = await salaryService.getUserSalaryHistory(userId, limit);
+    const nextPayment = salaryService.getNextPaymentInfo();
+
+    res.json({
+      success: true,
+      salaryHistory: history.map(h => ({
+        id: h._id,
+        weekStart: h.weekStart,
+        weekEnd: h.weekEnd,
+        level: h.level,
+        levelLabel: h.levelLabel,
+        weeklyGifts: h.weeklyGifts,
+        weeklyGiftsWithCalls: h.weeklyGiftsWithCalls,
+        totalStreamingHours: h.totalStreamingHours,
+        streamDaysCount: h.streamDaysCount,
+        calculatedSalaryUSD: h.calculatedSalaryUSD,
+        salaryCoins: h.salaryCoins,
+        status: h.status,
+        paidAt: h.paidAt,
+        note: h.note,
+        createdAt: h.createdAt,
+      })),
+      nextPayment: {
+        currentWeekStart: nextPayment.currentWeekStart,
+        currentWeekEnd: nextPayment.currentWeekEnd,
+        nextPaymentDate: nextPayment.nextPaymentDate,
+        daysUntilPayment: nextPayment.daysUntilPayment,
+      },
+    });
+  } catch (err) {
+    console.error("getSalaryHistory error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+// POST /api/withdrawals/admin/salary/process — Admin: Manuel maaş işleme tetikle
+exports.adminProcessSalaries = async (req, res) => {
+  try {
+    const salaryCron = require("../jobs/salaryCron");
+    const result = await salaryCron.runNow();
+
+    if (result.error) {
+      return res.status(400).json({ success: false, message: result.message });
+    }
+
+    res.json({
+      success: true,
+      message: "Haftalık maaş işleme tamamlandı",
+      results: result.results,
+    });
+  } catch (err) {
+    console.error("adminProcessSalaries error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+// GET /api/withdrawals/admin/salary/list — Admin: Tüm maaş ödemelerini listele
+exports.adminListSalaries = async (req, res) => {
+  try {
+    const SalaryPayment = require("../models/SalaryPayment");
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const status = req.query.status; // paid, skipped, failed, calculated
+    const weekStart = req.query.weekStart; // ISO date
+
+    const filter = {};
+    if (status) filter.status = status;
+    if (weekStart) filter.weekStart = new Date(weekStart);
+
+    const total = await SalaryPayment.countDocuments(filter);
+    const salaries = await SalaryPayment.find(filter)
+      .populate("user", "name username profileImage")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    res.json({
+      success: true,
+      salaries,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (err) {
+    console.error("adminListSalaries error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};

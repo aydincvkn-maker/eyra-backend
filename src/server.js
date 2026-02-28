@@ -40,6 +40,7 @@ const connectionHandler = require('./socket/connectionHandler');
 // ---- Jobs ----
 const presenceSync = require('./jobs/presenceSync');
 const cleanupJobs = require('./jobs/cleanup');
+const salaryCron = require('./jobs/salaryCron');
 
 // ---- Route imports ----
 const authRoutes = require('./routes/authRoutes');
