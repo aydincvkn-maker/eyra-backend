@@ -1729,6 +1729,26 @@ exports.rejectPaidCall = async (req, res) => {
       }
     }
 
+    // 🔔 Arayanı bilgilendir: cevapsız arama push bildirimi
+    try {
+      const { createNotification } = require('./notificationController');
+      const host = await User.findById(hostId).select('name username').lean();
+      const hostName = host?.name || host?.username || 'Yayıncı';
+      await createNotification({
+        recipientId: request.callerId,
+        type: 'call_missed',
+        title: 'Cevapsız Arama',
+        titleEn: 'Missed Call',
+        body: `${hostName} aramanızı yanıtlayamadı`,
+        bodyEn: `${hostName} couldn't answer your call`,
+        senderId: hostId,
+        relatedId: requestId,
+        relatedType: 'paid_call',
+      });
+    } catch (notifErr) {
+      console.error('❌ Ücretli cevapsız arama bildirimi hatası:', notifErr.message);
+    }
+
     res.json({ ok: true, message: "Talep reddedildi" });
   } catch (err) {
     console.error("rejectPaidCall error:", err);

@@ -10,6 +10,7 @@ const { generateLiveKitToken } = require('../services/liveService');
 const CallHistory = require('../models/CallHistory');
 const User = require('../models/User');
 const { sendError } = require("../utils/response");
+const { createNotification } = require('../controllers/notificationController');
 
 /**
  * POST /api/calls/initiate
@@ -243,6 +244,25 @@ router.post('/reject', auth, async (req, res) => {
             });
           });
         }
+      }
+
+      // 🔔 Arayanı bilgilendir: "X sizi aradı" push bildirimi
+      try {
+        const rejecter = await User.findById(userId).select('name username').lean();
+        const rejecterName = rejecter?.name || rejecter?.username || 'Birisi';
+        await createNotification({
+          recipientId: callerId,
+          type: 'call_missed',
+          title: 'Cevapsız Arama',
+          titleEn: 'Missed Call',
+          body: `${rejecterName} aramanızı yanıtlayamadı`,
+          bodyEn: `${rejecterName} couldn't answer your call`,
+          senderId: userId,
+          relatedId: roomName,
+          relatedType: 'call',
+        });
+      } catch (notifErr) {
+        console.error('❌ Cevapsız arama bildirimi hatası:', notifErr.message);
       }
     }
 
