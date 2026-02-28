@@ -197,6 +197,66 @@ exports.getBroadcasterInfo = async (req, res) => {
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
 
+    // ── Haftalık seviye sistemi ──────────────────────────────
+    // Son 7 günlük hediye geliri (liveroom gifts)
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 7);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const weeklyGiftAgg = await Transaction.aggregate([
+      { $match: { user: user._id, type: "gift_received", createdAt: { $gte: weekStart } } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+    const weeklyGifts = weeklyGiftAgg[0]?.total || 0;
+
+    // Haftalık hediye + özel görüşme geliri (gift_received + call earnings)
+    const weeklyTotalAgg = await Transaction.aggregate([
+      { $match: { 
+        user: user._id, 
+        type: { $in: ["gift_received", "call_earning", "paid_call_earning"] },
+        createdAt: { $gte: weekStart } 
+      }},
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+    const weeklyGiftsWithCalls = weeklyTotalAgg[0]?.total || 0;
+
+    // Günlük kırılım (son 7 gün)
+    const dailyBreakdown = await Transaction.aggregate([
+      { $match: { 
+        user: user._id, 
+        type: { $in: ["gift_received", "call_earning", "paid_call_earning"] },
+        createdAt: { $gte: weekStart } 
+      }},
+      { $group: { 
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+        gifts: { 
+          $sum: { $cond: [{ $eq: ["$type", "gift_received"] }, "$amount", 0] } 
+        },
+        calls: { 
+          $sum: { $cond: [{ $ne: ["$type", "gift_received"] }, "$amount", 0] } 
+        },
+        total: { $sum: "$amount" }
+      }},
+      { $sort: { _id: 1 } },
+    ]);
+
+    // Mevcut seviye hesapla
+    const currentSalaryLevel = calculateHostLevel(weeklyGifts, weeklyGiftsWithCalls);
+    
+    // Sonraki seviye
+    const nextSalaryLevelIdx = HOST_SALARY_LEVELS.findIndex(l => l.level === currentSalaryLevel.level) + 1;
+    const nextSalaryLevel = nextSalaryLevelIdx < HOST_SALARY_LEVELS.length 
+      ? HOST_SALARY_LEVELS[nextSalaryLevelIdx] 
+      : null;
+
+    // Sonraki seviyeye kalan
+    const giftsToNextLevel = nextSalaryLevel 
+      ? Math.max(0, nextSalaryLevel.minGifts - weeklyGifts)
+      : 0;
+    const giftsWithCallsToNextLevel = nextSalaryLevel 
+      ? Math.max(0, nextSalaryLevel.minGiftsWithCalls - weeklyGiftsWithCalls)
+      : 0;
+
     res.json({
       success: true,
       broadcaster: {
