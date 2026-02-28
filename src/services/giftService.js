@@ -78,7 +78,7 @@ exports.sendGift = async ({ senderId, recipientId, giftId, liveId, roomId }) => 
   
   // 4. Atomik coin transferi — sender'dan düş, recipient'e ekle
   //    $inc + filter ile TOCTOU race condition önlenir
-  const recipientShare = Math.floor(gift.valueCoins * 0.7);
+  const recipientShare = Math.floor(gift.valueCoins * 0.45);
 
   // Sender: atomik coin düşürme (coins >= valueCoins kontrolü filter'da)
   const updatedSender = await User.findOneAndUpdate(
@@ -186,7 +186,7 @@ exports.postGiftHooks = async ({ senderId, recipientId, giftId, giftValue, sende
     });
 
     // Transaction kaydet - recipient
-    const recipientShare = Math.floor(giftValue * 0.7);
+    const recipientShare = Math.floor(giftValue * 0.45);
     await Transaction.create({
       user: recipientId,
       type: "gift_received",

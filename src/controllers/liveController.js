@@ -1484,8 +1484,8 @@ exports.requestPaidCall = async (req, res) => {
       });
     }
 
-    // Host'a coin ekle (%70) — zaten atomik
-    const hostShare = Math.floor(totalPrice * 0.7);
+    // Host'a coin ekle (%45) — zaten atomik
+    const hostShare = Math.floor(totalPrice * 0.45);
     await User.findByIdAndUpdate(hostId, {
       $inc: { coins: hostShare, totalEarnings: hostShare }
     });
