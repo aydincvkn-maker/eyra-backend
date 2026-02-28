@@ -244,9 +244,13 @@ function calculateSalary(levelData, performance) {
 
   if (levelData.salaryType === "daily") {
     // Seviye 2: Yayın yapılan gün × günlük ücret
-    const eligibleDays = Math.min(performance.streamDaysCount, 7);
-    salaryUSD = eligibleDays * levelData.salaryPerDay;
-    method = `${eligibleDays} gün × $${levelData.salaryPerDay}/gün`;
+    // Minimum 30 dakika yayın yapılmış günler sayılır (kötüye kullanım önlemi)
+    const MIN_STREAM_MINUTES_PER_DAY = 30;
+    const eligibleDays = performance.dailyStreaming.filter(
+      (d) => d.minutes >= MIN_STREAM_MINUTES_PER_DAY
+    ).length;
+    salaryUSD = Math.min(eligibleDays, 7) * levelData.salaryPerDay;
+    method = `${eligibleDays} gün × $${levelData.salaryPerDay}/gün (min ${MIN_STREAM_MINUTES_PER_DAY}dk/gün)`;
   } else if (levelData.salaryType === "hourly") {
     // Seviye 3-6: Her gün için min(gerçek saat, maxHoursPerDay) × saatlik ücret
     let totalEligibleHours = 0;
