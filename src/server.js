@@ -154,6 +154,9 @@ const { onPresenceChanged, closeActiveLiveStreamsForHost } = presenceSync.setup(
 // ---- Cleanup jobs ----
 const cleanupTimers = cleanupJobs.startAll(io, closeActiveLiveStreamsForHost);
 
+// ---- Salary cron (Her Pazartesi 00:05 UTC) ----
+salaryCron.start();
+
 // ---- Socket auth middleware ----
 io.use(createAuthMiddleware());
 
@@ -365,6 +368,9 @@ const gracefulShutdown = async (signal) => {
     if (cleanupTimers.staleCleanupTimer) clearInterval(cleanupTimers.staleCleanupTimer);
     if (cleanupTimers.staleLiveCleanupTimer) clearInterval(cleanupTimers.staleLiveCleanupTimer);
     if (cleanupTimers.vipExpiryTimer) clearInterval(cleanupTimers.vipExpiryTimer);
+
+    // 5b. Stop salary cron
+    salaryCron.stop();
 
     // 6. Remove event listeners
     presenceService.off('changed', onPresenceChanged);

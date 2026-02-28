@@ -269,6 +269,20 @@ exports.getBroadcasterInfo = async (req, res) => {
       ? Math.max(0, nextSalaryLevel.minGiftsWithCalls - weeklyGiftsWithCalls)
       : 0;
 
+    // ── Maaş geçmişi & sonraki ödeme ─────────────────────────
+    const salaryHistory = await salaryService.getUserSalaryHistory(userId, 4);
+    const nextPayment = salaryService.getNextPaymentInfo();
+
+    // ── Haftalık yayın süresi ────────────────────────────────
+    const LiveStream = require("../models/LiveStream");
+    const weeklyStreamAgg = await LiveStream.aggregate([
+      { $match: { host: user._id, status: "ended", startedAt: { $gte: weekStart } } },
+      { $group: { _id: null, totalDuration: { $sum: "$duration" }, count: { $sum: 1 } } },
+    ]);
+    const weeklyStreamingMinutes = Math.floor((weeklyStreamAgg[0]?.totalDuration || 0) / 60);
+    const weeklyStreamingHours = Math.round((weeklyStreamingMinutes / 60) * 100) / 100;
+    const weeklyStreamCount = weeklyStreamAgg[0]?.count || 0;
+
     res.json({
       success: true,
       broadcaster: {
