@@ -23,6 +23,7 @@ const transactionSchema = new mongoose.Schema(
         "refund",           // İade
         "achievement_reward", // Başarım ödülü
         "level_up_bonus",   // Seviye atlama bonusu
+        "salary_payment",   // Haftalık maaş ödemesi
       ],
       required: true,
     },
