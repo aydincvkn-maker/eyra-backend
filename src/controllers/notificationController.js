@@ -1,13 +1,42 @@
 // src/controllers/notificationController.js
 const Notification = require("../models/Notification");
 const User = require("../models/User");
+const { sendPushNotification } = require("../config/firebaseAdmin");
+
+// =============================================
+// BİLDİRİM TİPİ → AYAR EŞLEME
+// =============================================
+// Her bildirim tipinin hangi kullanıcı ayarına bağlı olduğu
+const NOTIFICATION_TYPE_TO_SETTING = {
+  message: "messageNotifications",
+  chat_message: "messageNotifications",
+  call_missed: "callNotifications",
+  call_incoming: "callNotifications",
+  profile_visit: "visitorNotifications",
+  follow: "followNotifications",
+  gift_received: "giftNotifications",
+  // Bu tipler her zaman gönderilir (ayarla filtrelenmez)
+  system: null,
+  achievement: null,
+  mission_completed: null,
+  level_up: null,
+  coins_received: null,
+  vip_expiring: null,
+  report_resolved: null,
+  salary_payment: null,
+};
 
 // =============================================
 // NOTIFICATION SERVICE HELPER
 // =============================================
 
 /**
- * Bildirim oluştur (in-app polling tabanlı — FCM/push kullanılmıyor)
+ * Bildirim oluştur + push gönder
+ *
+ * Akış:
+ *  1. DB'ye in-app bildirim kaydı oluştur
+ *  2. Kullanıcının ilgili bildirim ayarını kontrol et
+ *  3. FCM token varsa ve ayar açıksa → push gönder
  */
 exports.createNotification = async ({
   recipientId,
@@ -24,6 +53,7 @@ exports.createNotification = async ({
   imageUrl,
 }) => {
   try {
+    // 1) DB'ye in-app bildirim kaydet
     const notification = await Notification.create({
       recipient: recipientId,
       type,
@@ -39,10 +69,51 @@ exports.createNotification = async ({
       imageUrl: imageUrl || null,
     });
 
+    // 2) Push bildirim gönder (arka planda, hata fırlatmaz)
+    try {
+      const recipient = await User.findById(recipientId)
+        .select("fcmToken settings")
+        .lean();
+
+      if (recipient && recipient.fcmToken) {
+        // Master push switch
+        const pushEnabled = recipient.settings?.pushNotifications !== false;
+        if (!pushEnabled) return notification;
+
+        // Tip bazlı ayar kontrolü
+        const settingKey = NOTIFICATION_TYPE_TO_SETTING[type];
+        if (settingKey && recipient.settings?.[settingKey] === false) {
+          // Kullanıcı bu tip bildirimi kapatmış
+          return notification;
+        }
+
+        const pushed = await sendPushNotification(
+          recipient.fcmToken,
+          title,
+          body,
+          {
+            type: type || "system",
+            notificationId: notification._id.toString(),
+            relatedId: relatedId || "",
+            relatedType: relatedType || "",
+          }
+        );
+
+        if (pushed) {
+          await Notification.findByIdAndUpdate(notification._id, {
+            $set: { isPushed: true, pushedAt: new Date() },
+          });
+        }
+      }
+    } catch (pushErr) {
+      // Push hatası in-app bildirimi engellemez
+      console.error("Push gönderme hatası:", pushErr.message);
+    }
+
     return notification;
   } catch (err) {
     console.error("createNotification error:", err);
-    throw err; // Hatayı yukarı fırlat, sessizce yutma
+    throw err;
   }
 };
 

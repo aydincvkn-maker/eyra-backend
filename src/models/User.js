@@ -79,6 +79,11 @@ const userSchema = new mongoose.Schema(
     // AYARLAR
     settings: {
       pushNotifications: { type: Boolean, default: true },
+      messageNotifications: { type: Boolean, default: true },
+      callNotifications: { type: Boolean, default: true },
+      visitorNotifications: { type: Boolean, default: true },
+      followNotifications: { type: Boolean, default: true },
+      giftNotifications: { type: Boolean, default: true },
       emailNotifications: { type: Boolean, default: false },
       smsAlerts: { type: Boolean, default: false },
       soundEffects: { type: Boolean, default: true },
