@@ -22,6 +22,120 @@ const SAVINGS_MILESTONES = [
 ];
 
 // =============================================
+// HAFTALIK SEVİYE & MAAŞ SİSTEMİ
+// =============================================
+// Fotoğraftaki tabloya göre: Liveroom hediye + Özel görüşme dahil haftalık
+const HOST_SALARY_LEVELS = [
+  {
+    level: 1,
+    minGifts: 0,
+    maxGifts: 34999,
+    minGiftsWithCalls: 0,
+    maxGiftsWithCalls: 34999,
+    salaryPerHour: 0,
+    hoursPerDay: 0,
+    salaryPerWeek: 0,
+    salaryType: "none",
+    label: "Seviye 1",
+    icon: "⭐",
+    color: "#9E9E9E",
+  },
+  {
+    level: 2,
+    minGifts: 35000,
+    maxGifts: 69999,
+    minGiftsWithCalls: 35000,
+    maxGiftsWithCalls: 99999,
+    salaryPerHour: 0,
+    salaryPerDay: 5,
+    hoursPerDay: 2,
+    salaryPerWeek: 35,
+    salaryType: "daily",
+    label: "Seviye 2",
+    icon: "🌟",
+    color: "#FF9800",
+  },
+  {
+    level: 3,
+    minGifts: 70000,
+    maxGifts: 174999,
+    minGiftsWithCalls: 100000,
+    maxGiftsWithCalls: 209999,
+    salaryPerHour: 5,
+    hoursPerDay: 2,
+    salaryPerWeek: 70,
+    salaryType: "hourly",
+    label: "Seviye 3",
+    icon: "💫",
+    color: "#4CAF50",
+  },
+  {
+    level: 4,
+    minGifts: 175000,
+    maxGifts: 209999,
+    minGiftsWithCalls: 210000,
+    maxGiftsWithCalls: 299999,
+    salaryPerHour: 6,
+    hoursPerDay: 2.5,
+    salaryPerWeek: 126,
+    salaryType: "hourly",
+    label: "Seviye 4",
+    icon: "🔥",
+    color: "#2196F3",
+  },
+  {
+    level: 5,
+    minGifts: 210000,
+    maxGifts: 499999,
+    minGiftsWithCalls: 300000,
+    maxGiftsWithCalls: 499999,
+    salaryPerHour: 7,
+    hoursPerDay: 2.5,
+    salaryPerWeek: 147,
+    salaryType: "hourly",
+    label: "Seviye 5",
+    icon: "💎",
+    color: "#9C27B0",
+  },
+  {
+    level: 6,
+    minGifts: 500000,
+    maxGifts: Infinity,
+    minGiftsWithCalls: 500000,
+    maxGiftsWithCalls: Infinity,
+    salaryPerHour: 10,
+    hoursPerDay: 2.5,
+    salaryPerWeek: 210,
+    salaryType: "hourly",
+    label: "Seviye 6",
+    icon: "👑",
+    color: "#FFD700",
+  },
+];
+
+/**
+ * Haftalık hediye miktarına göre seviye hesapla
+ * İki kriter var: sadece liveroom hediye VE hediye+özel görüşme
+ * İkisinden yüksek olanı baz alır
+ */
+function calculateHostLevel(weeklyGifts, weeklyGiftsWithCalls) {
+  let bestLevel = HOST_SALARY_LEVELS[0]; // Default Level 1
+  
+  for (const lvl of HOST_SALARY_LEVELS) {
+    // Sadece hediye kriteri
+    const meetsGiftReq = weeklyGifts >= lvl.minGifts;
+    // Hediye + özel görüşme kriteri
+    const meetsCallReq = weeklyGiftsWithCalls >= lvl.minGiftsWithCalls;
+    
+    if (meetsGiftReq || meetsCallReq) {
+      bestLevel = lvl;
+    }
+  }
+  
+  return bestLevel;
+}
+
+// =============================================
 // YAYINCI BİLGİLERİ
 // =============================================
 
