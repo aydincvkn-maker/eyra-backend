@@ -14,7 +14,7 @@ const systemSettingsSchema = new mongoose.Schema(
     
     // Coin ekonomisi
     defaultCoins: { type: Number, default: 1000 },
-    giftCommissionPercent: { type: Number, default: 30 }, // Platform komisyonu %
+    giftCommissionPercent: { type: Number, default: 55 }, // Platform komisyonu %
     dailyLoginBonus: { type: Number, default: 50 },
     
     // Spin ayarları
