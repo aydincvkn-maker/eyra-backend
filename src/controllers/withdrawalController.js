@@ -159,7 +159,7 @@ exports.getBroadcasterInfo = async (req, res) => {
     // ── Haftalık yayın süresi ────────────────────────────────
     const LiveStream = require("../models/LiveStream");
     const weeklyStreamAgg = await LiveStream.aggregate([
-      { $match: { host: user._id, status: "ended", startedAt: { $gte: weekStart } } },
+      { $match: { host: user._id, status: "ended", startedAt: { $gte: weekStart, $lte: currentWeekEnd } } },
       { $group: { _id: null, totalDuration: { $sum: "$duration" }, count: { $sum: 1 } } },
     ]);
     const weeklyStreamingMinutes = Math.floor((weeklyStreamAgg[0]?.totalDuration || 0) / 60);
