@@ -196,6 +196,10 @@ app.use(
 );
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
+// Global NoSQL injection protection
+const { sanitizeMongoQuery } = require('./middleware/validate');
+app.use(sanitizeMongoQuery);
+
 // Static file serving (uploads)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
