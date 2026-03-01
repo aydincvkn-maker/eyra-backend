@@ -13,17 +13,35 @@ function initFirebaseAdmin() {
   if (initialized) return;
 
   try {
-    // serviceAccountKey.json'ı proje kökünden yükle
-    const keyPath = path.resolve(__dirname, "../../serviceAccountKey.json");
+    let serviceAccount;
 
-    if (!fs.existsSync(keyPath)) {
+    // 1. Try FIREBASE_SERVICE_ACCOUNT env variable first (recommended for production)
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      try {
+        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+        console.log("🔔 Firebase credentials loaded from FIREBASE_SERVICE_ACCOUNT env var");
+      } catch (parseErr) {
+        console.error("❌ FIREBASE_SERVICE_ACCOUNT env var is not valid JSON:", parseErr.message);
+        return;
+      }
+    }
+
+    // 2. Fallback to serviceAccountKey.json file (development only)
+    if (!serviceAccount) {
+      const keyPath = path.resolve(__dirname, "../../serviceAccountKey.json");
+      if (fs.existsSync(keyPath)) {
+        serviceAccount = require(keyPath);
+        console.log("🔔 Firebase credentials loaded from serviceAccountKey.json (dev fallback)");
+      }
+    }
+
+    if (!serviceAccount) {
       console.warn(
-        "⚠️ serviceAccountKey.json bulunamadı — push bildirimleri devre dışı"
+        "⚠️ Firebase credentials not found — push notifications disabled.\n" +
+        "   Set FIREBASE_SERVICE_ACCOUNT env var or provide serviceAccountKey.json"
       );
       return;
     }
-
-    const serviceAccount = require(keyPath);
 
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
