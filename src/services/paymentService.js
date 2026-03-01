@@ -448,6 +448,32 @@ const refundPayment = async ({ orderId }) => {
     throw err;
   }
 
+  // ── Stripe API ile gerçek iade ──
+  const providerName = paymentToRefund.provider || ACTIVE_PAYMENT_PROVIDER;
+  if (providerName === "stripe" && paymentToRefund.providerPaymentId) {
+    try {
+      // Checkout session'dan Payment Intent ID al
+      const paymentIntentId = await stripeProvider.getPaymentIntentFromSession({
+        secretKey: STRIPE_SECRET_KEY,
+        sessionId: paymentToRefund.providerPaymentId,
+      });
+
+      if (paymentIntentId) {
+        const refundResult = await stripeProvider.createRefund({
+          secretKey: STRIPE_SECRET_KEY,
+          paymentIntentId,
+          reason: "requested_by_customer",
+        });
+        console.log(`✅ Stripe refund oluşturuldu: ${refundResult.refundId} (${refundResult.status})`);
+      } else {
+        console.warn("⚠️ Payment Intent bulunamadı, sadece DB refund yapılacak");
+      }
+    } catch (stripeErr) {
+      // Stripe hatası olsa bile DB tarafını yine de işle
+      console.error("❌ Stripe refund hatası:", stripeErr.message);
+    }
+  }
+
   const session = await Payment.startSession();
   try {
     await session.withTransaction(async () => {
