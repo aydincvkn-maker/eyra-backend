@@ -40,6 +40,9 @@ const userSchema = new mongoose.Schema(
     xp: { type: Number, default: 0 },
     totalEarnings: { type: Number, default: 0 },
 
+    // TOKEN SECURITY
+    tokenVersion: { type: Number, default: 0 }, // Incremented on password change/logout to invalidate old tokens
+
     // ÜCRETLI ARAMA AYARLARI
     callPricePerMinute: { type: Number, default: 100 }, // Dakika başı coin
     preferredLanguage: { type: String, default: 'tr' }, // Tercih edilen dil
