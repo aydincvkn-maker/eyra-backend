@@ -5,6 +5,8 @@ const requirePermission = require("../middleware/requirePermission");
 const Report = require("../models/Report");
 const { sendError } = require("../utils/response");
 
+const { reportLimiter } = require("../middleware/rateLimit");
+
 // Tüm raporları getir (admin only) + pagination
 router.get("/", auth, requirePermission("reports:view"), async (req, res) => {
   try {
@@ -112,6 +114,42 @@ router.get("/", auth, requirePermission("reports:view"), async (req, res) => {
   } catch (err) {
     console.error("❌ report list error:", err);
     res.status(500).json({ success: false, error: "report_list_failed" });
+  }
+});
+
+// Rapor oluştur (user endpoint — kullanıcılar şikayet gönderir)
+router.post("/", auth, reportLimiter, async (req, res) => {
+  try {
+    const { targetId, reason, roomId, type } = req.body;
+    const reporterId = req.user.id;
+
+    if (!targetId || !reason) {
+      return sendError(res, 400, "targetId ve reason gerekli");
+    }
+
+    // Aynı kullanıcıyı son 1 saatte tekrar şikayet edemez
+    const recentDuplicate = await Report.findOne({
+      reporter: reporterId,
+      target: targetId,
+      createdAt: { $gte: new Date(Date.now() - 60 * 60 * 1000) },
+    });
+    if (recentDuplicate) {
+      return sendError(res, 429, "Bu kullanıcıyı zaten kısa süre önce şikayet ettiniz");
+    }
+
+    const report = await Report.create({
+      reporter: reporterId,
+      target: targetId,
+      reason: String(reason).slice(0, 500),
+      roomId: roomId || null,
+      type: type || "user",
+      status: "open",
+    });
+
+    res.status(201).json({ success: true, reportId: report._id });
+  } catch (err) {
+    console.error("❌ create report error:", err);
+    res.status(500).json({ success: false, error: "report_create_failed" });
   }
 });
 
