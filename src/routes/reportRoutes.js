@@ -148,6 +148,9 @@ router.post("/", auth, reportLimiter, async (req, res) => {
     });
 
     res.status(201).json({ success: true, reportId: report._id });
+
+    // Notify admin sockets
+    adminSocket.emit("report:created", { reportId: report._id, targetId, reason: report.reason, type: report.type });
   } catch (err) {
     console.error("❌ create report error:", err);
     res.status(500).json({ success: false, error: "report_create_failed" });
