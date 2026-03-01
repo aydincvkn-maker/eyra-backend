@@ -179,6 +179,18 @@ if (process.env.TRUST_PROXY === 'true') {
 
 app.disable('x-powered-by');
 
+// HTTP request logging
+const morgan = require('morgan');
+if (NODE_ENV === 'production') {
+  app.use(morgan('combined', {
+    skip: (req) => req.url === '/health' || req.url === '/api/health',
+  }));
+} else {
+  app.use(morgan('dev', {
+    skip: (req) => req.url === '/health' || req.url === '/api/health',
+  }));
+}
+
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
