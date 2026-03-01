@@ -118,8 +118,68 @@ const verifyWebhookSignature = ({ payload, signatureHeader, webhookSecret, toler
   });
 };
 
+/**
+ * Stripe Refund oluştur
+ * @param {object} opts
+ * @param {string} opts.secretKey
+ * @param {string} opts.paymentIntentId - Stripe PaymentIntent ID (pi_xxx)
+ * @param {number} [opts.amountMinor] - Kısmi iade için (minor units). Belirtilmezse tam iade.
+ * @param {string} [opts.reason] - requested_by_customer | duplicate | fraudulent
+ * @returns {{ refundId: string, status: string }}
+ */
+const createRefund = async ({ secretKey, paymentIntentId, amountMinor, reason }) => {
+  const key = assertSecretKey(secretKey);
+  const piId = String(paymentIntentId || "").trim();
+
+  if (!piId) {
+    const err = new Error("paymentIntentId zorunlu");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const form = new URLSearchParams();
+  form.append("payment_intent", piId);
+
+  if (amountMinor !== undefined && amountMinor !== null) {
+    form.append("amount", String(Math.round(amountMinor)));
+  }
+
+  if (reason) {
+    form.append("reason", String(reason));
+  }
+
+  const response = await axios.post(`${STRIPE_API_BASE}/refunds`, form.toString(), {
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    timeout: 15000,
+  });
+
+  return {
+    refundId: response.data.id,
+    status: response.data.status, // succeeded | pending | failed
+    amount: response.data.amount,
+    currency: response.data.currency,
+  };
+};
+
+/**
+ * Checkout session'dan Payment Intent ID'yi al
+ * @param {object} opts
+ * @param {string} opts.secretKey
+ * @param {string} opts.sessionId
+ * @returns {string|null} paymentIntentId
+ */
+const getPaymentIntentFromSession = async ({ secretKey, sessionId }) => {
+  const session = await retrieveCheckoutSession({ secretKey, sessionId });
+  return session?.payment_intent || null;
+};
+
 module.exports = {
   createCheckout,
   retrieveCheckoutSession,
   verifyWebhookSignature,
+  createRefund,
+  getPaymentIntentFromSession,
 };
