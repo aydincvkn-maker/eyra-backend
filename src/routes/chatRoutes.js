@@ -15,7 +15,7 @@ const upload = multer({
     const allowedTypes = [
       "image/jpeg", "image/png", "image/gif", "image/webp",
       "video/mp4", "video/quicktime",
-      "audio/mpeg", "audio/mp4", "audio/ogg", "audio/wav", "audio/aac",
+      "audio/mpeg", "audio/mp4", "audio/ogg", "audio/wav", "audio/aac", "audio/x-m4a", "audio/m4a",
       "application/pdf",
     ];
     if (allowedTypes.includes(file.mimetype)) {
