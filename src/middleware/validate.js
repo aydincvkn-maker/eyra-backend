@@ -135,7 +135,7 @@ const validateUpdateProfile = [
 const validateSendGift = [
   body('giftId')
     .isMongoId().withMessage('Valid gift ID required'),
-  body('receiverId')
+  body('recipientId')
     .isMongoId().withMessage('Valid receiver ID required'),
   body('streamId')
     .optional()

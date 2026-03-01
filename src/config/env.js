@@ -59,7 +59,15 @@ module.exports = {
   LIVEKIT_API_KEY: required("LIVEKIT_API_KEY", ""),
   LIVEKIT_API_SECRET: required("LIVEKIT_API_SECRET", ""),
 
-  PAYMENT_PROVIDER: required("PAYMENT_PROVIDER", "mock"),
+  PAYMENT_PROVIDER: (() => {
+    const val = process.env.PAYMENT_PROVIDER;
+    if (val && val.trim()) return val.trim();
+    if (NODE_ENV === "production") {
+      throw new Error("[ENV] PAYMENT_PROVIDER production'da tanımlı olmalı! 'mock' kullanılamaz.");
+    }
+    console.warn('[ENV] PAYMENT_PROVIDER tanımlı değil, development fallback: mock');
+    return "mock";
+  })(),
   PAYMENT_WEBHOOK_SECRET: required("PAYMENT_WEBHOOK_SECRET", "dev_payment_webhook_secret"),
   PAYMENT_SUCCESS_URL: required("PAYMENT_SUCCESS_URL", "eyra://payment/success"),
   PAYMENT_CANCEL_URL: required("PAYMENT_CANCEL_URL", "eyra://payment/cancel"),
