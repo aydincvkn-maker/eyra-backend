@@ -257,7 +257,7 @@ const IAP_COIN_MAP = {
 };
 
 // 🔒 RevenueCat REST API ile transaction doğrulama
-const REVENUECAT_API_KEY = process.env.REVENUECAT_API_KEY || "";
+const { REVENUECAT_API_KEY, REVENUECAT_API_BASE_URL, NODE_ENV } = require("../config/env");
 
 /**
  * RevenueCat subscriber bilgisinden transaction'ın gerçek olup olmadığını doğrular.
@@ -269,7 +269,6 @@ const REVENUECAT_API_KEY = process.env.REVENUECAT_API_KEY || "";
 async function verifyIapWithRevenueCat(userId, transactionId, productId) {
   if (!REVENUECAT_API_KEY) {
     // API key yoksa doğrulama yapılamaz — production'da zorunlu olmalı
-    const { NODE_ENV } = require("../config/env");
     if (NODE_ENV === "production") {
       console.error("❌ REVENUECAT_API_KEY tanımlı değil — IAP doğrulama imkansız");
       return { valid: false, reason: "Server configuration error" };
@@ -281,7 +280,7 @@ async function verifyIapWithRevenueCat(userId, transactionId, productId) {
   try {
     const axios = require("axios");
     const response = await axios.get(
-      `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(userId)}`,
+      `${REVENUECAT_API_BASE_URL}/subscribers/${encodeURIComponent(userId)}`,
       {
         headers: {
           Authorization: `Bearer ${REVENUECAT_API_KEY}`,

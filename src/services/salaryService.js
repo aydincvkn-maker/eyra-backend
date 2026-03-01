@@ -18,11 +18,7 @@ const User = require("../models/User");
 const Transaction = require("../models/Transaction");
 const LiveStream = require("../models/LiveStream");
 const SalaryPayment = require("../models/SalaryPayment");
-
-// =============================================
-// SABITLER (withdrawalController ile aynı)
-// =============================================
-const COIN_TO_USD_RATE = 0.01; // 1 coin = $0.01
+const { COIN_TO_USD_RATE } = require("../config/env");
 
 const HOST_SALARY_LEVELS = [
   {

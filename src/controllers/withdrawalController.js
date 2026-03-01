@@ -3,16 +3,18 @@ const Withdrawal = require("../models/Withdrawal");
 const User = require("../models/User");
 const Transaction = require("../models/Transaction");
 const salaryService = require("../services/salaryService");
+const {
+  COIN_TO_USD_RATE,
+  MIN_WITHDRAWAL_COINS,
+  MAX_WITHDRAWAL_COINS,
+} = require("../config/env");
 
 // Seviye sabitleri ve fonksiyonu salaryService'ten alınır (tek kaynak)
 const { HOST_SALARY_LEVELS, calculateHostLevel } = salaryService;
 
 // =============================================
-// SABITLER
+// SABİTLER
 // =============================================
-const COIN_TO_USD_RATE = 0.01;      // 1 coin = 0.01 USD (100 coin = 1$)
-const MIN_WITHDRAWAL_COINS = 5000;  // Minimum çekim: 5000 coin (50$)
-const MAX_WITHDRAWAL_COINS = 500000; // Maksimum çekim: 500.000 coin (5000$)
 const PLATFORM_FEE_PERCENT = 0;     // Çekim komisyonu %0 (isteğe bağlı)
 
 // Birikim ödülleri (milestone bonusları)
