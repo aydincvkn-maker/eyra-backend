@@ -12,6 +12,86 @@ const User = require('../models/User');
 const { sendError } = require("../utils/response");
 const { createNotification } = require('../controllers/notificationController');
 
+// Cevaplanmayan aramalar için timeout (60 saniye)
+const CALL_ANSWER_TIMEOUT_MS = 60000;
+const callTimeouts = new Map();
+
+/**
+ * Belirli bir arama için timeout'u temizle
+ */
+function clearCallTimeout(roomName) {
+  const timer = callTimeouts.get(roomName);
+  if (timer) {
+    clearTimeout(timer);
+    callTimeouts.delete(roomName);
+  }
+}
+
+/**
+ * Cevaplanmayan arama timeout handler
+ * Hem arayan hem aranan kullanıcının busy durumunu temizler
+ */
+async function handleCallTimeout(roomName) {
+  callTimeouts.delete(roomName);
+  const callInfo = global.activeCalls?.get(roomName);
+  if (!callInfo) return;
+
+  const { callerId, targetUserId } = callInfo;
+  console.log(`⏰ Call timeout (${CALL_ANSWER_TIMEOUT_MS / 1000}s): ${roomName}`);
+
+  try {
+    // Her iki kullanıcının busy durumunu temizle
+    await Promise.all([
+      presenceService.setBusy(callerId, false),
+      presenceService.setBusy(targetUserId, false),
+    ]);
+
+    // CallHistory'yi missed olarak güncelle
+    await CallHistory.findOneAndUpdate(
+      { roomName },
+      { $set: { status: 'missed', endedAt: new Date() } }
+    ).catch(() => {});
+
+    // Active call'dan kaldır
+    global.activeCalls?.delete(roomName);
+
+    // Socket ile her iki tarafa bildir
+    if (global.io && global.userSockets) {
+      [callerId, targetUserId].forEach((uid) => {
+        const sockets = global.userSockets.get(String(uid));
+        if (sockets && sockets.size > 0) {
+          sockets.forEach((socketId) => {
+            global.io.to(socketId).emit('call:timeout', {
+              roomName,
+              message: 'Arama zaman aşımına uğradı',
+              timestamp: Date.now(),
+            });
+          });
+        }
+      });
+    }
+
+    // Arayana cevapsız arama bildirimi
+    try {
+      const target = await User.findById(targetUserId).select('name username').lean();
+      const targetName = target?.name || target?.username || 'Birisi';
+      await createNotification({
+        recipientId: callerId,
+        type: 'call_missed',
+        title: 'Cevapsız Arama',
+        titleEn: 'Missed Call',
+        body: `${targetName} aramanızı yanıtlayamadı`,
+        bodyEn: `${targetName} couldn't answer your call`,
+        senderId: targetUserId,
+        relatedId: roomName,
+        relatedType: 'call',
+      });
+    } catch (_) {}
+  } catch (err) {
+    console.error('❌ Call timeout handler error:', err);
+  }
+}
+
 /**
  * POST /api/calls/initiate
  * Start a call to another user
@@ -77,6 +157,10 @@ router.post('/initiate', auth, async (req, res) => {
         createdAt: Date.now()
       });
     }
+
+    // Cevaplanmayan arama timeout'u başlat
+    const timer = setTimeout(() => handleCallTimeout(roomName), CALL_ANSWER_TIMEOUT_MS);
+    callTimeouts.set(roomName, timer);
 
     // Save call history record
     try {
