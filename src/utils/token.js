@@ -1,8 +1,8 @@
 // src/utils/token.js
 const jwt = require("jsonwebtoken");
-const { JWT_SECRET } = require("../config/env");
+const { JWT_SECRET, JWT_EXPIRES_IN } = require("../config/env");
 
-function signToken(payload, expiresIn = "7d") {
+function signToken(payload, expiresIn = JWT_EXPIRES_IN) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn });
 }
 

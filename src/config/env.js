@@ -66,4 +66,16 @@ module.exports = {
 
   STRIPE_SECRET_KEY: required("STRIPE_SECRET_KEY", ""),
   STRIPE_WEBHOOK_SECRET: required("STRIPE_WEBHOOK_SECRET", ""),
+
+  // RevenueCat
+  REVENUECAT_API_KEY: required("REVENUECAT_API_KEY", ""),
+  REVENUECAT_API_BASE_URL: required("REVENUECAT_API_BASE_URL", "https://api.revenuecat.com/v1"),
+
+  // Backend URL (CDN, webhook vb. için)
+  BACKEND_URL: required("BACKEND_URL", "http://localhost:5000"),
+
+  // Finansal sabitler
+  COIN_TO_USD_RATE: Number(required("COIN_TO_USD_RATE", "0.01")),
+  MIN_WITHDRAWAL_COINS: Number(required("MIN_WITHDRAWAL_COINS", "5000")),
+  MAX_WITHDRAWAL_COINS: Number(required("MAX_WITHDRAWAL_COINS", "500000")),
 };

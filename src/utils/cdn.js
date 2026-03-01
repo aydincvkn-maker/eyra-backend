@@ -30,7 +30,8 @@ const toCdnUrl = (url, type = 'media') => {
   // External URL'leri olduğu gibi bırak (örn: Google profil resimleri)
   if (url.startsWith('http://') || url.startsWith('https://')) {
     // Kendi backend'imizden mi?
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+    const { BACKEND_URL } = require('../config/env');
+    const backendUrl = BACKEND_URL;
     if (!url.startsWith(backendUrl)) {
       return url; // External URL, CDN'e çevirme
     }
