@@ -131,6 +131,36 @@ const createPaymentIntent = async ({ userId, productCode, method, idempotencyKey
 };
 
 const applyPaidEffects = async (paymentDoc) => {
+  // Transaction desteğini kontrol et (replica set gerekli)
+  let useTransaction = true;
+  let session = null;
+
+  try {
+    session = await Payment.startSession();
+    await session.startTransaction();
+    await session.abortTransaction();
+    await session.endSession();
+    session = null;
+  } catch (txErr) {
+    useTransaction = false;
+    if (session) {
+      try { await session.endSession(); } catch (_) {}
+      session = null;
+    }
+    console.warn('[PaymentService] Transaction kullanılamıyor (replica set yok?), fallback modda çalışılıyor');
+  }
+
+  if (useTransaction) {
+    return applyPaidEffectsWithTransaction(paymentDoc);
+  } else {
+    return applyPaidEffectsWithoutTransaction(paymentDoc);
+  }
+};
+
+/**
+ * Transaction ile güvenli ödeme uygulama (replica set gerekli)
+ */
+const applyPaidEffectsWithTransaction = async (paymentDoc) => {
   const session = await Payment.startSession();
   try {
     await session.withTransaction(async () => {
@@ -214,6 +244,78 @@ const applyPaidEffects = async (paymentDoc) => {
   } finally {
     await session.endSession();
   }
+};
+
+/**
+ * Transaction olmadan ödeme uygulama (standalone MongoDB için fallback)
+ */
+const applyPaidEffectsWithoutTransaction = async (paymentDoc) => {
+  const lockedPayment = await Payment.findById(paymentDoc._id);
+  if (!lockedPayment || lockedPayment.status === "paid") return;
+
+  const user = await User.findById(lockedPayment.user);
+  if (!user) {
+    const err = new Error("Ödeme kullanıcısı bulunamadı");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  if (lockedPayment.productType === "coin_topup") {
+    const coins = Number(lockedPayment.metadata?.coins || 0);
+    if (coins <= 0) {
+      const err = new Error("Coin paketi verisi geçersiz");
+      err.statusCode = 500;
+      throw err;
+    }
+
+    user.coins = Number(user.coins || 0) + coins;
+    await user.save();
+
+    await Transaction.create({
+      user: user._id,
+      type: "purchase",
+      amount: coins,
+      balanceAfter: user.coins,
+      status: "completed",
+      description: `${lockedPayment.metadata?.title || "Coin topup"} satın alındı`,
+      metadata: {
+        orderId: lockedPayment.orderId,
+        provider: lockedPayment.provider,
+        providerPaymentId: lockedPayment.providerPaymentId,
+        paymentAmountMinor: lockedPayment.amountMinor,
+        currency: lockedPayment.currency,
+      },
+    });
+  }
+
+  if (lockedPayment.productType === "vip") {
+    const vipDays = Number(lockedPayment.metadata?.vipDays || 0);
+    const baseDate = user.vipExpiresAt && user.vipExpiresAt > new Date() ? user.vipExpiresAt : new Date();
+
+    user.isVip = true;
+    user.vipTier = user.vipTier === "none" ? "silver" : user.vipTier;
+    user.vipPurchasedAt = new Date();
+    user.vipExpiresAt = new Date(baseDate.getTime() + vipDays * 24 * 60 * 60 * 1000);
+    await user.save();
+
+    await Transaction.create({
+      user: user._id,
+      type: "vip_purchase",
+      amount: 0,
+      status: "completed",
+      description: `${lockedPayment.metadata?.title || "VIP"} satın alındı`,
+      metadata: {
+        orderId: lockedPayment.orderId,
+        vipDays,
+        vipExpiresAt: user.vipExpiresAt,
+        provider: lockedPayment.provider,
+      },
+    });
+  }
+
+  lockedPayment.status = "paid";
+  lockedPayment.paidAt = new Date();
+  await lockedPayment.save();
 };
 
 const processWebhook = async ({ provider, eventId, eventType, providerPaymentId, orderId, status, amountMinor, signature, payload }) => {
