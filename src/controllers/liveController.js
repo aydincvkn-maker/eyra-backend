@@ -11,6 +11,7 @@ const translationService = require("../services/translationService");
 const { optimizeStreamList, getStreamThumbnail, getProfileImageUrl } = require("../utils/cdn");
 const { trackMissionProgress } = require("./missionController");
 const { checkStreamAchievements } = require("./achievementController");
+const adminSocket = require("../socket/adminNamespace");
 
 // ============ CATEGORY MAPPING (Turkish → English) ============
 const CATEGORY_MAP = {

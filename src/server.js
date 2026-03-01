@@ -169,6 +169,10 @@ io.use(createAuthMiddleware());
 // ---- Socket connection handler ----
 connectionHandler.setup(io);
 
+// ---- Admin socket namespace (/admin) ----
+const adminNamespace = require('./socket/adminNamespace');
+adminNamespace.setup(io);
+
 // =========================
 // EXPRESS MIDDLEWARE & ROUTES
 // =========================
