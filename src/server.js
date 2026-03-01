@@ -199,6 +199,9 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // Static file serving (uploads)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Static file serving (public pages: privacy policy, terms, etc.)
+app.use(express.static(path.join(__dirname, '../public')));
+
 // CORS
 const corsOptions = {
   origin: (origin, callback) => {
