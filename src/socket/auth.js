@@ -74,7 +74,7 @@ function createAuthMiddleware() {
         }
 
         socket.data.userId = String(user._id);
-        socket.data.gender = user.gender || 'female';
+        socket.data.gender = user.gender || 'other';
         socket.data.authMode = 'insecure_userId';
         console.log(`✅ Socket auth success (insecure): userId=${user._id}`);
         return next();
@@ -108,7 +108,7 @@ function createAuthMiddleware() {
       }
 
       socket.data.userId = String(user._id);
-      socket.data.gender = user.gender || 'female';
+      socket.data.gender = user.gender || 'other';
       socket.data.authMode = 'jwt';
       console.log(`✅ Socket auth success: userId=${user._id}, gender=${user.gender}`);
       return next();
