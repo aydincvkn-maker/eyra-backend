@@ -112,12 +112,15 @@ async function cleanupStaleLiveStreams(closeActiveLiveStreamsForHost) {
 
       if (!host && shouldClose) {
         await closeActiveLiveStreamsForHost(s.host, 'stale_cleanup_orphan');
+        // Proaktif LiveKit room silme
+        if (s.roomId) liveService.deleteLiveKitRoom(s.roomId).catch(() => {});
         closed++;
         continue;
       }
 
       if (shouldClose && hostOfflineLongEnough) {
         await closeActiveLiveStreamsForHost(host?._id || s.host, 'stale_cleanup');
+        if (s.roomId) liveService.deleteLiveKitRoom(s.roomId).catch(() => {});
         closed++;
       }
     }
