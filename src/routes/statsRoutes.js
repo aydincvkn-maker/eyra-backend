@@ -77,4 +77,111 @@ router.get("/system", auth, requirePermission(["streams:view", "system:settings"
   }
 });
 
+// ── User Growth & Trends ──
+router.get("/users", auth, requirePermission("system:settings"), async (req, res) => {
+  try {
+    const days = Math.min(Math.max(parseInt(req.query.days || "30"), 1), 365);
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const [totalUsers, totalBanned, totalOnline, dailySignups] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ isBanned: true }),
+      User.countDocuments({ isOnline: true }),
+      User.aggregate([
+        { $match: { createdAt: { $gte: since } } },
+        { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+    ]);
+
+    res.json({
+      totalUsers,
+      totalBanned,
+      totalOnline,
+      dailySignups: dailySignups.map(d => ({ date: d._id, count: d.count })),
+    });
+  } catch (err) {
+    console.error("❌ User stats error:", err);
+    res.status(500).json({ success: false, error: "user_stats_failed" });
+  }
+});
+
+// ── Stream Analytics ──
+router.get("/streams", auth, requirePermission("streams:view"), async (req, res) => {
+  try {
+    const days = Math.min(Math.max(parseInt(req.query.days || "7"), 1), 90);
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const [totalStreams, activeNow, dailyStreams, topHosts] = await Promise.all([
+      LiveStream.countDocuments({ createdAt: { $gte: since } }),
+      LiveStream.countDocuments({ isLive: true, status: "live" }),
+      LiveStream.aggregate([
+        { $match: { createdAt: { $gte: since } } },
+        { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, count: { $sum: 1 }, avgViewers: { $avg: "$peakViewerCount" }, totalGifts: { $sum: "$totalGiftsValue" } } },
+        { $sort: { _id: 1 } },
+      ]),
+      LiveStream.aggregate([
+        { $match: { createdAt: { $gte: since } } },
+        { $group: { _id: "$host", streamCount: { $sum: 1 }, totalGifts: { $sum: "$totalGiftsValue" }, totalViewers: { $sum: "$peakViewerCount" } } },
+        { $sort: { totalGifts: -1 } },
+        { $limit: 10 },
+        { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "user" } },
+        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+        { $project: { _id: 1, username: "$user.username", streamCount: 1, totalGifts: 1, totalViewers: 1 } },
+      ]),
+    ]);
+
+    res.json({
+      totalStreams,
+      activeNow,
+      dailyStreams: dailyStreams.map(d => ({ date: d._id, count: d.count, avgViewers: Math.round(d.avgViewers || 0), totalGifts: d.totalGifts })),
+      topHosts,
+    });
+  } catch (err) {
+    console.error("❌ Stream stats error:", err);
+    res.status(500).json({ success: false, error: "stream_stats_failed" });
+  }
+});
+
+// ── Finance Overview ──
+router.get("/finance", auth, requirePermission("finance:view"), async (req, res) => {
+  try {
+    const days = Math.min(Math.max(parseInt(req.query.days || "30"), 1), 365);
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const [dailyRevenue, topEarners] = await Promise.all([
+      Transaction.aggregate([
+        { $match: { createdAt: { $gte: since }, type: { $in: ["gift", "purchase", "call"] } } },
+        { $group: { _id: { date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, type: "$type" }, total: { $sum: "$amount" } } },
+        { $sort: { "_id.date": 1 } },
+      ]),
+      Transaction.aggregate([
+        { $match: { createdAt: { $gte: since }, type: { $in: ["gift", "call"] } } },
+        { $group: { _id: "$to", totalEarned: { $sum: "$amount" }, txCount: { $sum: 1 } } },
+        { $sort: { totalEarned: -1 } },
+        { $limit: 10 },
+        { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "user" } },
+        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+        { $project: { _id: 1, username: "$user.username", totalEarned: 1, txCount: 1 } },
+      ]),
+    ]);
+
+    // Group daily revenue by date
+    const revenueByDate = {};
+    for (const r of dailyRevenue) {
+      const date = r._id.date;
+      if (!revenueByDate[date]) revenueByDate[date] = { date, gift: 0, purchase: 0, call: 0 };
+      revenueByDate[date][r._id.type] = r.total;
+    }
+
+    res.json({
+      dailyRevenue: Object.values(revenueByDate),
+      topEarners,
+    });
+  } catch (err) {
+    console.error("❌ Finance stats error:", err);
+    res.status(500).json({ success: false, error: "finance_stats_failed" });
+  }
+});
+
 module.exports = router;
