@@ -4,6 +4,7 @@ const router = express.Router();
 const chatController = require("../controllers/chatController");
 const auth = require("../middleware/auth");
 const requirePermission = require("../middleware/requirePermission");
+const { chatLimiter } = require("../middleware/rateLimit");
 const multer = require("multer");
 
 // Multer konfigürasyonu - chat medya yükleme
@@ -36,12 +37,12 @@ router.use(sanitizeMongoQuery);
 router.get("/users", auth, chatController.getChatUsers);
 router.get("/conversation/:userId", auth, chatController.getConversation);
 router.delete("/conversation/:userId", auth, chatController.deleteConversation);
-router.post("/send", auth, validateSendMessage, chatController.sendMessage);
+router.post("/send", auth, chatLimiter, validateSendMessage, chatController.sendMessage);
 router.post("/read/:userId", auth, chatController.markAsRead);
 router.get("/unread/:userId", auth, chatController.getUnreadCount);
 
 // Medya yükleme
-router.post("/upload", auth, upload.single("media"), chatController.uploadMedia);
+router.post("/upload", auth, chatLimiter, upload.single("media"), chatController.uploadMedia);
 
 router.delete("/message/:messageId", auth, chatController.deleteMessage);
 router.put("/message/:messageId", auth, chatController.editMessage);
