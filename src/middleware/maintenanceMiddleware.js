@@ -1,4 +1,6 @@
 const SystemSettings = require("../models/SystemSettings");
+const jwt = require("jsonwebtoken");
+const { JWT_SECRET } = require("../config/env");
 
 let cachedSettings = null;
 let lastFetch = 0;
@@ -14,6 +16,21 @@ const getSettings = async () => {
     lastFetch = now;
   } catch (_) {}
   return cachedSettings;
+};
+
+/**
+ * JWT'den admin rolünü kontrol et (auth middleware çalışmadan önce)
+ */
+const isAdminFromToken = (req) => {
+  try {
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!token) return false;
+    const decoded = jwt.verify(token, JWT_SECRET);
+    return decoded && decoded.role === "admin";
+  } catch {
+    return false;
+  }
 };
 
 // Bakım modu middleware
@@ -37,7 +54,8 @@ const maintenanceMiddleware = async (req, res, next) => {
     const settings = await getSettings();
     if (settings?.maintenanceMode) {
       // Admin olarak giriş yapmış kullanıcılar bakım modunda da erişebilir
-      if (req.user && req.user.role === "admin") {
+      // JWT token'dan direkt kontrol et (req.user henüz set edilmemiş olabilir)
+      if (req.user?.role === "admin" || isAdminFromToken(req)) {
         return next();
       }
 
