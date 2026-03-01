@@ -399,6 +399,13 @@ exports.endLive = async (req, res) => {
       console.warn('⚠️ Cache invalidation failed:', e.message);
     }
 
+    // ✅ LiveKit room'u proaktif sil
+    try {
+      await liveService.deleteLiveKitRoom(streamRoomId);
+    } catch (e) {
+      console.warn('⚠️ LiveKit room deletion failed:', e.message);
+    }
+
     // User'ı offline yap
     await User.findByIdAndUpdate(userId, { isLive: false }, { runValidators: false });
 

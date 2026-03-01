@@ -1,6 +1,6 @@
 // src/services/liveService.js
-const { AccessToken } = require('livekit-server-sdk');
-const { LIVEKIT_API_KEY, LIVEKIT_API_SECRET } = require("../config/env");
+const { AccessToken, RoomServiceClient } = require('livekit-server-sdk');
+const { LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL } = require("../config/env");
 const { getRedisClient } = require("../config/redis");
 const LiveStream = require("../models/LiveStream");
 
@@ -247,4 +247,33 @@ exports.generateLiveKitToken = async (roomName, participantName, participantId) 
   });
 
   return await at.toJwt();
+};
+
+// ============ LIVEKIT ROOM MANAGEMENT ============
+
+/**
+ * LiveKit sunucusundaki odayı sil (stream bittiğinde çağrılır)
+ * empty_timeout'a güvenmek yerine proaktif temizlik yapar.
+ */
+exports.deleteLiveKitRoom = async (roomName) => {
+  if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
+    console.warn('⚠️ LiveKit credentials missing, skipping room deletion');
+    return false;
+  }
+  try {
+    // wss:// → https:// for REST API
+    const httpUrl = LIVEKIT_URL.replace('wss://', 'https://').replace('ws://', 'http://');
+    const roomService = new RoomServiceClient(httpUrl, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
+    await roomService.deleteRoom(roomName);
+    console.log(`🧹 LiveKit room ${roomName} deleted`);
+    return true;
+  } catch (err) {
+    // Room may already be gone — not an error
+    if (err.message?.includes('not found') || err.code === 404) {
+      console.log(`ℹ️ LiveKit room ${roomName} already gone`);
+      return true;
+    }
+    console.error(`⚠️ LiveKit room deletion failed for ${roomName}:`, err.message);
+    return false;
+  }
 };
