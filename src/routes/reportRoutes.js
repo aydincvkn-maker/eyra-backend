@@ -4,6 +4,7 @@ const auth = require("../middleware/auth");
 const requirePermission = require("../middleware/requirePermission");
 const Report = require("../models/Report");
 const { sendError } = require("../utils/response");
+const adminSocket = require("../socket/adminNamespace");
 
 const { reportLimiter } = require("../middleware/rateLimit");
 

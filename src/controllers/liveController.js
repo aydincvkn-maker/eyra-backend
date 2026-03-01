@@ -322,6 +322,9 @@ exports.startLive = async (req, res) => {
       await checkStreamAchievements(userId, streamCount);
     } catch (e) { console.warn('⚠️ Mission/achievement tracking failed:', e.message); }
 
+    // Notify admin sockets
+    adminSocket.emit("stream:started", { roomId, hostId: userId, hostUsername: host.username, title: stream.title, category: stream.category });
+
     res.status(201).json({
       ok: true,
       streamId: roomId,
@@ -439,6 +442,9 @@ exports.endLive = async (req, res) => {
       
       console.log(`📺 Stream ${streamRoomId} ended by host. ${sockets.length} sockets removed from room.`);
     }
+
+    // Notify admin sockets
+    adminSocket.emit("stream:ended", { roomId: streamRoomId, hostId: userId, duration: stream.duration, totalGiftsValue: stream.totalGiftsValue, peakViewerCount: stream.peakViewerCount });
 
     res.json({ 
       ok: true, 
