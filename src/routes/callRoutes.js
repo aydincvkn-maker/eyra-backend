@@ -229,6 +229,9 @@ router.post('/end', auth, async (req, res) => {
       return sendError(res, 400, "roomName gerekli");
     }
 
+    // Timeout'u temizle
+    clearCallTimeout(roomName);
+
     // Get call info
     const callInfo = global.activeCalls?.get(roomName);
     
@@ -289,6 +292,9 @@ router.post('/reject', auth, async (req, res) => {
     if (!roomName) {
       return sendError(res, 400, "roomName gerekli");
     }
+
+    // Timeout'u temizle
+    clearCallTimeout(roomName);
 
     // Get call info
     const callInfo = global.activeCalls?.get(roomName);

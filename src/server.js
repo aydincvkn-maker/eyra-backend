@@ -396,10 +396,17 @@ app.use((err, req, res, _next) => {
 connectDB().then(async () => {
   await connectRedis();
 
-  // Reset all users offline on startup
+  // Reset stale users on startup (sadece uzun süredir heartbeat göndermeyen kullanıcıları offline yap)
   try {
+    const staleThreshold = new Date(Date.now() - 5 * 60 * 1000); // 5 dakikadır heartbeat yok
     const result = await User.updateMany(
-      {},
+      {
+        isOnline: true,
+        $or: [
+          { lastHeartbeat: { $lt: staleThreshold } },
+          { lastHeartbeat: { $exists: false } },
+        ],
+      },
       {
         $set: {
           isOnline: false,
@@ -409,7 +416,7 @@ connectDB().then(async () => {
         },
       },
     );
-    console.log('Server startup: ' + result.modifiedCount + ' kullanici offline olarak ayarlandi');
+    console.log('Server startup: ' + result.modifiedCount + ' stale kullanici offline olarak ayarlandi');
   } catch (err) {
     console.error('Server startup reset error:', err);
   }

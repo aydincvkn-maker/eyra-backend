@@ -78,14 +78,17 @@ router.get("/presence", async (req, res) => {
 // ✅ SADECE GOOGLE/APPLE İLE KAYITLI OLMAYAN TEST KULLANICILARI SİL
 router.delete("/delete-fake-users", async (req, res) => {
   try {
+    // Güvenli regex: sadece "test_", "fake_", "demo_" ile BAŞLAYAN kullanıcıları sil
     const result = await User.deleteMany({
       $or: [
-        { email: { $regex: /test/i } },
-        { email: { $regex: /fake/i } },
-        { email: { $regex: /demo/i } },
-        { username: { $regex: /test/i } },
-        { username: { $regex: /fake/i } },
-        { username: { $regex: /demo/i } },
+        { email: { $regex: /^test[_.\-]/i } },
+        { email: { $regex: /^fake[_.\-]/i } },
+        { email: { $regex: /^demo[_.\-]/i } },
+        { username: { $regex: /^test[_.\-]/i } },
+        { username: { $regex: /^fake[_.\-]/i } },
+        { username: { $regex: /^demo[_.\-]/i } },
+        { email: { $regex: /^test\d*@test\.com$/i } },
+        { email: { $regex: /^fake\d*@fake\.com$/i } },
       ],
     });
 
