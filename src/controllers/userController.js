@@ -13,6 +13,7 @@ const presenceService = require("../services/presenceService");
 const { trackMissionProgress } = require("./missionController");
 const { checkFollowerAchievements } = require("./achievementController");
 const { createNotification } = require("./notificationController");
+const adminSocket = require("../socket/adminNamespace");
 
 let _followIndexesSynced = false;
 const ensureFollowIndexes = async (force = false) => {
@@ -391,6 +392,9 @@ exports.toggleBan = async (req, res) => {
       { $set: { isBanned: newBanState, name: user.name || "User" } },
       { new: true }
     ).select("-password");
+
+    // Notify admin sockets
+    adminSocket.emit(newBanState ? "user:banned" : "user:unbanned", { userId, username: updated.username });
 
     res.json({ message: "Ban durumu güncellendi", isBanned: updated.isBanned });
   } catch (err) {
