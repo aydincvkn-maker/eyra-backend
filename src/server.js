@@ -138,7 +138,11 @@ if (process.env.REDIS_HOST) {
 
 // Debug mode
 if (NODE_ENV === 'development') {
-  require('debug')('socket.io:*')();
+  try {
+    require('debug')('socket.io:*')();
+  } catch (_) {
+    console.warn('[DEV] debug paketi yüklü değil, socket.io debug logları devre dışı');
+  }
 }
 
 // ---- Initialize socket modules with io reference ----
