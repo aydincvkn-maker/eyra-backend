@@ -3,12 +3,16 @@ const router = express.Router();
 const authController = require("../controllers/authController");
 const authMiddleware = require("../middleware/auth");
 const { authLimiter } = require("../middleware/rateLimit");
+const { validateLogin, validateRegister, sanitizeMongoQuery } = require("../middleware/validate");
+
+// Apply NoSQL injection protection to all auth routes
+router.use(sanitizeMongoQuery);
 
 // Login
-router.post("/login", authLimiter, authController.login);
+router.post("/login", authLimiter, validateLogin, authController.login);
 
 // Register
-router.post("/register", authLimiter, authController.register);
+router.post("/register", authLimiter, validateRegister, authController.register);
 
 // Google Login (DEPRECATED - token doğrulaması yok, 403 döndürür)
 router.post("/google-login", authLimiter, authController.googleLogin);
