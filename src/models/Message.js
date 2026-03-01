@@ -43,4 +43,7 @@ const messageSchema = new mongoose.Schema(
 messageSchema.index({ roomId: 1, createdAt: -1 });
 messageSchema.index({ from: 1, createdAt: -1 });
 
+// TTL: Auto-delete messages older than 90 days
+messageSchema.index({ createdAt: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });
+
 module.exports = mongoose.model("Message", messageSchema);
