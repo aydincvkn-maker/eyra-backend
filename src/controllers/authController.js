@@ -28,7 +28,7 @@ const resolveGender = (gender) => {
 
 const createToken = (user, expiresIn = JWT_EXPIRES_IN || "30d") =>
   jwt.sign(
-    { id: user._id, email: user.email, username: user.username },
+    { id: user._id, email: user.email, username: user.username, role: user.role || "user" },
     JWT_SECRET,
     { expiresIn }
   );

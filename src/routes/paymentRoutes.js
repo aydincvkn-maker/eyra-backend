@@ -15,8 +15,11 @@ router.get("/me", auth, paymentController.getMyPayments);
 router.get("/admin/stats", auth, requirePermission("finance:view"), paymentController.adminGetStats);
 router.get("/admin", auth, requirePermission("finance:view"), paymentController.adminGetPayments);
 
-router.get("/mock-checkout", paymentController.mockCheckout);
-router.get("/mock-complete", paymentController.mockComplete);
+// Mock routes - only available in non-production environments
+if (process.env.NODE_ENV !== "production") {
+  router.get("/mock-checkout", paymentController.mockCheckout);
+  router.get("/mock-complete", paymentController.mockComplete);
+}
 router.post("/webhook", paymentController.webhook);
 
 router.get("/:orderId", auth, paymentController.getMyPaymentByOrderId);
