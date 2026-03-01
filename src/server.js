@@ -272,15 +272,36 @@ if (NODE_ENV !== 'production' || process.env.DEBUG_ROUTES_ENABLED === 'true') {
 }
 
 // ---- Health check ----
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
   const metrics = presenceService.getMetrics ? presenceService.getMetrics() : null;
+  const mongoose = require('mongoose');
+  const { getRedisClient } = require('./config/redis');
 
-  res.json({
-    status: 'ok',
+  // Real MongoDB check
+  const mongoState = mongoose.connection.readyState;
+  const mongoStatus = mongoState === 1 ? 'connected' : mongoState === 2 ? 'connecting' : 'disconnected';
+
+  // Real Redis check
+  let redisStatus = 'unknown';
+  try {
+    const redis = getRedisClient();
+    if (redis && redis.status === 'ready') {
+      await redis.ping();
+      redisStatus = 'connected';
+    } else {
+      redisStatus = redis ? redis.status : 'not_initialized';
+    }
+  } catch { redisStatus = 'error'; }
+
+  const isHealthy = mongoStatus === 'connected' && redisStatus === 'connected';
+
+  res.status(isHealthy ? 200 : 503).json({
+    status: isHealthy ? 'ok' : 'degraded',
     message: 'EYRA Backend is running',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    mongodb: 'connected',
+    mongodb: mongoStatus,
+    redis: redisStatus,
     port: PORT,
     presence: metrics
       ? {

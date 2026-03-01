@@ -5,6 +5,7 @@ const requirePermission = require("../middleware/requirePermission");
 const LiveStream = require("../models/LiveStream");
 const User = require("../models/User");
 const mongoose = require("mongoose");
+const Transaction = require("../models/Transaction");
 
 router.get("/dashboard", auth, requirePermission("streams:view"), async (req, res) => {
   try {
