@@ -47,10 +47,10 @@ const userSchema = new mongoose.Schema(
     // PROFİL BİLGİLERİ
     profileImage: { type: String, default: "" },
     bio: { type: String, default: "", maxlength: 500 },
-    gender: { type: String, enum: ["male", "female", "other"], default: "female" },
-    age: { type: Number, default: 20 },
-    location: { type: String, default: "Türkiye" },
-    country: { type: String, default: "TR" },
+    gender: { type: String, enum: ["male", "female", "other"], default: "other" },
+    age: { type: Number, default: 18 },
+    location: { type: String, default: "" },
+    country: { type: String, default: "" },
 
     // SOSYAL İSTATİSTİKLER
     followers: { type: Number, default: 0 },

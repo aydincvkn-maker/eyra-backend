@@ -310,6 +310,61 @@ app.get('/health', (req, res) => {
 });
 
 // =========================
+// CENTRALIZED ERROR HANDLER
+// =========================
+
+// 404 handler for unknown routes
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Route not found',
+    path: req.originalUrl,
+  });
+});
+
+// Global error handler middleware
+app.use((err, req, res, _next) => {
+  // Log the error
+  console.error(`❌ [${req.method}] ${req.originalUrl}:`, err.message);
+  if (NODE_ENV !== 'production') {
+    console.error(err.stack);
+  }
+
+  // CORS errors
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({ success: false, error: 'CORS: Origin not allowed' });
+  }
+
+  // Multer file size errors
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ success: false, error: 'File too large' });
+  }
+
+  // Mongoose validation errors
+  if (err.name === 'ValidationError') {
+    const messages = Object.values(err.errors).map(e => e.message);
+    return res.status(400).json({ success: false, error: 'Validation failed', details: messages });
+  }
+
+  // Mongoose cast errors (invalid ObjectId etc.)
+  if (err.name === 'CastError') {
+    return res.status(400).json({ success: false, error: 'Invalid ID format' });
+  }
+
+  // Duplicate key errors
+  if (err.code === 11000) {
+    return res.status(409).json({ success: false, error: 'Duplicate entry' });
+  }
+
+  // Default 500
+  const statusCode = err.statusCode || 500;
+  res.status(statusCode).json({
+    success: false,
+    error: NODE_ENV === 'production' ? 'Internal server error' : err.message,
+  });
+});
+
+// =========================
 // DB CONNECT + LISTEN
 // =========================
 
