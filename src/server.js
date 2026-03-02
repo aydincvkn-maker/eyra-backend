@@ -240,6 +240,10 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
+// Health check (UptimeRobot / Render ping - no auth, no rate limit, no maintenance check)
+app.get('/health', (_req, res) => res.status(200).json({ ok: true, ts: Date.now() }));
+app.get('/api/health', (_req, res) => res.status(200).json({ ok: true, ts: Date.now() }));
+
 // Rate limiter
 app.use('/api', generalLimiter);
 
