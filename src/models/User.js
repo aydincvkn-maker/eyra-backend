@@ -117,9 +117,18 @@ const userSchema = new mongoose.Schema(
       userAgent: { type: String, default: "" },
       version: { type: String, default: "" },
     },
+    // Ödeme yöntemleri
+    preferredWithdrawMethod: { type: String, default: 'bank' }, // bank | papara | paypal | crypto | wise
     iban: { type: String, default: null },
     bankName: { type: String, default: null },
     accountHolder: { type: String, default: null },
+    paparaId: { type: String, default: null },
+    paparaName: { type: String, default: null },
+    paypalEmail: { type: String, default: null },
+    cryptoAddress: { type: String, default: null },
+    cryptoNetwork: { type: String, default: 'TRC20' },
+    wiseEmail: { type: String, default: null },
+    wiseName: { type: String, default: null },
 
     // PUSH BİLDİRİMLER
     fcmToken: { type: String, default: null },
