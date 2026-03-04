@@ -10,10 +10,14 @@ const withdrawalSchema = new mongoose.Schema(
     amountUSD: { type: Number, required: true, min: 0 },         // Dolar karşılığı
     amountTRY: { type: Number, default: 0 },                     // TL karşılığı (opsiyonel)
 
-    // Banka bilgileri
-    bankName: { type: String, required: true },
-    iban: { type: String, required: true },
-    accountHolder: { type: String, required: true },              // Hesap sahibi adı
+    // Banka bilgileri (bank yöntemi için)
+    bankName: { type: String, default: '' },
+    iban: { type: String, default: '' },
+    accountHolder: { type: String, default: '' },
+
+    // Ödeme yöntemi
+    paymentMethod: { type: String, default: 'bank' }, // bank | papara | paypal | crypto | wise
+    paymentDetails: { type: mongoose.Schema.Types.Mixed, default: {} },
 
     // Durum
     status: {
