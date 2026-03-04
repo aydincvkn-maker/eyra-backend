@@ -155,4 +155,7 @@ router.patch("/:userId/coins", auth, requirePermission("users:edit"), userContro
 // POST /api/users/:userId/add-coins - Coin ekle (increment)
 router.post("/:userId/add-coins", auth, requirePermission("users:edit"), userController.addCoins);
 
+// POST /api/users/:userId/remove-coins - Coin çıkar (decrement, 0'ın altına düşmez)
+router.post("/:userId/remove-coins", auth, requirePermission("users:edit"), userController.removeCoins);
+
 module.exports = router;
