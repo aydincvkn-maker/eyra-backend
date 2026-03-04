@@ -43,7 +43,7 @@ exports.getBroadcasterInfo = async (req, res) => {
   try {
     const userId = req.user.id;
     const user = await User.findById(userId).select(
-      "coins totalEarnings gender broadcasterContract iban bankName accountHolder name username profileImage level followers"
+      "coins totalEarnings gender broadcasterContract iban bankName accountHolder preferredWithdrawMethod paparaId paparaName paypalEmail cryptoAddress cryptoNetwork wiseEmail wiseName name username profileImage level followers"
     );
 
     if (!user) {
@@ -276,6 +276,29 @@ exports.getBroadcasterInfo = async (req, res) => {
         },
       },
       recentWithdrawals,
+      paymentInfo: {
+        preferredMethod: user.preferredWithdrawMethod || 'bank',
+        bank: {
+          iban: user.iban || '',
+          bankName: user.bankName || '',
+          accountHolder: user.accountHolder || '',
+        },
+        papara: {
+          paparaId: user.paparaId || '',
+          accountHolder: user.paparaName || '',
+        },
+        paypal: {
+          email: user.paypalEmail || '',
+        },
+        crypto: {
+          address: user.cryptoAddress || '',
+          network: user.cryptoNetwork || 'TRC20',
+        },
+        wise: {
+          email: user.wiseEmail || '',
+          accountHolder: user.wiseName || '',
+        },
+      },
     });
   } catch (err) {
     console.error("getBroadcasterInfo error:", err);
@@ -325,34 +348,59 @@ exports.signContract = async (req, res) => {
 // BANKA BİLGİLERİ
 // =============================================
 
-// PUT /api/withdrawals/bank-info — Banka bilgileri güncelle
+// PUT /api/withdrawals/bank-info — Ödeme bilgileri güncelle (tüm yöntemler)
 exports.updateBankInfo = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { iban, bankName, accountHolder } = req.body;
+    const { method = 'bank', iban, bankName, accountHolder,
+            paparaId, paparaName, paypalEmail,
+            cryptoAddress, cryptoNetwork,
+            wiseEmail, wiseName } = req.body;
 
-    if (!iban || !bankName || !accountHolder) {
-      return res.status(400).json({ success: false, message: "IBAN, banka adı ve hesap sahibi gerekli" });
+    const updateData = { preferredWithdrawMethod: method };
+
+    switch (method) {
+      case 'papara':
+        if (!paparaId || !paparaName)
+          return res.status(400).json({ success: false, message: 'Papara ID ve hesap sahibi gerekli' });
+        updateData.paparaId = paparaId.trim();
+        updateData.paparaName = paparaName.trim();
+        break;
+      case 'paypal':
+        if (!paypalEmail)
+          return res.status(400).json({ success: false, message: 'PayPal e-posta gerekli' });
+        updateData.paypalEmail = paypalEmail.trim().toLowerCase();
+        break;
+      case 'crypto':
+        if (!cryptoAddress)
+          return res.status(400).json({ success: false, message: 'Kripto cüzdan adresi gerekli' });
+        updateData.cryptoAddress = cryptoAddress.trim();
+        updateData.cryptoNetwork = (cryptoNetwork || 'TRC20').toUpperCase();
+        break;
+      case 'wise':
+        if (!wiseEmail || !wiseName)
+          return res.status(400).json({ success: false, message: 'Wise e-posta ve hesap sahibi gerekli' });
+        updateData.wiseEmail = wiseEmail.trim();
+        updateData.wiseName = wiseName.trim();
+        break;
+      default: { // bank
+        if (!iban || !bankName || !accountHolder)
+          return res.status(400).json({ success: false, message: 'IBAN, banka adı ve hesap sahibi gerekli' });
+        const cleanIban = iban.replace(/\s/g, '').toUpperCase();
+        if (cleanIban.length < 15 || cleanIban.length > 34)
+          return res.status(400).json({ success: false, message: 'Geçersiz IBAN formatı' });
+        updateData.iban = cleanIban;
+        updateData.bankName = bankName.trim();
+        updateData.accountHolder = accountHolder.trim();
+        break;
+      }
     }
 
-    // IBAN format validasyonu (basit)
-    const cleanIban = iban.replace(/\s/g, "").toUpperCase();
-    if (cleanIban.length < 15 || cleanIban.length > 34) {
-      return res.status(400).json({ success: false, message: "Geçersiz IBAN formatı" });
-    }
-
-    await User.findByIdAndUpdate(userId, {
-      $set: {
-        iban: cleanIban,
-        bankName: bankName.trim(),
-        accountHolder: accountHolder.trim(),
-      },
-    });
-
-    res.json({ success: true, message: "Banka bilgileri güncellendi" });
+    await User.findByIdAndUpdate(userId, { $set: updateData });
+    res.json({ success: true, message: 'Ödeme bilgileri güncellendi' });
   } catch (err) {
-    console.error("updateBankInfo error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatası" });
+    console.error('updateBankInfo error:', err);
+    res.status(500).json({ success: false, message: 'Sunucu hatası' });
   }
 };
 
@@ -385,9 +433,36 @@ exports.createWithdrawalRequest = async (req, res) => {
       return res.status(403).json({ success: false, message: "Önce yayıncı sözleşmesini imzalamalısınız" });
     }
 
-    // Banka bilgisi kontrolü
-    if (!user.iban || !user.bankName || !user.accountHolder) {
-      return res.status(400).json({ success: false, message: "Önce banka bilgilerinizi kaydedin" });
+    // Ödeme bilgisi kontrolü
+    const method = user.preferredWithdrawMethod || 'bank';
+    let paymentDetails = {};
+    let hasInfo = false;
+
+    switch (method) {
+      case 'papara':
+        hasInfo = !!(user.paparaId && user.paparaName);
+        paymentDetails = { paparaId: user.paparaId, accountHolder: user.paparaName };
+        break;
+      case 'paypal':
+        hasInfo = !!user.paypalEmail;
+        paymentDetails = { email: user.paypalEmail };
+        break;
+      case 'crypto':
+        hasInfo = !!user.cryptoAddress;
+        paymentDetails = { address: user.cryptoAddress, network: user.cryptoNetwork || 'TRC20' };
+        break;
+      case 'wise':
+        hasInfo = !!(user.wiseEmail && user.wiseName);
+        paymentDetails = { email: user.wiseEmail, accountHolder: user.wiseName };
+        break;
+      default: // bank
+        hasInfo = !!(user.iban && user.bankName && user.accountHolder);
+        paymentDetails = { iban: user.iban, bankName: user.bankName, accountHolder: user.accountHolder };
+        break;
+    }
+
+    if (!hasInfo) {
+      return res.status(400).json({ success: false, message: 'Önce ödeme bilgilerinizi kaydedin (Çekim sekmesi → Ödeme Bilgileri)' });
     }
 
     // Minimum/Maksimum kontrolü
@@ -427,9 +502,11 @@ exports.createWithdrawalRequest = async (req, res) => {
       user: user._id,
       amountCoins,
       amountUSD,
-      bankName: user.bankName,
-      iban: user.iban,
-      accountHolder: user.accountHolder,
+      bankName: method === 'bank' ? (user.bankName || '') : '',
+      iban: method === 'bank' ? (user.iban || '') : '',
+      accountHolder: paymentDetails.accountHolder || user.accountHolder || '',
+      paymentMethod: method,
+      paymentDetails,
       balanceBefore: user.coins,
       balanceAfter: user.coins - amountCoins,
     });
