@@ -307,6 +307,63 @@ exports.getPanelAdmins = async (req, res) => {
   }
 };
 
+// DELETE /api/users/:userId/panel-admin - Panel admin hesabını sil (sadece super_admin, patron hariç)
+exports.deletePanelAdminUser = async (req, res) => {
+  try {
+    const requestingUser = await User.findById(req.user.id).select("role isOwner").lean();
+    if (!requestingUser) {
+      return res.status(401).json({ success: false, message: "Yetkilendirme hatası" });
+    }
+
+    // Sadece süper admin kullanabilir; patron bu endpoint'i kullanamaz
+    if (requestingUser.role !== "super_admin") {
+      return res.status(403).json({ success: false, message: "Bu işlem için süper admin yetkisi gerekli" });
+    }
+    if (requestingUser.isOwner === true) {
+      return res.status(403).json({ success: false, message: "Patron bu işlemi yapamaz" });
+    }
+
+    const { userId } = req.params;
+    const target = await User.findById(userId).select("role isOwner username email");
+    if (!target) {
+      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+    }
+
+    // Kendini silemez
+    if (String(target._id) === String(req.user.id)) {
+      return res.status(400).json({ success: false, message: "Kendinizi silemezsiniz" });
+    }
+
+    // Patron silinemez
+    if (target.isOwner === true) {
+      return res.status(403).json({ success: false, message: "Patron hesabı silinemez" });
+    }
+
+    // Sadece admin/moderator silinebilir; super_admin silinemez
+    if (target.role === "super_admin") {
+      return res.status(403).json({ success: false, message: "Süper admin hesabı silinemez" });
+    }
+
+    if (target.role !== "admin" && target.role !== "moderator") {
+      return res.status(400).json({ success: false, message: "Sadece admin/moderatör hesapları silinebilir" });
+    }
+
+    await User.findByIdAndDelete(userId);
+
+    try { await LiveStream.deleteMany({ hostId: userId }); } catch (e) {}
+
+    console.log(`🗑️ SuperAdmin ${req.user.id} panel admini sildi: ${target.username} (${userId})`);
+
+    res.json({
+      success: true,
+      message: `"${target.username}" panel hesabı silindi`,
+    });
+  } catch (err) {
+    console.error("deletePanelAdminUser error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
 // PATCH /api/users/:userId/restrict-admin - Panel admin kısıtla/kısıtı kaldır
 exports.restrictPanelAdmin = async (req, res) => {
   try {

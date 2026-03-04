@@ -143,6 +143,9 @@ router.patch("/:userId/unban", auth, requirePermission("users:ban"), userControl
 // PATCH /api/users/:userId/restrict-admin - Panel admin kısıtla/kısıtı kaldır (süper admin veya patron)
 router.patch("/:userId/restrict-admin", auth, requirePermission("users:ban"), userController.restrictPanelAdmin);
 
+// DELETE /api/users/:userId/panel-admin - Panel admin hesabını sil (sadece süper admin, patron hariç)
+router.delete("/:userId/panel-admin", auth, requirePermission("users:ban"), userController.deletePanelAdminUser);
+
 // DELETE /api/users/:userId - Admin kullanıcı sil
 router.delete("/:userId", auth, requirePermission("users:ban"), userController.adminDeleteUser);
 
