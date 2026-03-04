@@ -315,12 +315,12 @@ exports.deletePanelAdminUser = async (req, res) => {
       return res.status(401).json({ success: false, message: "Yetkilendirme hatası" });
     }
 
-    // Sadece süper admin kullanabilir; patron bu endpoint'i kullanamaz
-    if (requestingUser.role !== "super_admin") {
+    // Sadece süper admin veya patron kullanabilir
+    const isRequesterOwner = requestingUser.isOwner === true;
+    const isRequesterSuperAdmin = requestingUser.role === "super_admin";
+
+    if (!isRequesterSuperAdmin) {
       return res.status(403).json({ success: false, message: "Bu işlem için süper admin yetkisi gerekli" });
-    }
-    if (requestingUser.isOwner === true) {
-      return res.status(403).json({ success: false, message: "Patron bu işlemi yapamaz" });
     }
 
     const { userId } = req.params;
@@ -339,13 +339,13 @@ exports.deletePanelAdminUser = async (req, res) => {
       return res.status(403).json({ success: false, message: "Patron hesabı silinemez" });
     }
 
-    // Sadece admin/moderator silinebilir; super_admin silinemez
-    if (target.role === "super_admin") {
+    // Patron değilse süper admin hesabını silemez
+    if (target.role === "super_admin" && !isRequesterOwner) {
       return res.status(403).json({ success: false, message: "Süper admin hesabı silinemez" });
     }
 
-    if (target.role !== "admin" && target.role !== "moderator") {
-      return res.status(400).json({ success: false, message: "Sadece admin/moderatör hesapları silinebilir" });
+    if (target.role !== "admin" && target.role !== "moderator" && target.role !== "super_admin") {
+      return res.status(400).json({ success: false, message: "Sadece panel hesapları silinebilir" });
     }
 
     await User.findByIdAndDelete(userId);
@@ -610,6 +610,59 @@ exports.updateCoins = async (req, res) => {
   } catch (err) {
     console.error("updateCoins error:", err);
     sendError(res, 500, "Sunucu hatası");
+  }
+};
+
+// ADMIN: Kullanıcıdan coin çıkar (bakiyesi 0'ın altına düşmez)
+exports.removeCoins = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const rawAmount = req.body?.amount;
+    const amount = Number(rawAmount);
+
+    if (!amount || !Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ success: false, message: "Geçerli bir miktar girin" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+    }
+
+    const currentCoins = user.coins || 0;
+    const newCoins = Math.max(0, currentCoins - amount);
+    const actualRemoved = currentCoins - newCoins;
+
+    const updated = await User.findByIdAndUpdate(
+      userId,
+      { $set: { coins: newCoins } },
+      { new: true }
+    ).select("-password -refreshToken");
+
+    console.log(`💸 Admin ${req.user.id} → ${user.username}'dan ${actualRemoved} coin çıkardı (yeni: ${updated.coins})`);
+
+    if (global.io && global.userSockets) {
+      const targetSockets = global.userSockets.get(String(userId));
+      if (targetSockets && targetSockets.size > 0) {
+        targetSockets.forEach(socketId => {
+          global.io.to(socketId).emit('coins:updated', {
+            coins: updated.coins,
+            removed: actualRemoved,
+            message: `${actualRemoved} coin hesabınızdan çıkarıldı.`,
+          });
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `${actualRemoved} coin çıkarıldı`,
+      coins: updated.coins,
+      username: updated.username,
+    });
+  } catch (err) {
+    console.error("removeCoins error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
