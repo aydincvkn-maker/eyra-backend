@@ -69,6 +69,8 @@ const buildUserPayload = (user) => ({
   lastOnlineAt: user.lastOnlineAt,
   role: user.role,
   permissions: user.permissions || [],
+  isOwner: user.isOwner || false,
+  isPanelRestricted: user.isPanelRestricted || false,
 });
 
 // G├╝nl├╝k giri┼ş bonusu kontrol├╝ ve verme

@@ -257,7 +257,7 @@ exports.getPanelAdmins = async (req, res) => {
     const adminUsers = await User.find({
       role: { $in: ["admin", "super_admin", "moderator"] },
     })
-      .select("_id username name email role")
+      .select("_id username name email role isOwner isPanelRestricted")
       .sort({ role: 1, username: 1 })
       .lean();
 
@@ -275,7 +275,10 @@ exports.getPanelAdmins = async (req, res) => {
           _id: user._id,
           username: user.username,
           name: user.name,
+          email: user.email,
           role: user.role,
+          isOwner: user.isOwner || false,
+          isPanelRestricted: user.isPanelRestricted || false,
           isOnline: true,
         };
       }
@@ -289,7 +292,10 @@ exports.getPanelAdmins = async (req, res) => {
         _id: user._id,
         username: user.username,
         name: user.name,
+        email: user.email,
         role: user.role,
+        isOwner: user.isOwner || false,
+        isPanelRestricted: user.isPanelRestricted || false,
         isOnline,
       };
     });
@@ -297,6 +303,70 @@ exports.getPanelAdmins = async (req, res) => {
     res.json({ success: true, admins: formattedAdmins });
   } catch (err) {
     console.error("❌ getPanelAdmins error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+// PATCH /api/users/:userId/restrict-admin - Panel admin kısıtla/kısıtı kaldır
+exports.restrictPanelAdmin = async (req, res) => {
+  try {
+    const requestingUser = await User.findById(req.user.id).select("role isOwner").lean();
+    if (!requestingUser) {
+      return res.status(401).json({ success: false, message: "Yetkilendirme hatası" });
+    }
+
+    const { userId } = req.params;
+    const targetUser = await User.findById(userId).select("role isOwner username isPanelRestricted");
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+    }
+
+    // Kendini kısıtlayamazsın
+    if (String(targetUser._id) === String(req.user.id)) {
+      return res.status(403).json({ success: false, message: "Kendinizi kısıtlayamazsınız" });
+    }
+
+    // Owner (patron) hiçbir zaman kısıtlanamaz
+    if (targetUser.isOwner === true) {
+      return res.status(403).json({ success: false, message: "Patron kısıtlanamaz" });
+    }
+
+    const isRequesterOwner = requestingUser.isOwner === true;
+    const isRequesterSuperAdmin = requestingUser.role === "super_admin";
+
+    // Yetki kontrolü:
+    // - Patron: herkesi kısıtlayabilir (super_admin dahil, kendisi hariç, patron hariç)
+    // - Super admin: sadece admin/moderator'ı kısıtlayabilir; diğer super_admin'ları kısıtlayamaz
+    // - Admin/moderator: kimseyi kısıtlayamaz
+    if (!isRequesterOwner && !isRequesterSuperAdmin) {
+      return res.status(403).json({ success: false, message: "Bu işlem için yetkiniz yok" });
+    }
+
+    if (!isRequesterOwner && isRequesterSuperAdmin) {
+      if (targetUser.role === "super_admin") {
+        return res.status(403).json({ success: false, message: "Süper adminler birbirini kısıtlayamaz" });
+      }
+    }
+
+    const { restrict } = req.body; // true = kısıtla, false = kısıtı kaldır
+    const newValue = restrict === true || restrict === "true";
+    targetUser.isPanelRestricted = newValue;
+    await targetUser.save();
+
+    // Tokenları geçersiz kıl (kısıtlanan kullanıcı panelden düşsün)
+    if (newValue) {
+      await User.findByIdAndUpdate(userId, { $inc: { tokenVersion: 1 } });
+    }
+
+    res.json({
+      success: true,
+      message: newValue
+        ? `${targetUser.username} panel erişimi kısıtlandı`
+        : `${targetUser.username} panel erişimi açıldı`,
+      isPanelRestricted: newValue,
+    });
+  } catch (err) {
+    console.error("❌ restrictPanelAdmin error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
