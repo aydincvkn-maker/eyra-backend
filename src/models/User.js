@@ -79,6 +79,10 @@ const userSchema = new mongoose.Schema(
     isFrozen: { type: Boolean, default: false },
     isGuest: { type: Boolean, default: false },
 
+    // YETKİ HİYERARŞİSİ
+    isOwner: { type: Boolean, default: false },           // Patron - en yüksek yetki
+    isPanelRestricted: { type: Boolean, default: false }, // Panel erişimi kısıtlı
+
     // AYARLAR
     settings: {
       pushNotifications: { type: Boolean, default: true },

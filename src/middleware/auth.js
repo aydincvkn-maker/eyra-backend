@@ -45,6 +45,12 @@ async function auth(req, res, next) {
     if (user.isBanned || user.isActive === false || user.isFrozen === true) {
       return sendError(res, 403, "Hesap erişimi kısıtlı");
     }
+
+    // Panel admin kısıtlama kontrolü
+    const panelRoles = ['admin', 'super_admin', 'moderator'];
+    if (panelRoles.includes(user.role) && user.isPanelRestricted === true) {
+      return sendError(res, 403, "Panel erişiminiz kısıtlanmıştır");
+    }
     
     // 4. req.user'a ekle
     req.user = {
