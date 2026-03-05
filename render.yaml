@@ -47,7 +47,7 @@ services:
 
       # ── Payments ──────────────────────────────────────────
       - key: PAYMENT_PROVIDER
-        value: mock
+        value: stripe
       - key: PAYMENT_SUCCESS_URL
         value: eyra://payment/success
       - key: PAYMENT_CANCEL_URL
