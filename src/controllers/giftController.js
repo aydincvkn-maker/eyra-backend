@@ -45,6 +45,16 @@ exports.sendGift = async (req, res) => {
       roomId
     });
 
+    // Transaction kayıtları ve mission ilerlemesi (fire-and-forget)
+    giftService.postGiftHooks({
+      senderId,
+      recipientId: result.data?.recipientId || recipientId,
+      giftId,
+      giftValue: result.gift?.valueCoins || 0,
+      senderCoins: result.senderCoins || 0,
+      recipientCoins: 0,
+    }).catch(err => console.error("postGiftHooks error (non-blocking):", err));
+
     res.json({
       ok: true,
       message: "Hediye gönderildi",
