@@ -1,6 +1,7 @@
 // src/models/User.js
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 
 const BCRYPT_ROUNDS = 10;
 
@@ -199,8 +200,13 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
     return bcrypt.compare(cleanPassword, stored);
   }
 
-  // Legacy accounts: plaintext compare
-  return cleanPassword === stored;
+  // Legacy accounts: timing-safe plaintext compare
+  if (cleanPassword.length !== stored.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(cleanPassword), Buffer.from(stored));
+  } catch {
+    return false;
+  }
 };
 
 userSchema.methods.isPasswordHashed = function () {
