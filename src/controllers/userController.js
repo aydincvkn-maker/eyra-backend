@@ -13,6 +13,7 @@ const presenceService = require("../services/presenceService");
 const { trackMissionProgress } = require("./missionController");
 const { checkFollowerAchievements } = require("./achievementController");
 const { createNotification } = require("./notificationController");
+const { logger } = require("../utils/logger");
 const adminSocket = require("../socket/adminNamespace");
 
 let _followIndexesSynced = false;
@@ -104,7 +105,7 @@ exports.getUsers = async (req, res) => {
   try {
     const currentUserId = req.user?.id ? String(req.user.id) : null;
     const searchQuery = req.query.search ? String(req.query.search).trim() : null;
-    console.log(`📡 getUsers çağrısı: currentUserId=${currentUserId || "❌"}, search=${searchQuery || "❌"}`);
+    console.log(`\u{1F4E1} getUsers çağrısı: currentUserId=${currentUserId || "❌"}, search=${searchQuery || "❌"}`);
 
     // ✅ Query: banned olmayan, kendisi hariç
     const query = { 
