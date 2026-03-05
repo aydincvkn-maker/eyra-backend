@@ -105,7 +105,7 @@ exports.getUsers = async (req, res) => {
   try {
     const currentUserId = req.user?.id ? String(req.user.id) : null;
     const searchQuery = req.query.search ? String(req.query.search).trim() : null;
-    console.log(`\u{1F4E1} getUsers çağrısı: currentUserId=${currentUserId || "❌"}, search=${searchQuery || "❌"}`);
+    logger.debug('getUsers', { currentUserId, searchQuery });
 
     // ✅ Query: banned olmayan, kendisi hariç
     const query = { 
@@ -117,9 +117,9 @@ exports.getUsers = async (req, res) => {
     if (currentUserId) {
       try {
         query._id = { $ne: new mongoose.Types.ObjectId(currentUserId) };
-        console.log(`🔍 Excluding user ID: ${currentUserId}`);
+        logger.debug('Excluding user', { currentUserId });
       } catch (e) {
-        console.log(`⚠️ Invalid ObjectId: ${currentUserId}`);
+        logger.warn('Invalid ObjectId in getUsers', { currentUserId });
       }
     }
 
@@ -135,10 +135,10 @@ exports.getUsers = async (req, res) => {
     // ✅ Cinsiyet filtreleme
     if (currentUserId) {
       const currentUser = await User.findById(currentUserId).select("gender");
-      console.log(`👤 CurrentUser gender: ${currentUser?.gender || 'unknown'}`);
+      logger.debug('Gender filter', { gender: currentUser?.gender });
       query.gender = genderVisibilityQueryForViewer(currentUser?.gender);
     } else {
-      console.log(`⚠️ Unauthenticated user - showing only female`);
+      logger.debug('Unauthenticated user - showing only female');
       query.gender = genderVisibilityQueryForViewer(null);
     }
 
@@ -177,7 +177,7 @@ exports.getUsers = async (req, res) => {
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
 
-    console.log(`✅ getUsers: ${formattedUsers.length} kullanıcı gönderiliyor`);
+    logger.debug('getUsers result', { count: formattedUsers.length });
     res.json({
       success: true,
       users: formattedUsers,
@@ -185,7 +185,7 @@ exports.getUsers = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ getUsers error:", err);
+    logger.error('getUsers error', err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -353,7 +353,7 @@ exports.deletePanelAdminUser = async (req, res) => {
 
     try { await LiveStream.deleteMany({ hostId: userId }); } catch (e) {}
 
-    console.log(`🗑️ SuperAdmin ${req.user.id} panel admini sildi: ${target.username} (${userId})`);
+    logger.info('Panel admin deleted', { adminId: req.user.id, targetUsername: target.username, targetId: userId });
 
     res.json({
       success: true,
@@ -479,7 +479,7 @@ exports.getFemaleUsers = async (req, res) => {
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
 
-    console.log(`✅ getFemaleUsers: ${formattedUsers.length} users`);
+    logger.debug('getFemaleUsers result', { count: formattedUsers.length });
     res.json({
       success: true,
       users: formattedUsers,
@@ -582,7 +582,7 @@ exports.adminDeleteUser = async (req, res) => {
       console.warn("LiveStream cleanup warning:", e.message);
     }
 
-    console.log(`🗑️ Admin ${req.user.id} kullanıcıyı sildi: ${user.username} (${userId})`);
+    logger.info('Admin deleted user', { adminId: req.user.id, targetUsername: user.username, targetId: userId });
 
     res.json({
       success: true,
@@ -640,7 +640,7 @@ exports.removeCoins = async (req, res) => {
       { new: true }
     ).select("-password -refreshToken");
 
-    console.log(`💸 Admin ${req.user.id} → ${user.username}'dan ${actualRemoved} coin çıkardı (yeni: ${updated.coins})`);
+    logger.info('Admin removed coins', { adminId: req.user.id, targetUsername: user.username, removed: actualRemoved, newBalance: updated.coins });
 
     if (global.io && global.userSockets) {
       const targetSockets = global.userSockets.get(String(userId));
