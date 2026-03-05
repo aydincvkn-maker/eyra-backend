@@ -29,7 +29,7 @@ function setup(io) {
 
       const user = await User.findById(userId).select("_id role username isBanned").lean();
       if (!user || user.isBanned) return next(new Error("Unauthorized"));
-      if (!["admin", "superadmin"].includes(user.role)) return next(new Error("Forbidden"));
+      if (!["admin", "super_admin", "moderator"].includes(user.role)) return next(new Error("Forbidden"));
 
       socket.data.userId = String(user._id);
       socket.data.role = user.role;
