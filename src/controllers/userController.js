@@ -689,7 +689,7 @@ exports.addCoins = async (req, res) => {
       { new: true }
     ).select("-password -refreshToken");
 
-    console.log(`ğŸ’° Admin ${req.user.id} â†’ ${user.username}'a ${amount} coin ekledi (yeni: ${updated.coins})`);
+    logger.info(`ğŸ’° Admin ${req.user.id} â†’ ${user.username}'a ${amount} coin ekledi (yeni: ${updated.coins})`);
 
     // Socket ile kullanÄ±cÄ±ya anlÄ±k bildirim gÃ¶nder
     if (global.io && global.userSockets) {
@@ -703,7 +703,7 @@ exports.addCoins = async (req, res) => {
             message: `${amount} coin hesabÄ±nÄ±za eklendi!`,
           });
         });
-        console.log(`ğŸ“¡ coins:updated event sent to ${targetSockets.size} socket(s) for user ${userId}`);
+        logger.info(`ğŸ“¡ coins:updated event sent to ${targetSockets.size} socket(s) for user ${userId}`);
       }
     }
 
@@ -813,7 +813,7 @@ exports.updateMyProfile = async (req, res) => {
       return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
-    console.log(`âœ… Profil gÃ¼ncellendi: ${user.username}`);
+    logger.info(`âœ… Profil gÃ¼ncellendi: ${user.username}`);
 
     res.json({
       success: true,
@@ -873,7 +873,7 @@ exports.uploadAvatar = async (req, res) => {
       { new: true }
     ).select("-password -refreshToken");
 
-    console.log(`ğŸ“· Avatar gÃ¼ncellendi: ${user.username}`);
+    logger.info(`ğŸ“· Avatar gÃ¼ncellendi: ${user.username}`);
 
     res.json({
       success: true,
@@ -905,7 +905,7 @@ exports.deleteAvatar = async (req, res) => {
 
     await User.findByIdAndUpdate(userId, { $set: { profileImage: "" } });
 
-    console.log(`ğŸ—‘ï¸ Avatar silindi: ${user.username}`);
+    logger.info(`ğŸ—‘ï¸ Avatar silindi: ${user.username}`);
 
     res.json({ success: true, message: "Avatar silindi" });
   } catch (err) {
@@ -985,7 +985,7 @@ exports.updateSettings = async (req, res) => {
       return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
-    console.log(`âš™ï¸ Ayarlar gÃ¼ncellendi: ${userId}`);
+    logger.info(`âš™ï¸ Ayarlar gÃ¼ncellendi: ${userId}`);
 
     res.json({ success: true, message: "Ayarlar gÃ¼ncellendi", settings: user.settings });
   } catch (err) {
@@ -1009,7 +1009,7 @@ exports.freezeAccount = async (req, res) => {
       return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
-    console.log(`â„ Hesap donduruldu: ${user.username}`);
+    logger.info(`â„ Hesap donduruldu: ${user.username}`);
 
     res.json({ success: true, message: "HesabÄ±nÄ±z donduruldu" });
   } catch (err) {
@@ -1033,7 +1033,7 @@ exports.deleteAccount = async (req, res) => {
 
     await User.findByIdAndDelete(userId);
 
-    console.log(`ğŸ—‘ï¸ Hesap silindi: ${user?.username}`);
+    logger.info(`ğŸ—‘ï¸ Hesap silindi: ${user?.username}`);
 
     res.json({ success: true, message: "Hesap silindi" });
   } catch (err) {
@@ -1168,7 +1168,7 @@ exports.followUser = async (req, res) => {
       imageUrl: currentUser?.profileImage,
     }).catch(() => {});
 
-    console.log(`âœ… ${currentUserId} -> ${userId} takip etti`);
+    logger.info(`âœ… ${currentUserId} -> ${userId} takip etti`);
 
     res.json({ success: true, message: "Takip edildi", isFollowing: true });
   } catch (err) {
@@ -1200,7 +1200,7 @@ exports.unfollowUser = async (req, res) => {
       await User.updateOne({ _id: currentUserId, following: { $lt: 0 } }, { $set: { following: 0 } });
     }
 
-    console.log(`âœ… ${currentUserId} -> ${userId} takipten Ã§Ä±ktÄ±`);
+    logger.info(`âœ… ${currentUserId} -> ${userId} takipten Ã§Ä±ktÄ±`);
 
     res.json({ success: true, message: "Takipten Ã§Ä±kÄ±ldÄ±", isFollowing: false });
   } catch (err) {
@@ -1395,7 +1395,7 @@ exports.updateVisibility = async (req, res) => {
       return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
-    console.log(`âœ… ${userId} visibility gÃ¼ncellendi: ${!isHidden}`);
+    logger.info(`âœ… ${userId} visibility gÃ¼ncellendi: ${!isHidden}`);
 
     res.json({
       success: true,
@@ -1445,7 +1445,7 @@ exports.getVipUsers = async (req, res) => {
       return formatUser(user, presenceData);
     });
 
-    console.log(`âœ… getVipUsers: ${formattedUsers.length} users`);
+    logger.info(`âœ… getVipUsers: ${formattedUsers.length} users`);
     res.json({
       success: true,
       users: formattedUsers,
@@ -1501,7 +1501,7 @@ exports.startBroadcast = async (req, res) => {
     // Presence service'i gÃ¼ncelle
     await presenceService.setLive(userId, true);
 
-    console.log(`ğŸ¬ ${user.username} yayÄ±n baÅŸlattÄ±: ${title}`);
+    logger.info(`ğŸ¬ ${user.username} yayÄ±n baÅŸlattÄ±: ${title}`);
 
     res.json({
       success: true,
@@ -1546,7 +1546,7 @@ exports.endBroadcast = async (req, res) => {
     // Presence service'i gÃ¼ncelle
     await presenceService.setLive(userId, false);
 
-    console.log(`ğŸ”´ ${user.username} yayÄ±nÄ± sonlandÄ±rdÄ±`);
+    logger.info(`ğŸ”´ ${user.username} yayÄ±nÄ± sonlandÄ±rdÄ±`);
 
     res.json({
       success: true,
