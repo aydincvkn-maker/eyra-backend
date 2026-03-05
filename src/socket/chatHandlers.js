@@ -9,6 +9,7 @@ const User = require('../models/User');
 const Message = require('../models/Message');
 const { emitToUserSockets, getCounterpartyForRoom } = require('./helpers');
 const { logger } = require('../utils/logger');
+const { createNotification } = require('../controllers/notificationController');
 
 /**
  * Register chat events on a connected socket.
@@ -54,7 +55,30 @@ function register(socket, io) {
       };
 
       // Send to recipient
-      emitToUserSockets(data.to, 'chat:new_message', messageData);
+      const delivered = emitToUserSockets(data.to, 'chat:new_message', messageData);
+
+      // If recipient is offline/has no active sockets, send push notification
+      if (!delivered) {
+        try {
+          const sender = await User.findById(fromUserId).select('username name').lean();
+          const senderName = sender?.name || sender?.username || 'Birisi';
+          const previewText = (message.content || '').length > 80
+            ? message.content.substring(0, 80) + '...'
+            : (message.content || 'Yeni mesaj');
+
+          await createNotification({
+            recipientId: data.to,
+            type: 'chat_message',
+            title: senderName,
+            body: previewText,
+            senderId: fromUserId,
+            relatedId: message._id.toString(),
+            relatedType: 'Message',
+          });
+        } catch (pushErr) {
+          logger.error('Chat push notification error', pushErr);
+        }
+      }
 
       // Confirm to sender
       socket.emit('chat:new_message', {
