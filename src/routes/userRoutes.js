@@ -22,13 +22,39 @@ const upload = multer({
   }
 });
 
-// Optional auth middleware
+// Optional auth middleware — never reject, just enrich req.user if token is valid
 const optionalAuth = (req, res, next) => {
   const token = req.header("Authorization")?.replace("Bearer ", "");
-  if (token) {
-    return auth(req, res, next);
+  if (!token) return next();
+
+  // Attempt auth; on failure, continue WITHOUT auth (graceful degradation)
+  const originalJson = res.json.bind(res);
+  const originalStatus = res.status.bind(res);
+  let intercepted = false;
+
+  // Temporarily intercept error responses from auth middleware
+  res.status = (code) => {
+    if (code === 401 || code === 403) {
+      intercepted = true;
+      return { json: () => {} }; // swallow the error response
+    }
+    return originalStatus(code);
+  };
+
+  auth(req, res, () => {
+    // Auth succeeded — restore res.status and continue
+    res.status = originalStatus;
+    next();
+  });
+
+  // If auth middleware called res.status(401/403), it was intercepted
+  // We need to restore and continue without auth
+  if (intercepted) {
+    res.status = originalStatus;
+    res.json = originalJson;
+    req.user = null; // Ensure no partial user data
+    next();
   }
-  next();
 };
 
 // =============================================
