@@ -1036,3 +1036,118 @@ exports.getMyViolations = async (req, res) => {
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
+
+// =============================================
+// HAFTALIK RAPOR SİSTEMİ
+// =============================================
+
+// GET /api/withdrawals/admin/weekly-report — Admin: Haftalık rapor oluştur
+// Query params: weekStart (ISO date, opsiyonel — varsayılan: geçen hafta)
+exports.adminWeeklyReport = async (req, res) => {
+  try {
+    const SalaryPayment = require("../models/SalaryPayment");
+
+    // Hafta belirle
+    let weekStart, weekEnd;
+    if (req.query.weekStart) {
+      weekStart = new Date(req.query.weekStart);
+      weekEnd = new Date(weekStart);
+      weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
+      weekEnd.setUTCHours(23, 59, 59, 999);
+    } else {
+      const range = salaryService.getLastWeekRange();
+      weekStart = range.weekStart;
+      weekEnd = range.weekEnd;
+    }
+
+    // O haftaya ait tüm maaş kayıtlarını çek
+    const salaryRecords = await SalaryPayment.find({ weekStart })
+      .populate("user", "name username profileImage broadcasterContract violations createdAt")
+      .sort({ level: -1, calculatedSalaryUSD: -1 })
+      .lean();
+
+    // Rapor satırları oluştur
+    const rows = salaryRecords.map((record) => {
+      const user = record.user || {};
+      const now = new Date();
+
+      // Aktif ihlaller
+      const activeViolations = (user.violations || []).filter(v =>
+        v.active && (!v.expiresAt || new Date(v.expiresAt) > now)
+      );
+      const violationPenalty = Math.min(
+        activeViolations.reduce((s, v) => s + (v.penaltyPercent || 0), 0),
+        100
+      );
+
+      return {
+        userId: user._id,
+        username: user.username || "—",
+        name: user.name || "—",
+        profileImage: user.profileImage || null,
+        startDate: user.broadcasterContract?.signedAt || user.createdAt || null,
+        level: record.level,
+        levelLabel: record.levelLabel || `Seviye ${record.level}`,
+        weeklyStreamingHours: record.totalStreamingHours,
+        streamDaysCount: record.streamDaysCount,
+        weeklyGifts: record.weeklyGifts,
+        weeklyGiftsWithCalls: record.weeklyGiftsWithCalls,
+        violations: activeViolations.length,
+        violationPenalty,
+        minHoursMet: record.calculationDetails?.minHoursMet ?? true,
+        minHoursPenalty: record.calculationDetails?.minHoursPenalty || 0,
+        calculatedSalaryUSD: record.calculatedSalaryUSD,
+        salaryCoins: record.salaryCoins,
+        status: record.status,
+        method: record.calculationDetails?.method || "",
+      };
+    });
+
+    // Özet istatistikler
+    const summary = {
+      weekStart: weekStart.toISOString(),
+      weekEnd: weekEnd.toISOString(),
+      totalHosts: rows.length,
+      paidCount: rows.filter(r => r.status === "paid").length,
+      skippedCount: rows.filter(r => r.status === "skipped").length,
+      failedCount: rows.filter(r => r.status === "failed").length,
+      totalSalaryUSD: Math.round(rows.reduce((s, r) => s + r.calculatedSalaryUSD, 0) * 100) / 100,
+      totalSalaryCoins: rows.reduce((s, r) => s + r.salaryCoins, 0),
+      avgStreamingHours: rows.length > 0
+        ? Math.round(rows.reduce((s, r) => s + r.weeklyStreamingHours, 0) / rows.length * 100) / 100
+        : 0,
+      hostsWithViolations: rows.filter(r => r.violations > 0).length,
+      hostsNotMeetingMinHours: rows.filter(r => !r.minHoursMet).length,
+      levelDistribution: HOST_SALARY_LEVELS.map(l => ({
+        level: l.level,
+        label: l.label,
+        count: rows.filter(r => r.level === l.level).length,
+      })),
+    };
+
+    // CSV formatı istendiyse
+    if (req.query.format === "csv") {
+      const csvHeader = "Kullanıcı Adı,İsim,Seviye,Haftalık Saat,Yayın Günü,Hediye (Coin),Hediye+Görüşme (Coin),İhlal,İhlal Cezası %,Min Saat Met,Maaş ($),Maaş (Coin),Durum\n";
+      const csvRows = rows.map(r =>
+        [
+          r.username, r.name, r.level, r.weeklyStreamingHours, r.streamDaysCount,
+          r.weeklyGifts, r.weeklyGiftsWithCalls, r.violations, r.violationPenalty,
+          r.minHoursMet ? "Evet" : "Hayır", r.calculatedSalaryUSD, r.salaryCoins, r.status,
+        ].join(",")
+      ).join("\n");
+
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename=weekly-report-${weekStart.toISOString().slice(0, 10)}.csv`);
+      return res.send("\uFEFF" + csvHeader + csvRows); // BOM for Excel UTF-8
+    }
+
+    res.json({
+      success: true,
+      summary,
+      rows,
+    });
+  } catch (err) {
+    console.error("adminWeeklyReport error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};

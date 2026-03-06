@@ -23,6 +23,7 @@ router.put("/admin/:id/mark-paid", auth, requirePermission("finance:view"), with
 // ─── Admin maaş yönetimi ────────────────────────────────────────
 router.post("/admin/salary/process", auth, requirePermission("finance:view"), withdrawalController.adminProcessSalaries);
 router.get("/admin/salary/list", auth, requirePermission("finance:view"), withdrawalController.adminListSalaries);
+router.get("/admin/weekly-report", auth, requirePermission("finance:view"), withdrawalController.adminWeeklyReport);
 
 // ─── Admin ihlal (violation) yönetimi ────────────────────────────
 router.post("/admin/violations/:userId", auth, requirePermission("finance:view"), withdrawalController.adminAddViolation);
