@@ -276,6 +276,29 @@ exports.getBroadcasterInfo = async (req, res) => {
         },
       },
       recentWithdrawals,
+      violations: (() => {
+        const now = new Date();
+        const vList = (user.violations || []).map(v => ({
+          _id: v._id,
+          reason: v.reason,
+          severity: v.severity,
+          penaltyPercent: v.penaltyPercent,
+          issuedAt: v.issuedAt,
+          expiresAt: v.expiresAt,
+          active: v.active && (!v.expiresAt || new Date(v.expiresAt) > now),
+        }));
+        const active = vList.filter(v => v.active);
+        return {
+          list: vList,
+          activeCount: active.length,
+          totalPenalty: Math.min(active.reduce((s, v) => s + (v.penaltyPercent || 0), 0), 100),
+        };
+      })(),
+      minWeeklyHours: {
+        required: salaryService.MIN_WEEKLY_HOURS,
+        current: weeklyStreamingHours,
+        met: weeklyStreamingHours >= salaryService.MIN_WEEKLY_HOURS,
+      },
       paymentInfo: {
         preferredMethod: user.preferredWithdrawMethod || 'bank',
         bank: {
