@@ -87,6 +87,15 @@ router.put("/me/settings", auth, userController.updateSettings);
 // POST /api/users/me/freeze - Hesabı dondur
 router.post("/me/freeze", auth, userController.freezeAccount);
 
+// PUT /api/users/me/email - E-posta değiştir
+router.put("/me/email", auth, userController.changeEmail);
+
+// PUT /api/users/me/phone - Telefon numarası değiştir
+router.put("/me/phone", auth, userController.changePhone);
+
+// GET /api/users/me/login-history - Giriş geçmişi
+router.get("/me/login-history", auth, userController.getLoginHistory);
+
 // GET /api/users/me/blocked - Engellenen kullanıcılar
 router.get("/me/blocked", auth, blockController.getBlockedUsers);
 

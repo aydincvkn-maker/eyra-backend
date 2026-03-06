@@ -35,4 +35,7 @@ router.get("/me", authMiddleware, authController.me);
 // ✅ Token Refresh - Generate new token
 router.post("/refresh-token", authMiddleware, authController.refreshToken);
 
+// ✅ Şifre Değiştir
+router.put("/change-password", authMiddleware, authController.changePassword);
+
 module.exports = router;
