@@ -163,6 +163,18 @@ const userSchema = new mongoose.Schema(
     dailyLoginAt: { type: Date, default: null },
     loginStreak: { type: Number, default: 0 },
 
+    // VIOLATIONS (İhlaller) — Maaş ceza sistemi
+    violations: [{
+      reason: { type: String, required: true },
+      severity: { type: String, enum: ['warning', 'minor', 'major', 'critical'], default: 'minor' },
+      penaltyPercent: { type: Number, default: 0 },
+      issuedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      issuedAt: { type: Date, default: Date.now },
+      expiresAt: { type: Date, default: null },
+      active: { type: Boolean, default: true },
+      note: { type: String, default: '' },
+    }],
+
     // TOKEN
     refreshToken: { type: String, default: null }
   },
