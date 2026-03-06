@@ -738,4 +738,40 @@ exports.refreshToken = async (req, res) => {
     });
   }
 };
+// PUT /api/auth/change-password
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
 
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: "Mevcut şifre ve yeni şifre gerekli" });
+    }
+
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ success: false, message: "Yeni şifre en az 6 karakter olmalı" });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+    }
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: "Mevcut şifre hatalı" });
+    }
+
+    user.password = String(newPassword);
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    await user.save();
+
+    // Yeni token oluştur (eski tokenlar artık geçersiz)
+    const token = createToken(user);
+    res.cookie("auth_token", token, getAuthCookieOptions());
+
+    res.json({ success: true, message: "Şifre başarıyla değiştirildi", token });
+  } catch (err) {
+    console.error("Change password error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
