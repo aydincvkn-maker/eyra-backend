@@ -433,15 +433,18 @@ exports.getFemaleUsers = async (req, res) => {
   try {
     const currentUserId = req.user?.id ? String(req.user.id) : null;
 
-    // âœ… Base query - always get female users
+    // Cinsiyet görünürlük filtresi: erkek sadece kadınları, kadın herkesi görür
     const baseQuery = { 
       isBanned: { $ne: true },
       isActive: { $ne: false },
-      gender: "female"
     };
 
     if (currentUserId) {
+      const currentUser = await User.findById(currentUserId).select("gender");
+      baseQuery.gender = genderVisibilityQueryForViewer(currentUser?.gender);
       baseQuery._id = { $ne: new mongoose.Types.ObjectId(currentUserId) };
+    } else {
+      baseQuery.gender = genderVisibilityQueryForViewer(null);
     }
 
     const users = await User.find(baseQuery)
@@ -1422,6 +1425,14 @@ exports.getVipUsers = async (req, res) => {
 
     if (currentUserId) {
       query._id = { $ne: new mongoose.Types.ObjectId(currentUserId) };
+    }
+
+    // Cinsiyet görünürlük filtresi: erkek sadece kadınları, kadın herkesi görür
+    if (currentUserId) {
+      const currentUser = await User.findById(currentUserId).select("gender");
+      query.gender = genderVisibilityQueryForViewer(currentUser?.gender);
+    } else {
+      query.gender = genderVisibilityQueryForViewer(null);
     }
 
     const users = await User.find(query)
