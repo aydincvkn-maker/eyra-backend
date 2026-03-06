@@ -43,7 +43,7 @@ exports.getBroadcasterInfo = async (req, res) => {
   try {
     const userId = req.user.id;
     const user = await User.findById(userId).select(
-      "coins totalEarnings gender broadcasterContract iban bankName accountHolder preferredWithdrawMethod paparaId paparaName paypalEmail cryptoAddress cryptoNetwork wiseEmail wiseName name username profileImage level followers"
+      "coins totalEarnings gender broadcasterContract iban bankName accountHolder preferredWithdrawMethod paparaId paparaName paypalEmail cryptoAddress cryptoNetwork wiseEmail wiseName name username profileImage level followers violations"
     );
 
     if (!user) {
