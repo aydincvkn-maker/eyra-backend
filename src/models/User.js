@@ -55,6 +55,15 @@ const userSchema = new mongoose.Schema(
     age: { type: Number, default: 18 },
     location: { type: String, default: "" },
     country: { type: String, default: "" },
+    phone: { type: String, default: "" },
+
+    // GİRİŞ GEÇMİŞİ
+    loginHistory: [{
+      platform: { type: String, default: "" },
+      device: { type: String, default: "" },
+      ip: { type: String, default: "" },
+      loginAt: { type: Date, default: Date.now },
+    }],
 
     // SOSYAL İSTATİSTİKLER
     followers: { type: Number, default: 0 },

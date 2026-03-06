@@ -186,18 +186,23 @@ exports.login = async (req, res) => {
     }
 
     // NOT: isOnline durumu socket ba─şlant─▒s─▒nda g├╝ncellenecek
-    // Login sadece lastSeen'i g├╝nceller
+    // Login sadece lastSeen'i günceller + login history kaydeder
     try {
+      const loginEntry = {
+        platform: String(req.headers['x-platform'] || req.headers['user-agent'] || '').slice(0, 200),
+        device: String(req.headers['x-device'] || '').slice(0, 200),
+        ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '',
+        loginAt: new Date(),
+      };
       await User.updateOne(
         { _id: user._id },
         {
-          $set: {
-            lastSeen: new Date(),
-          }
+          $set: { lastSeen: new Date() },
+          $push: { loginHistory: { $each: [loginEntry], $slice: -50 } },
         }
       );
     } catch (e) {
-      console.warn("ÔÜá´©Å Login: lastSeen update ba┼şar─▒s─▒z:", e.message);
+      console.warn("⚠️ Login: lastSeen/history update başarısız:", e.message);
       // Non-fatal: devam et
     }
 
