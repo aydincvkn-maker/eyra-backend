@@ -270,7 +270,6 @@ function calculateSalary(levelData, performance, options = {}) {
 
   // ── Minimum haftalık yayın saati kontrolü ──
   // Seviye 2+: Haftalık min 10 saat yayın yapılmadıysa maaş %50 kesilir
-  const MIN_WEEKLY_HOURS = 10;
   let minHoursMet = performance.totalStreamingHours >= MIN_WEEKLY_HOURS;
   let minHoursPenalty = 0;
   if (!minHoursMet && levelData.level >= 2) {
@@ -557,8 +556,11 @@ function getNextPaymentInfo() {
   };
 }
 
+const MIN_WEEKLY_HOURS = 10;
+
 module.exports = {
   HOST_SALARY_LEVELS,
+  MIN_WEEKLY_HOURS,
   calculateHostLevel,
   getLastWeekRange,
   getCurrentWeekRange,
