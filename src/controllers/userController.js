@@ -1082,6 +1082,8 @@ exports.getUserById = async (req, res) => {
         level: user.level || 1,
         followers: user.followers || 0,
         following: user.following || 0,
+        gifts: user.gifts || 0,
+        coins: user.coins || 0,
         bio: user.bio || "",
         presenceStatus,
         isOnline: presenceStatus !== 'offline',
