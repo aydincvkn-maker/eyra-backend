@@ -820,3 +820,196 @@ exports.adminListSalaries = async (req, res) => {
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
+
+// =============================================
+// VİOLATION (İHLAL) YÖNETİMİ
+// =============================================
+
+// POST /api/withdrawals/admin/violations/:userId — Yayıncıya ihlal ekle
+exports.adminAddViolation = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { reason, severity = "minor", penaltyPercent = 0, note = "", expiresAt } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ success: false, message: "İhlal sebebi gerekli" });
+    }
+
+    const validSeverities = ["warning", "minor", "major", "critical"];
+    if (!validSeverities.includes(severity)) {
+      return res.status(400).json({ success: false, message: "Geçersiz ihlal seviyesi" });
+    }
+
+    const penalty = Math.max(0, Math.min(Number(penaltyPercent) || 0, 100));
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+    }
+
+    const violation = {
+      reason: reason.trim(),
+      severity,
+      penaltyPercent: penalty,
+      issuedBy: req.user.id,
+      issuedAt: new Date(),
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
+      active: true,
+      note: (note || "").trim(),
+    };
+
+    user.violations.push(violation);
+    await user.save();
+
+    const addedViolation = user.violations[user.violations.length - 1];
+
+    console.log(`[VIOLATION] Admin ${req.user.username} added violation to ${user.username}: ${reason} (${severity}, -%${penalty})`);
+
+    res.json({
+      success: true,
+      message: "İhlal eklendi",
+      violation: addedViolation,
+    });
+  } catch (err) {
+    console.error("adminAddViolation error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+// GET /api/withdrawals/admin/violations/:userId — Yayıncının ihlallerini listele
+exports.adminGetViolations = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId).select("violations name username").lean();
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+    }
+
+    // Süresi dolmuş ihlalleri filtrele
+    const now = new Date();
+    const violations = (user.violations || []).map(v => ({
+      ...v,
+      active: v.active && (!v.expiresAt || new Date(v.expiresAt) > now),
+    }));
+
+    const activeCount = violations.filter(v => v.active).length;
+    const totalPenalty = Math.min(
+      violations.filter(v => v.active).reduce((sum, v) => sum + (v.penaltyPercent || 0), 0),
+      100
+    );
+
+    res.json({
+      success: true,
+      userId,
+      username: user.username,
+      name: user.name,
+      violations,
+      activeCount,
+      totalPenalty,
+    });
+  } catch (err) {
+    console.error("adminGetViolations error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+// PUT /api/withdrawals/admin/violations/:userId/:violationId — İhlali güncelle (deaktif et / düzenle)
+exports.adminUpdateViolation = async (req, res) => {
+  try {
+    const { userId, violationId } = req.params;
+    const { active, reason, severity, penaltyPercent, note, expiresAt } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+    }
+
+    const violation = user.violations.id(violationId);
+    if (!violation) {
+      return res.status(404).json({ success: false, message: "İhlal bulunamadı" });
+    }
+
+    if (typeof active === "boolean") violation.active = active;
+    if (reason) violation.reason = reason.trim();
+    if (severity) violation.severity = severity;
+    if (penaltyPercent !== undefined) violation.penaltyPercent = Math.max(0, Math.min(Number(penaltyPercent), 100));
+    if (note !== undefined) violation.note = (note || "").trim();
+    if (expiresAt !== undefined) violation.expiresAt = expiresAt ? new Date(expiresAt) : null;
+
+    await user.save();
+
+    console.log(`[VIOLATION] Admin ${req.user.username} updated violation ${violationId} for ${user.username}: active=${violation.active}`);
+
+    res.json({
+      success: true,
+      message: "İhlal güncellendi",
+      violation,
+    });
+  } catch (err) {
+    console.error("adminUpdateViolation error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+// DELETE /api/withdrawals/admin/violations/:userId/:violationId — İhlali sil
+exports.adminDeleteViolation = async (req, res) => {
+  try {
+    const { userId, violationId } = req.params;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+    }
+
+    const violation = user.violations.id(violationId);
+    if (!violation) {
+      return res.status(404).json({ success: false, message: "İhlal bulunamadı" });
+    }
+
+    violation.deleteOne();
+    await user.save();
+
+    console.log(`[VIOLATION] Admin ${req.user.username} deleted violation ${violationId} for ${user.username}`);
+
+    res.json({ success: true, message: "İhlal silindi" });
+  } catch (err) {
+    console.error("adminDeleteViolation error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+// GET /api/withdrawals/my-violations — Yayıncının kendi ihlallerini görmesi
+exports.getMyViolations = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId).select("violations").lean();
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+    }
+
+    const now = new Date();
+    const violations = (user.violations || []).map(v => ({
+      _id: v._id,
+      reason: v.reason,
+      severity: v.severity,
+      penaltyPercent: v.penaltyPercent,
+      issuedAt: v.issuedAt,
+      expiresAt: v.expiresAt,
+      active: v.active && (!v.expiresAt || new Date(v.expiresAt) > now),
+      note: v.note,
+    }));
+
+    const activeCount = violations.filter(v => v.active).length;
+    const totalPenalty = Math.min(
+      violations.filter(v => v.active).reduce((sum, v) => sum + (v.penaltyPercent || 0), 0),
+      100
+    );
+
+    res.json({ success: true, violations, activeCount, totalPenalty });
+  } catch (err) {
+    console.error("getMyViolations error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};

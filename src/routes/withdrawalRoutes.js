@@ -12,6 +12,7 @@ router.put("/bank-info", auth, withdrawalController.updateBankInfo);
 router.post("/request", auth, withdrawalController.createWithdrawalRequest);
 router.get("/my", auth, withdrawalController.getMyWithdrawals);
 router.get("/salary-history", auth, withdrawalController.getSalaryHistory);
+router.get("/my-violations", auth, withdrawalController.getMyViolations);
 
 // ─── Admin endpointleri ──────────────────────────────────────────
 router.get("/admin/list", auth, requirePermission("finance:view"), withdrawalController.adminListWithdrawals);
@@ -22,5 +23,11 @@ router.put("/admin/:id/mark-paid", auth, requirePermission("finance:view"), with
 // ─── Admin maaş yönetimi ────────────────────────────────────────
 router.post("/admin/salary/process", auth, requirePermission("finance:view"), withdrawalController.adminProcessSalaries);
 router.get("/admin/salary/list", auth, requirePermission("finance:view"), withdrawalController.adminListSalaries);
+
+// ─── Admin ihlal (violation) yönetimi ────────────────────────────
+router.post("/admin/violations/:userId", auth, requirePermission("finance:view"), withdrawalController.adminAddViolation);
+router.get("/admin/violations/:userId", auth, requirePermission("finance:view"), withdrawalController.adminGetViolations);
+router.put("/admin/violations/:userId/:violationId", auth, requirePermission("finance:view"), withdrawalController.adminUpdateViolation);
+router.delete("/admin/violations/:userId/:violationId", auth, requirePermission("finance:view"), withdrawalController.adminDeleteViolation);
 
 module.exports = router;
