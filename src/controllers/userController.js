@@ -1611,3 +1611,66 @@ exports.updateUserStatus = async (req, res) => {
     res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
   }
 };
+
+// PUT /api/users/me/email - E-posta değiştir
+exports.changeEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const newEmail = String(email || "").trim().toLowerCase();
+
+    if (!newEmail || !newEmail.includes("@")) {
+      return res.status(400).json({ success: false, message: "Geçerli bir e-posta adresi girin" });
+    }
+
+    // Aynı e-posta zaten kullanılıyor mu?
+    const existing = await User.findOne({ email: newEmail, _id: { $ne: req.user.id } });
+    if (existing) {
+      return res.status(409).json({ success: false, message: "Bu e-posta adresi zaten kullanılıyor" });
+    }
+
+    await User.findByIdAndUpdate(req.user.id, { $set: { email: newEmail } });
+
+    res.json({ success: true, message: "E-posta adresi güncellendi" });
+  } catch (err) {
+    console.error("changeEmail error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+// PUT /api/users/me/phone - Telefon numarası değiştir
+exports.changePhone = async (req, res) => {
+  try {
+    const { phone } = req.body;
+    const newPhone = String(phone || "").trim();
+
+    if (!newPhone || newPhone.length < 10) {
+      return res.status(400).json({ success: false, message: "Geçerli bir telefon numarası girin" });
+    }
+
+    await User.findByIdAndUpdate(req.user.id, { $set: { phone: newPhone } });
+
+    res.json({ success: true, message: "Telefon numarası güncellendi" });
+  } catch (err) {
+    console.error("changePhone error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+// GET /api/users/me/login-history - Giriş geçmişi
+exports.getLoginHistory = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("loginHistory");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+    }
+
+    // En son girişler önce
+    const history = (user.loginHistory || [])
+      .sort((a, b) => new Date(b.loginAt) - new Date(a.loginAt));
+
+    res.json({ success: true, history });
+  } catch (err) {
+    console.error("getLoginHistory error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
