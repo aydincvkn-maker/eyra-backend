@@ -229,10 +229,15 @@ async function calculateWeeklyPerformance(userId, weekStart, weekEnd) {
  * Günlük yayın saati, seviyenin maxHoursPerDay'ine göre cap'lenir.
  * Örnek: Seviye 3 — $5/saat, 2 saat/gün cap. 5 gün yayın → 5×2×$5 = $50
  *         Ama haftalık max $70 ile sınırlandırılır.
+ *
+ * @param {Object} levelData - Seviye bilgisi
+ * @param {Object} performance - Haftalık performans
+ * @param {Object} [options] - Ek seçenekler
+ * @param {Array}  [options.violations] - Aktif ihlaller dizisi
  */
-function calculateSalary(levelData, performance) {
+function calculateSalary(levelData, performance, options = {}) {
   if (levelData.level === 1) {
-    return { salaryUSD: 0, salaryCoins: 0, method: "none" };
+    return { salaryUSD: 0, salaryCoins: 0, method: "none", violationPenalty: 0, minHoursmet: true };
   }
 
   let salaryUSD = 0;
@@ -262,12 +267,39 @@ function calculateSalary(levelData, performance) {
 
   // Haftalık maksimum ile sınırlandır
   salaryUSD = Math.min(salaryUSD, levelData.salaryPerWeek);
+
+  // ── Minimum haftalık yayın saati kontrolü ──
+  // Seviye 2+: Haftalık min 10 saat yayın yapılmadıysa maaş %50 kesilir
+  const MIN_WEEKLY_HOURS = 10;
+  let minHoursMet = performance.totalStreamingHours >= MIN_WEEKLY_HOURS;
+  let minHoursPenalty = 0;
+  if (!minHoursMet && levelData.level >= 2) {
+    minHoursPenalty = 50;
+    salaryUSD = salaryUSD * 0.5;
+    method += ` | Min saat cezası: -%50 (${performance.totalStreamingHours}/${MIN_WEEKLY_HOURS} saat)`;
+  }
+
+  // ── Violation (ihlal) cezası uygula ──
+  let violationPenalty = 0;
+  const activeViolations = (options.violations || []).filter(v => v.active);
+  if (activeViolations.length > 0) {
+    // Toplam ceza yüzdesini hesapla (max %100)
+    violationPenalty = Math.min(
+      activeViolations.reduce((sum, v) => sum + (v.penaltyPercent || 0), 0),
+      100
+    );
+    if (violationPenalty > 0) {
+      salaryUSD = salaryUSD * (1 - violationPenalty / 100);
+      method += ` | İhlal cezası: -%${violationPenalty}`;
+    }
+  }
+
   salaryUSD = Math.round(salaryUSD * 100) / 100;
 
   // USD → Coin dönüşümü (1 coin = $0.01, yani $1 = 100 coin)
   const salaryCoins = Math.round(salaryUSD / COIN_TO_USD_RATE);
 
-  return { salaryUSD, salaryCoins, method };
+  return { salaryUSD, salaryCoins, method, violationPenalty, minHoursMet, minHoursPenalty };
 }
 
 /**
@@ -292,8 +324,17 @@ async function processUserWeeklySalary(userId, weekStart, weekEnd) {
   // Seviye belirle
   const levelData = calculateHostLevel(performance.weeklyGifts, performance.weeklyGiftsWithCalls);
 
-  // Maaş hesapla
-  const { salaryUSD, salaryCoins, method } = calculateSalary(levelData, performance);
+  // Kullanıcının aktif ihlallerini al (ceza hesabı için)
+  const user = await User.findById(userObjectId).select("violations");
+  const activeViolations = (user?.violations || []).filter(v => {
+    if (!v.active) return false;
+    if (v.expiresAt && new Date(v.expiresAt) < new Date()) return false;
+    return true;
+  });
+
+  // Maaş hesapla (ihlal cezası dahil)
+  const { salaryUSD, salaryCoins, method, violationPenalty, minHoursMet, minHoursPenalty } =
+    calculateSalary(levelData, performance, { violations: activeViolations });
 
   // SalaryPayment kaydı oluştur
   const salaryPayment = new SalaryPayment({
@@ -321,6 +362,10 @@ async function processUserWeeklySalary(userId, weekStart, weekEnd) {
         salaryType: levelData.salaryType,
         maxHoursPerDay: levelData.maxHoursPerDay,
       },
+      violationPenalty,
+      violationCount: activeViolations.length,
+      minHoursMet,
+      minHoursPenalty,
     },
   });
 
