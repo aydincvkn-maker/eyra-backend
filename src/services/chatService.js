@@ -136,11 +136,16 @@ exports.sendMessage = async (fromUserId, toUserId, data) => {
 
     // Block check (skip for admin messages)
     if (!data.isAdmin) {
-      const fromUser = await User.findById(fromUserId).select('blockedUsers');
-      const toUser = await User.findById(toUserId).select('blockedUsers');
+      const fromUser = await User.findById(fromUserId).select('blockedUsers isBanned');
+      const toUser = await User.findById(toUserId).select('blockedUsers isBanned');
 
       if (!fromUser || !toUser) {
         console.log(`❌ User not found: fromUser=${!!fromUser}, toUser=${!!toUser}`);
+        throw new Error('USER_NOT_FOUND');
+      }
+
+      // ⛔ Banlı kullanıcıya mesaj gönderme
+      if (toUser.isBanned) {
         throw new Error('USER_NOT_FOUND');
       }
       
