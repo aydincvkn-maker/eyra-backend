@@ -193,6 +193,17 @@ const panelAdminLimiter = createRateLimiter({
   keyPrefix: "panel_admin"
 });
 
+/**
+ * Payment intent rate limiter
+ * 10 payment intents per 5 minutes
+ */
+const paymentLimiter = createRateLimiter({
+  windowMs: 5 * 60 * 1000,
+  max: 10,
+  message: "Çok fazla ödeme denemesi. Lütfen 5 dakika bekleyin.",
+  keyPrefix: "payment"
+});
+
 module.exports = {
   createRateLimiter,
   generalLimiter,
@@ -202,4 +213,5 @@ module.exports = {
   liveStartLimiter,
   reportLimiter,
   panelAdminLimiter,
+  paymentLimiter,
 };

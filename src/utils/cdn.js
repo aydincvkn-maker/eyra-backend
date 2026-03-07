@@ -22,25 +22,31 @@ const toCdnUrl = (url, type = 'media') => {
     return url || '';
   }
 
+  // ⛔ Güvenlik: Sadece güvenli protokollere izin ver
+  const urlStr = String(url).trim();
+  if (urlStr.startsWith('javascript:') || urlStr.startsWith('data:') || urlStr.startsWith('vbscript:')) {
+    return '';
+  }
+
   // Zaten CDN URL ise değiştirme
-  if (url.startsWith(CDN_BASE_URL)) {
-    return url;
+  if (urlStr.startsWith(CDN_BASE_URL)) {
+    return urlStr;
   }
 
   // External URL'leri olduğu gibi bırak (örn: Google profil resimleri)
-  if (url.startsWith('http://') || url.startsWith('https://')) {
+  if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
     // Kendi backend'imizden mi?
     const { BACKEND_URL } = require('../config/env');
     const backendUrl = BACKEND_URL;
-    if (!url.startsWith(backendUrl)) {
-      return url; // External URL, CDN'e çevirme
+    if (!urlStr.startsWith(backendUrl)) {
+      return urlStr; // External URL, CDN'e çevirme
     }
     // Backend URL'ini CDN URL'i ile değiştir
-    return url.replace(backendUrl, CDN_BASE_URL);
+    return urlStr.replace(backendUrl, CDN_BASE_URL);
   }
 
   // Relative path ise CDN prefix ekle
-  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  const cleanPath = urlStr.startsWith('/') ? urlStr : `/${urlStr}`;
   return `${CDN_BASE_URL}${cleanPath}`;
 };
 

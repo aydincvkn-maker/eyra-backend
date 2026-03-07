@@ -3,13 +3,14 @@ const auth = require("../middleware/auth");
 const requirePermission = require("../middleware/requirePermission");
 const paymentController = require("../controllers/paymentController");
 const { validateCreatePaymentIntent, validateIapPurchase, sanitizeMongoQuery } = require("../middleware/validate");
+const { paymentLimiter } = require("../middleware/rateLimit");
 
 const router = express.Router();
 router.use(sanitizeMongoQuery);
 
 router.get("/catalog", paymentController.getCatalog);
-router.post("/intents", auth, validateCreatePaymentIntent, paymentController.createIntent);
-router.post("/iap", auth, validateIapPurchase, paymentController.iapPurchase);
+router.post("/intents", auth, paymentLimiter, validateCreatePaymentIntent, paymentController.createIntent);
+router.post("/iap", auth, paymentLimiter, validateIapPurchase, paymentController.iapPurchase);
 router.get("/me", auth, paymentController.getMyPayments);
 
 router.get("/admin/stats", auth, requirePermission("finance:view"), paymentController.adminGetStats);
