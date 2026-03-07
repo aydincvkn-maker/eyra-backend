@@ -775,3 +775,35 @@ exports.changePassword = async (req, res) => {
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
+
+// POST /api/auth/forgot-password
+// Kullanıcının şifresini sıfırlar ve yeni şifre ile günceller
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+
+    if (!normalizedEmail || !newPassword) {
+      return res.status(400).json({ success: false, error: "Email ve yeni şifre gerekli" });
+    }
+
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ success: false, error: "Şifre en az 6 karakter olmalı" });
+    }
+
+    const user = await User.findOne({ email: normalizedEmail });
+    if (!user) {
+      // Güvenlik: kullanıcı var mı yok mu belli etme
+      return res.json({ success: true, message: "Şifre güncellendi" });
+    }
+
+    user.password = String(newPassword);
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    await user.save();
+
+    res.json({ success: true, message: "Şifre güncellendi" });
+  } catch (err) {
+    console.error("Forgot password error:", err);
+    res.status(500).json({ success: false, error: "Sunucu hatası" });
+  }
+};

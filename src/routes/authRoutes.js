@@ -38,4 +38,7 @@ router.post("/refresh-token", authMiddleware, authController.refreshToken);
 // ✅ Şifre Değiştir
 router.put("/change-password", authMiddleware, authController.changePassword);
 
+// ✅ Şifremi Unuttum (Firebase reset sonrası backend sync)
+router.post("/forgot-password", authLimiter, authController.forgotPassword);
+
 module.exports = router;
