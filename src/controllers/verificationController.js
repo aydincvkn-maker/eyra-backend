@@ -5,6 +5,7 @@ const { createNotification } = require("./notificationController");
 const { checkVerificationAchievement } = require("./achievementController");
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 
 // =============================================
 // KULLANICI ENDPOINT'LERİ
@@ -32,7 +33,7 @@ exports.requestVerification = async (req, res) => {
     }
 
     // Dosyayı kaydet
-    const fileName = `verify_${userId}_${Date.now()}${path.extname(req.file.originalname)}`;
+    const fileName = `verify_${userId}_${crypto.randomBytes(16).toString('hex')}${path.extname(req.file.originalname)}`;
     const uploadDir = path.join(__dirname, "../../uploads/verification");
     if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 

@@ -10,7 +10,7 @@ const User = require('../models/User');
 const { userConnectionTimestamps } = require('./state');
 const { logger } = require('../utils/logger');
 
-const CONNECTION_RATE_LIMIT_MS = 1000; // Min 1 second between connections from same user
+const CONNECTION_RATE_LIMIT_MS = 3000; // Min 3 seconds between connections from same user
 
 /**
  * Extract JWT token from the socket handshake in priority order.
@@ -46,7 +46,8 @@ function createAuthMiddleware() {
       console.log(`🔐 Socket auth: token=${token ? '✅' : '❌'}`);
 
       // Optional dev fallback: allow providing userId without JWT ONLY in development
-      const ALLOW_INSECURE = NODE_ENV === 'development'
+      // ⛔ Insecure mode SADECE development'ta ve açıkça etkinleştirildiğinde
+      const ALLOW_INSECURE = NODE_ENV !== 'production'
         && process.env.SOCKET_ALLOW_INSECURE_USERID === 'true';
 
       if (!token && ALLOW_INSECURE) {

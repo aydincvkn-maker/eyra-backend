@@ -123,9 +123,10 @@ exports.getUsers = async (req, res) => {
       }
     }
 
-    // âœ… Arama filtresi - REGEX INJECTION PROTECTED
+    // âœ… Arama filtresi - REGEX INJECTION + ReDoS PROTECTED
     if (searchQuery) {
-      const escapedQuery = escapeRegex(searchQuery);
+      const trimmedQuery = searchQuery.substring(0, 100); // Max 100 karakter (ReDoS korumasÄ±)
+      const escapedQuery = escapeRegex(trimmedQuery);
       query.$or = [
         { username: { $regex: escapedQuery, $options: 'i' } },
         { name: { $regex: escapedQuery, $options: 'i' } }

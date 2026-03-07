@@ -271,12 +271,11 @@ app.use('/api/vip', vipRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/withdrawals', withdrawalRoutes);
 
-// Debug/maintenance endpoints
-if (NODE_ENV !== 'production' || process.env.DEBUG_ROUTES_ENABLED === 'true') {
-  const allowPublicDebugInDev =
-    NODE_ENV !== 'production' && process.env.ALLOW_PUBLIC_DEBUG_ROUTES === 'true';
+// Debug/maintenance endpoints — PRODUCTION'DA TAMAMEN DEVRE DIŞI
+if (NODE_ENV !== 'production') {
+  const allowPublicDebugInDev = process.env.ALLOW_PUBLIC_DEBUG_ROUTES === 'true';
 
-  if (NODE_ENV === 'production' || !allowPublicDebugInDev) {
+  if (!allowPublicDebugInDev) {
     app.use('/api/debug', authMiddleware, adminMiddleware, debugRoutes);
   } else {
     app.use('/api/debug', debugRoutes);
