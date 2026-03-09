@@ -665,6 +665,36 @@ exports.getStreamDetails = async (req, res) => {
 };
 
 /**
+ * Yayındaki izleyici listesini getir
+ */
+exports.getViewers = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+
+    const stream = await LiveStream.findOne({ roomId })
+      .populate('viewers', 'username name profileImage')
+      .select('viewers viewerCount')
+      .lean();
+
+    if (!stream) {
+      return res.status(404).json({ ok: false, error: "stream_not_found" });
+    }
+
+    const viewers = (stream.viewers || []).map(v => ({
+      userId: v._id,
+      username: v.username,
+      name: v.name,
+      profileImage: v.profileImage,
+    }));
+
+    res.json({ ok: true, viewers, viewerCount: stream.viewerCount || 0 });
+  } catch (err) {
+    console.error("getViewers error:", err);
+    res.status(500).json({ ok: false, error: "fetch_failed" });
+  }
+};
+
+/**
  * Yayın geçmişi (belirli kullanıcının)
  */
 exports.getUserStreamHistory = async (req, res) => {
