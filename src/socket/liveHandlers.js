@@ -25,27 +25,17 @@ function register(socket, io) {
       socket.join(roomId);
       console.log(`📺 User ${userId} joined live room: ${roomId}`);
 
-      const updatedStream = await LiveStream.findOneAndUpdate(
+      // NOT: viewerCount artırma joinAsViewer HTTP endpoint'inde yapılıyor.
+      // Socket sadece room'a join olur, double count önlenir.
+      const stream = await LiveStream.findOne(
         { roomId, isLive: true, status: 'live' },
-        {
-          $inc: { viewerCount: 1 },
-          $addToSet: { viewers: userId },
-        },
-        { new: true },
-      ).select('viewerCount peakViewerCount');
+      ).select('viewerCount').lean();
 
-      if (updatedStream) {
-        if (updatedStream.viewerCount > updatedStream.peakViewerCount) {
-          await LiveStream.updateOne(
-            { _id: updatedStream._id },
-            { $max: { peakViewerCount: updatedStream.viewerCount } },
-          );
-        }
-
+      if (stream) {
         socket.to(roomId).emit('viewer_joined', {
           roomId,
           userId,
-          viewerCount: updatedStream.viewerCount,
+          viewerCount: stream.viewerCount,
           timestamp: Date.now(),
         });
       }
@@ -67,29 +57,17 @@ function register(socket, io) {
       socket.leave(roomId);
       console.log(`📺 User ${userId} left live room: ${roomId}`);
 
-      const updatedStream = await LiveStream.findOneAndUpdate(
+      // NOT: viewerCount azaltma leaveAsViewer HTTP endpoint'inde yapılıyor.
+      // Socket sadece room'dan leave olur, double count önlenir.
+      const stream = await LiveStream.findOne(
         { roomId },
-        {
-          $inc: { viewerCount: -1 },
-          $pull: { viewers: userId },
-        },
-        { new: true },
-      ).select('viewerCount');
+      ).select('viewerCount').lean();
 
-      if (updatedStream) {
-        let finalCount = updatedStream.viewerCount;
-        if (finalCount < 0) {
-          await LiveStream.updateOne(
-            { _id: updatedStream._id },
-            { $set: { viewerCount: 0 } },
-          );
-          finalCount = 0;
-        }
-
+      if (stream) {
         socket.to(roomId).emit('viewer_left', {
           roomId,
           userId,
-          viewerCount: finalCount,
+          viewerCount: stream.viewerCount,
           timestamp: Date.now(),
         });
       }
@@ -160,7 +138,7 @@ function register(socket, io) {
       const stream = await LiveStream.findOne({ roomId, isLive: true }).lean();
       if (!stream) return;
 
-      if (stream.hostId.toString() !== userId) {
+      if (stream.host.toString() !== userId) {
         socket.emit('error', { message: 'only_host_can_pin' });
         return;
       }
@@ -185,7 +163,7 @@ function register(socket, io) {
 
     try {
       const stream = await LiveStream.findOne({ roomId, isLive: true }).lean();
-      if (!stream || stream.hostId.toString() !== userId) return;
+      if (!stream || stream.host.toString() !== userId) return;
 
       io.to(roomId).emit('message_unpinned', { roomId });
       console.log(`📌 Message unpinned in room ${roomId}`);
@@ -203,7 +181,7 @@ function register(socket, io) {
       const stream = await LiveStream.findOne({ roomId, isLive: true }).lean();
       if (!stream) return;
 
-      if (stream.hostId.toString() !== userId) {
+      if (stream.host.toString() !== userId) {
         socket.emit('error', { message: 'only_host_can_mute' });
         return;
       }
@@ -228,7 +206,7 @@ function register(socket, io) {
 
     try {
       const stream = await LiveStream.findOne({ roomId, isLive: true }).lean();
-      if (!stream || stream.hostId.toString() !== userId) return;
+      if (!stream || stream.host.toString() !== userId) return;
 
       io.to(roomId).emit('user_unmuted', {
         roomId,
