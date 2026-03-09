@@ -106,7 +106,7 @@ exports.sendGift = async ({ senderId, recipientId, giftId, liveId, roomId }) => 
   
   // LiveStream toplam hediye değerini güncelle (atomik)
   await LiveStream.findByIdAndUpdate(live._id, {
-    $inc: { totalGiftsValue: gift.valueCoins }
+    $inc: { totalGiftsValue: gift.valueCoins, totalGiftsCount: 1 }
   });
   
   // Gift istatistiklerini güncelle (atomik)
