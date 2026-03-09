@@ -112,6 +112,9 @@ router.post("/chat/send", auth, chatLimiter, liveController.sendChatMessage);
 // Chat geçmişini getir
 router.get("/chat/:roomId", auth, liveController.getChatHistory);
 
+// Hediye sıralaması (leaderboard)
+router.get("/leaderboard/:roomId", auth, liveController.getGiftLeaderboard);
+
 // ============ MODERATION ENDPOINTS ============
 // Yayını flagle (report) - rate limited
 router.post("/flag", auth, reportLimiter, liveController.flagStream);

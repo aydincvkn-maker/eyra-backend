@@ -1914,3 +1914,70 @@ exports.setCallPrice = async (req, res) => {
     res.status(500).json({ ok: false, error: "update_failed" });
   }
 };
+
+/**
+ * Yayındaki hediye sıralaması (leaderboard)
+ */
+exports.getGiftLeaderboard = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+
+    const leaderboard = await Message.aggregate([
+      { $match: { roomId, type: 'gift' } },
+      {
+        $addFields: {
+          parsedContent: {
+            $cond: {
+              if: { $eq: [{ $type: '$content' }, 'string'] },
+              then: { $ifNull: [{ $convert: { input: '$content', to: 'object', onError: {} } }, {}] },
+              else: '$content',
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$from',
+          totalCoins: {
+            $sum: {
+              $cond: {
+                if: { $isNumber: '$parsedContent.valueCoins' },
+                then: '$parsedContent.valueCoins',
+                else: 0,
+              },
+            },
+          },
+          giftCount: { $sum: 1 },
+        },
+      },
+      { $sort: { totalCoins: -1 } },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'user',
+          pipeline: [{ $project: { username: 1, name: 1, profileImage: 1 } }],
+        },
+      },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          userId: '$_id',
+          username: '$user.username',
+          name: '$user.name',
+          profileImage: '$user.profileImage',
+          totalCoins: 1,
+          giftCount: 1,
+        },
+      },
+    ]);
+
+    res.json({ ok: true, leaderboard });
+  } catch (err) {
+    console.error("getGiftLeaderboard error:", err);
+    res.status(500).json({ ok: false, error: "fetch_failed" });
+  }
+};
