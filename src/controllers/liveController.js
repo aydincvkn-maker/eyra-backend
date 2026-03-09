@@ -1691,13 +1691,14 @@ exports.acceptPaidCall = async (req, res) => {
       });
     }
 
+    const hostEarnings = Math.floor(request.totalPrice * 0.45);
     res.json({
       ok: true,
       callRoomName,
       token: hostToken,
       livekitUrl: process.env.LIVEKIT_URL,
       duration: request.duration,
-      earnings: hostShare,
+      earnings: hostEarnings,
       message: "Arama başlatıldı"
     });
   } catch (err) {
