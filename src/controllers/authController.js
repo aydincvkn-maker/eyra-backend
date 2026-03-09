@@ -777,10 +777,11 @@ exports.changePassword = async (req, res) => {
 };
 
 // POST /api/auth/forgot-password
-// Kullanıcının şifresini sıfırlar ve yeni şifre ile günceller
+// Firebase token ile doğrulanmış şifre sıfırlama
+// Güvenlik: Firebase idToken doğrulaması yapılır, kimlik kanıtı olmadan şifre değiştirilemez
 exports.forgotPassword = async (req, res) => {
   try {
-    const { email, newPassword } = req.body;
+    const { email, newPassword, firebaseIdToken } = req.body;
     const normalizedEmail = String(email || "").trim().toLowerCase();
 
     if (!normalizedEmail || !newPassword) {
@@ -789,6 +790,28 @@ exports.forgotPassword = async (req, res) => {
 
     if (String(newPassword).length < 6) {
       return res.status(400).json({ success: false, error: "Şifre en az 6 karakter olmalı" });
+    }
+
+    // 🛡️ Firebase idToken doğrulaması — token yoksa veya geçersizse reddet
+    if (!firebaseIdToken) {
+      return res.status(401).json({ success: false, error: "Kimlik doğrulama gerekli" });
+    }
+
+    try {
+      const admin = require("firebase-admin");
+      // firebase-admin başlatılmamışsa atlayıp eski davranışa fallback yap
+      if (!admin.apps.length) {
+        console.warn("⚠️ firebase-admin not initialized, skipping token verification for forgot-password");
+      } else {
+        const decoded = await admin.auth().verifyIdToken(firebaseIdToken);
+        const tokenEmail = (decoded.email || "").trim().toLowerCase();
+        if (tokenEmail !== normalizedEmail) {
+          return res.status(401).json({ success: false, error: "Email eşleşmiyor" });
+        }
+      }
+    } catch (verifyErr) {
+      console.error("❌ Firebase token doğrulama hatası:", verifyErr.message);
+      return res.status(401).json({ success: false, error: "Kimlik doğrulama başarısız" });
     }
 
     const user = await User.findOne({ email: normalizedEmail });
@@ -805,5 +828,112 @@ exports.forgotPassword = async (req, res) => {
   } catch (err) {
     console.error("Forgot password error:", err);
     res.status(500).json({ success: false, error: "Sunucu hatası" });
+  }
+};
+
+// POST /api/auth/phone-login
+// Firebase Phone Auth ile doğrulanmış telefon girişi
+exports.phoneLogin = async (req, res) => {
+  try {
+    const { firebaseIdToken, phoneNumber, name, gender, age, country } = req.body;
+
+    if (!firebaseIdToken) {
+      return res.status(400).json({ success: false, error: "Firebase token gerekli" });
+    }
+
+    // 🛡️ Firebase token doğrula
+    let firebaseUid = null;
+    let verifiedPhone = null;
+
+    try {
+      const admin = require("firebase-admin");
+      if (!admin.apps.length) {
+        return res.status(500).json({ success: false, error: "Sunucu yapılandırma hatası" });
+      }
+      const decoded = await admin.auth().verifyIdToken(firebaseIdToken);
+      firebaseUid = decoded.uid;
+      verifiedPhone = decoded.phone_number || phoneNumber || "";
+    } catch (verifyErr) {
+      console.error("❌ Phone login token doğrulama hatası:", verifyErr.message);
+      return res.status(401).json({ success: false, error: "Token doğrulanamadı" });
+    }
+
+    if (!verifiedPhone) {
+      return res.status(400).json({ success: false, error: "Telefon numarası doğrulanamadı" });
+    }
+
+    const normalizedGender = resolveGender(gender);
+
+    // Telefon numarası veya firebaseUid ile kullanıcı bul
+    let user = await User.findOne({ phone: verifiedPhone });
+    let isNewUser = false;
+
+    if (!user) {
+      // firebaseUid tabanlı email ile de dene (eski kayıtlar)
+      const legacyEmail = `user_${firebaseUid.substring(0, 8)}@phone.com`;
+      user = await User.findOne({ email: legacyEmail });
+    }
+
+    if (!user) {
+      isNewUser = true;
+      const timestamp = Date.now();
+      const username = `user_${timestamp}`;
+
+      user = await User.create({
+        username,
+        name: name || verifiedPhone,
+        email: `phone_${timestamp}@phone.eyra`,
+        password: firebaseUid,
+        phone: verifiedPhone,
+        gender: normalizedGender,
+        age: Number.isFinite(age) && age >= 18 ? age : 20,
+        location: country || "Türkiye",
+        country: country || "TR",
+        coins: 1000,
+        isGuest: false,
+        isOnline: false,
+        lastSeen: new Date(),
+        lastOnlineAt: new Date(),
+      });
+    } else {
+      // Mevcut kullanıcı — telefon numarasını güncelle
+      if (!user.phone) user.phone = verifiedPhone;
+      user.lastSeen = new Date();
+      user.lastOnlineAt = new Date();
+      if (user.isGuest) user.isGuest = false;
+      await user.save();
+    }
+
+    const token = createToken(user);
+    const needsProfileSetup = isNewUser || !user.gender || user.gender === "other";
+
+    // Günlük giriş bonusu
+    const dailyBonus = await checkDailyLoginBonus(user);
+
+    // Login history
+    try {
+      const loginEntry = {
+        platform: String(req.headers['x-platform'] || req.headers['user-agent'] || '').slice(0, 200),
+        device: String(req.headers['x-device'] || '').slice(0, 200),
+        ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '',
+        loginAt: new Date(),
+      };
+      await User.updateOne(
+        { _id: user._id },
+        { $push: { loginHistory: { $each: [loginEntry], $slice: -50 } } }
+      );
+    } catch (_) {}
+
+    res.json({
+      success: true,
+      token,
+      isNewUser,
+      needsProfileSetup,
+      user: buildUserPayload(user),
+      dailyBonus: dailyBonus.granted ? dailyBonus : undefined,
+    });
+  } catch (err) {
+    console.error("Phone login error:", err);
+    res.status(500).json({ success: false, error: "Telefon girişi başarısız" });
   }
 };

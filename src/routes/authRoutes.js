@@ -26,6 +26,9 @@ router.post("/apple-login", authLimiter, authController.appleLogin);
 // Guest Login
 router.post("/guest-login", authLimiter, authController.guestLogin);
 
+// ✅ Phone Login (Firebase Phone Auth ile doğrulanmış)
+router.post("/phone-login", authLimiter, authController.phoneLogin);
+
 // Logout
 router.post("/logout", authMiddleware, authController.logout);
 
