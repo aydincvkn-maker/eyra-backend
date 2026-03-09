@@ -1728,6 +1728,12 @@ exports.rejectPaidCall = async (req, res) => {
       return res.status(403).json({ ok: false, error: "only_host_can_reject" });
     }
 
+    // 💰 Coin iadesi: requestPaidCall'da peşin alınan coinleri geri ver
+    const refundAmount = request.totalPrice;
+    const hostShareRefund = Math.floor(refundAmount * 0.45);
+    await User.findByIdAndUpdate(request.callerId, { $inc: { coins: refundAmount } });
+    await User.findByIdAndUpdate(hostId, { $inc: { coins: -hostShareRefund, totalEarnings: -hostShareRefund } });
+
     // Talebi sil
     global.callRequests.delete(requestId);
 

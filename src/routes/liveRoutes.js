@@ -6,9 +6,9 @@ const auth = require("../middleware/auth");
 const requirePermission = require("../middleware/requirePermission");
 const { liveStartLimiter, chatLimiter, reportLimiter } = require("../middleware/rateLimit");
 
-// ============ DEBUG ROUTES ============
+// ============ DEBUG ROUTES (Admin only, non-production) ============
 // Token kontrolü (authentication debug)
-router.post("/debug/token-check", auth, (req, res) => {
+router.post("/debug/token-check", auth, requirePermission("admin"), (req, res) => {
   res.json({
     ok: true,
     message: "Token valid ✅",
@@ -20,7 +20,7 @@ router.post("/debug/token-check", auth, (req, res) => {
 
 // LiveKit Token generation test
 // ✅ FIX: async handler for livekit-server-sdk v2.x
-router.post("/debug/generate-test-token", auth, async (req, res) => {
+router.post("/debug/generate-test-token", auth, requirePermission("admin"), async (req, res) => {
   try {
     const { AccessToken } = require("livekit-server-sdk");
     const roomId = `test_room_${Date.now()}`;
@@ -93,11 +93,11 @@ router.post("/viewer-join", auth, liveController.joinAsViewer);
 router.post("/viewer-leave", auth, liveController.leaveAsViewer);
 
 // ============ LISTING ENDPOINTS ============
-// Aktif yayınları listele (auth optional - provides user context)
-router.get("/list", liveController.getActiveLives);
+// Aktif yayınları listele
+router.get("/list", auth, liveController.getActiveLives);
 
-// Tek yayın detayı (auth optional - provides user context)
-router.get("/stream/:roomId", liveController.getStreamDetails);
+// Tek yayın detayı
+router.get("/stream/:roomId", auth, liveController.getStreamDetails);
 
 // Kullanıcının yayın geçmişi
 router.get("/history/:userId", auth, liveController.getUserStreamHistory);

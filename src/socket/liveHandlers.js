@@ -107,14 +107,15 @@ function register(socket, io) {
         roomId,
         from: userId,
         type,
-        content: message,
+        content: message.replace(/<[^>]*>/g, ''),
       });
 
+      const sanitizedContent = message.replace(/<[^>]*>/g, '');
       io.to(roomId).emit('chat_message', {
         _id: msg._id,
         roomId,
         type,
-        content: message,
+        content: sanitizedContent,
         sender: {
           _id: userId,
           username: user.username,
