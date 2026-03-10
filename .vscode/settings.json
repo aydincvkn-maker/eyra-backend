@@ -4,5 +4,25 @@
     "c:\\Users\\Casper\\Desktop\\eyra-backend\\eyra-backend",
     "c:\\Users\\Casper\\Desktop\\eyra-backend\\eyra-backend-new",
     "c:\\Users\\Casper\\Desktop\\eyra-backend\\eyra-backend-new\\eyra-backend"
-  ]
+  ],
+  "editor.formatOnSave": true,
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "json"
+  ],
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
 }
