@@ -337,12 +337,12 @@ exports.seedDefaultGifts = async () => {
     { name: "Diamond", imageUrl: "/gifts/diamond.png", valueCoins: 1000, category: "vip", order: 1, animationUrl: "/animations/diamond.json" },
     { name: "Crown", imageUrl: "/gifts/crown.png", valueCoins: 2000, category: "vip", order: 2, animationUrl: "/animations/crown.json" },
     { name: "Rocket", imageUrl: "/gifts/rocket.png", valueCoins: 5000, category: "vip", order: 3, animationUrl: "/animations/rocket.json" },
-    { name: "Castle", imageUrl: "/gifts/castle.png", valueCoins: 10000, category: "vip", order: 4, animationUrl: "/animations/castle.json" },
     
     // Special
     { name: "Fireworks", imageUrl: "/gifts/fireworks.png", valueCoins: 20000, category: "special", order: 1, animationUrl: "/animations/fireworks.json" },
     { name: "Yacht", imageUrl: "/gifts/yacht.png", valueCoins: 50000, category: "special", order: 2, animationUrl: "/animations/yacht.json" },
     { name: "Private Jet", imageUrl: "/gifts/jet.png", valueCoins: 100000, category: "special", order: 3, animationUrl: "/animations/jet.json" },
+    { name: "Castle", imageUrl: "/gifts/castle.png", valueCoins: 300000, category: "special", order: 4, animationUrl: "/animations/castle.json" },
   ];
   
   await Gift.insertMany(defaultGifts);
