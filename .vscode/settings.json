@@ -1,4 +1,6 @@
 {
+  "terminal.integrated.enablePersistentSessions": false,
+  "terminal.integrated.persistentSessionReviveProcess": false,
   "git.autoRepositoryDetection": "openEditors",
   "git.ignoredRepositories": [
     "c:\\Users\\Casper\\Desktop\\eyra-backend\\eyra-backend",
