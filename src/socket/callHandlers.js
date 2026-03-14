@@ -3,10 +3,10 @@
  * Handles call:accept, call:reject, call:end, call:cancel, call:coin_tick.
  */
 
-const { activeCalls } = require('./state');
-const { emitToUserSockets, getCounterpartyForRoom } = require('./helpers');
-const presenceService = require('../services/presenceService');
-const User = require('../models/User');
+const { activeCalls } = require("./state");
+const { emitToUserSockets, getCounterpartyForRoom } = require("./helpers");
+const presenceService = require("../services/presenceService");
+const User = require("../models/User");
 
 /**
  * Register call signaling events on a connected socket.
@@ -27,27 +27,39 @@ function register(socket, io) {
 
     const counterpartyId = getCounterpartyForRoom(roomName, senderId);
     if (!counterpartyId) {
-      console.log(`⚠️ ${eventName} - no counterparty found for room ${roomName}`);
+      console.log(
+        `⚠️ ${eventName} - no counterparty found for room ${roomName}`,
+      );
       return;
     }
 
-    console.log(`📞 Forwarding ${eventName} from ${senderId} to ${counterpartyId} for room ${roomName}`);
+    console.log(
+      `📞 Forwarding ${eventName} from ${senderId} to ${counterpartyId} for room ${roomName}`,
+    );
     emitToUserSockets(counterpartyId, eventName, {
       roomName,
       fromUserId: String(senderId),
     });
 
     // Cleanup on call end/reject
-    if (eventName === 'call:ended' || eventName === 'call:rejected') {
+    if (eventName === "call:ended" || eventName === "call:rejected") {
       const callInfo = activeCalls.get(roomName);
       if (callInfo) {
         try {
-          await presenceService.setBusy(callInfo.callerId, false).catch((e) =>
-            console.error(`⚠️ setBusy cleanup for ${callInfo.callerId} failed: ${e}`),
-          );
-          await presenceService.setBusy(callInfo.targetUserId, false).catch((e) =>
-            console.error(`⚠️ setBusy cleanup for ${callInfo.targetUserId} failed: ${e}`),
-          );
+          await presenceService
+            .setBusy(callInfo.callerId, false)
+            .catch((e) =>
+              console.error(
+                `⚠️ setBusy cleanup for ${callInfo.callerId} failed: ${e}`,
+              ),
+            );
+          await presenceService
+            .setBusy(callInfo.targetUserId, false)
+            .catch((e) =>
+              console.error(
+                `⚠️ setBusy cleanup for ${callInfo.targetUserId} failed: ${e}`,
+              ),
+            );
           console.log(`✅ Both users set as not busy for room: ${roomName}`);
         } catch (e) {
           console.error(`⚠️ setBusy cleanup error: ${e}`);
@@ -59,15 +71,23 @@ function register(socket, io) {
     }
   };
 
-  socket.on('call:accept', ({ roomName }) => forwardCallEvent('call:accepted', roomName));
-  socket.on('call:reject', ({ roomName }) => forwardCallEvent('call:rejected', roomName));
-  socket.on('call:end', ({ roomName }) => forwardCallEvent('call:ended', roomName));
-  socket.on('call:cancel', ({ roomName }) => forwardCallEvent('call:cancelled', roomName));
+  socket.on("call:accept", ({ roomName }) =>
+    forwardCallEvent("call:accepted", roomName),
+  );
+  socket.on("call:reject", ({ roomName }) =>
+    forwardCallEvent("call:rejected", roomName),
+  );
+  socket.on("call:end", ({ roomName }) =>
+    forwardCallEvent("call:ended", roomName),
+  );
+  socket.on("call:cancel", ({ roomName }) =>
+    forwardCallEvent("call:cancelled", roomName),
+  );
 
   // Paid call coin tick (dakikalık ücretlendirme)
   // ✅ FIX: Server-side timer ile destekle — client tick gelirse kabul et,
   // gelmezse server kendi timer'ı ile ücretlendir
-  socket.on('call:coin_tick', async ({ roomName, requestId, minuteIndex }) => {
+  socket.on("call:coin_tick", async ({ roomName, requestId, minuteIndex }) => {
     const senderId = socket.data.userId;
     if (!senderId || !roomName) return;
 
@@ -83,7 +103,9 @@ function register(socket, io) {
       }
 
       if (!callInfo) {
-        console.log(`⚠️ call:coin_tick - call info not found for room ${roomName}`);
+        console.log(
+          `⚠️ call:coin_tick - call info not found for room ${roomName}`,
+        );
         return;
       }
 
@@ -100,7 +122,7 @@ function register(socket, io) {
 
       _processCallTick(callInfo, minuteIndex);
     } catch (e) {
-      console.error('❌ call:coin_tick error:', e.message);
+      console.error("❌ call:coin_tick error:", e.message);
     }
   });
 }
@@ -156,12 +178,18 @@ async function _processCallTick(callInfo, minuteIndex) {
     const updatedCaller = await User.findOneAndUpdate(
       { _id: callInfo.callerId, coins: { $gte: pricePerMinute } },
       { $inc: { coins: -pricePerMinute } },
-      { new: true, select: "coins" }
+      { new: true, select: "coins" },
     );
     if (!updatedCaller) {
-      emitToUserSockets(callInfo.callerId, 'call:insufficient_coins', { roomName: callInfo.callRoomName });
-      emitToUserSockets(callInfo.hostId, 'call:insufficient_coins', { roomName: callInfo.callRoomName });
-      console.log(`💰 Insufficient coins for call ${callInfo.callRoomName}, ending call`);
+      emitToUserSockets(callInfo.callerId, "call:insufficient_coins", {
+        roomName: callInfo.callRoomName,
+      });
+      emitToUserSockets(callInfo.hostId, "call:insufficient_coins", {
+        roomName: callInfo.callRoomName,
+      });
+      console.log(
+        `💰 Insufficient coins for call ${callInfo.callRoomName}, ending call`,
+      );
       // Stop server timer
       if (callInfo._serverTickTimer) clearInterval(callInfo._serverTickTimer);
       return;
@@ -172,22 +200,24 @@ async function _processCallTick(callInfo, minuteIndex) {
       $inc: { coins: hostShare, totalEarnings: hostShare },
     });
 
-    emitToUserSockets(callInfo.callerId, 'call:coin_charged', {
+    emitToUserSockets(callInfo.callerId, "call:coin_charged", {
       roomName: callInfo.callRoomName,
       amount: pricePerMinute,
       remaining: updatedCaller.coins,
       minute: minuteIndex + 1,
     });
-    emitToUserSockets(callInfo.hostId, 'call:coin_charged', {
+    emitToUserSockets(callInfo.hostId, "call:coin_charged", {
       roomName: callInfo.callRoomName,
       amount: hostShare,
       earned: true,
       minute: minuteIndex + 1,
     });
 
-    console.log(`💰 Call tick: ${callInfo.callerId} charged ${pricePerMinute} coins (minute ${minuteIndex + 1}), host earned ${hostShare}`);
+    console.log(
+      `💰 Call tick: ${callInfo.callerId} charged ${pricePerMinute} coins (minute ${minuteIndex + 1}), host earned ${hostShare}`,
+    );
   } catch (e) {
-    console.error('❌ _processCallTick error:', e.message);
+    console.error("❌ _processCallTick error:", e.message);
   }
 }
 

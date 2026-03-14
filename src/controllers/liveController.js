@@ -8,60 +8,73 @@ const { AccessToken } = require("livekit-server-sdk");
 const presenceService = require("../services/presenceService");
 const liveService = require("../services/liveService");
 const translationService = require("../services/translationService");
-const { optimizeStreamList, getStreamThumbnail, getProfileImageUrl } = require("../utils/cdn");
+const {
+  optimizeStreamList,
+  getStreamThumbnail,
+  getProfileImageUrl,
+} = require("../utils/cdn");
 const { trackMissionProgress } = require("./missionController");
 const { checkStreamAchievements } = require("./achievementController");
 const adminSocket = require("../socket/adminNamespace");
 
 // ============ CATEGORY MAPPING (Turkish → English) ============
 const CATEGORY_MAP = {
-  'sohbet': 'chat',
-  'chat': 'chat',
-  'muzik': 'music',
-  'music': 'music',
-  'dans': 'dance',
-  'dance': 'dance',
-  'yetenek': 'talk',
-  'talk': 'talk',
-  'oyun': 'gaming',
-  'gaming': 'gaming',
-  'diger': 'other',
-  'other': 'other',
+  sohbet: "chat",
+  chat: "chat",
+  muzik: "music",
+  music: "music",
+  dans: "dance",
+  dance: "dance",
+  yetenek: "talk",
+  talk: "talk",
+  oyun: "gaming",
+  gaming: "gaming",
+  diger: "other",
+  other: "other",
 };
 
 const normalizeCategory = (input) => {
-  if (!input) return 'chat';
+  if (!input) return "chat";
   const normalized = String(input).toLowerCase().trim();
-  return CATEGORY_MAP[normalized] || 'chat';
+  return CATEGORY_MAP[normalized] || "chat";
 };
 
 // ============ TOKEN GENERATORS ============
 
 const generateHostToken = async (userId, roomId) => {
   try {
-    console.log('🔵 [generateHostToken] Creating token...');
-    console.log('   userId:', userId, '(type:', typeof userId, ')');
-    console.log('   roomId:', roomId);
-    console.log('   LIVEKIT_API_KEY:', process.env.LIVEKIT_API_KEY ? '✓ SET' : '✗ MISSING');
-    console.log('   LIVEKIT_API_SECRET:', process.env.LIVEKIT_API_SECRET ? '✓ SET' : '✗ MISSING');
-    console.log('   LIVEKIT_URL:', process.env.LIVEKIT_URL || '✗ MISSING');
-    
+    console.log("🔵 [generateHostToken] Creating token...");
+    console.log("   userId:", userId, "(type:", typeof userId, ")");
+    console.log("   roomId:", roomId);
+    console.log(
+      "   LIVEKIT_API_KEY:",
+      process.env.LIVEKIT_API_KEY ? "✓ SET" : "✗ MISSING",
+    );
+    console.log(
+      "   LIVEKIT_API_SECRET:",
+      process.env.LIVEKIT_API_SECRET ? "✓ SET" : "✗ MISSING",
+    );
+    console.log("   LIVEKIT_URL:", process.env.LIVEKIT_URL || "✗ MISSING");
+
     if (!process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) {
-      throw new Error('LIVEKIT credentials missing (LIVEKIT_API_KEY or LIVEKIT_API_SECRET)');
+      throw new Error(
+        "LIVEKIT credentials missing (LIVEKIT_API_KEY or LIVEKIT_API_SECRET)",
+      );
     }
 
     if (!roomId || String(roomId).trim().length === 0) {
-      throw new Error('LIVEKIT roomId missing/empty');
+      throw new Error("LIVEKIT roomId missing/empty");
     }
-    
+
     // ✅ IMPORTANT: Convert userId to string properly (handles ObjectId)
-    const identity = userId && userId.toString ? userId.toString() : String(userId);
-    console.log('   identity:', identity, '(length:', identity.length, ')');
-    
+    const identity =
+      userId && userId.toString ? userId.toString() : String(userId);
+    console.log("   identity:", identity, "(length:", identity.length, ")");
+
     const at = new AccessToken(
       process.env.LIVEKIT_API_KEY,
       process.env.LIVEKIT_API_SECRET,
-      { identity }
+      { identity },
     );
 
     at.addGrant({
@@ -69,83 +82,92 @@ const generateHostToken = async (userId, roomId) => {
       room: String(roomId),
       canPublish: true,
       canSubscribe: true,
-      canPublishData: true
+      canPublishData: true,
     });
 
     // ✅ FIX: livekit-server-sdk v2.x'te toJwt() Promise döndürür
     const token = await at.toJwt();
-    
+
     // Debug token type
-    console.log('🔵 [DEBUG] token type:', typeof token);
-    console.log('🔵 [DEBUG] token value:', token);
-    console.log('🔵 [DEBUG] token constructor:', token?.constructor?.name);
-    
+    console.log("🔵 [DEBUG] token type:", typeof token);
+    console.log("🔵 [DEBUG] token value:", token);
+    console.log("🔵 [DEBUG] token constructor:", token?.constructor?.name);
+
     // ✅ Make sure token is a string
     let tokenString = token;
-    if (typeof token === 'string') {
+    if (typeof token === "string") {
       tokenString = token;
-    } else if (token && typeof token === 'object') {
+    } else if (token && typeof token === "object") {
       // Eğer object ise, string'e çevir
       tokenString = token.toString();
     } else {
       // Fallback
       tokenString = String(token);
     }
-    
-    console.log('🔵 [DEBUG] final tokenString type:', typeof tokenString);
-    console.log('🔵 [DEBUG] final tokenString length:', tokenString.length);
-    
-    if (!tokenString || tokenString === 'undefined' || tokenString === '[object Object]') {
-      console.error('❌ Token generation failed! Got:', tokenString);
-      throw new Error('Token generation failed: toJwt() returned invalid value');
+
+    console.log("🔵 [DEBUG] final tokenString type:", typeof tokenString);
+    console.log("🔵 [DEBUG] final tokenString length:", tokenString.length);
+
+    if (
+      !tokenString ||
+      tokenString === "undefined" ||
+      tokenString === "[object Object]"
+    ) {
+      console.error("❌ Token generation failed! Got:", tokenString);
+      throw new Error(
+        "Token generation failed: toJwt() returned invalid value",
+      );
     }
-    
+
     // ✅ Detailed token validation logging
     try {
-      const parts = tokenString.split('.');
+      const parts = tokenString.split(".");
       if (parts.length !== 3) {
         throw new Error(`Invalid JWT parts: expected 3, got ${parts.length}`);
       }
-      const header = JSON.parse(Buffer.from(parts[0], 'base64').toString());
-      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-      console.log('✅ [generateHostToken] Token created successfully');
-      console.log('   Header:', header);
-      console.log('   Payload sub:', payload.sub);
+      const header = JSON.parse(Buffer.from(parts[0], "base64").toString());
+      const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
+      console.log("✅ [generateHostToken] Token created successfully");
+      console.log("   Header:", header);
+      console.log("   Payload sub:", payload.sub);
     } catch (decodeErr) {
-      console.warn('⚠️ Could not decode token for logging:', decodeErr.message);
-      console.warn('⚠️ But token should still be valid');
+      console.warn("⚠️ Could not decode token for logging:", decodeErr.message);
+      console.warn("⚠️ But token should still be valid");
     }
-    
+
     return tokenString;
   } catch (err) {
-    console.error('❌ generateHostToken error:', err.message);
-    console.error('Stack:', err.stack);
-    throw new Error('host_token_generation_failed: ' + err.message);
+    console.error("❌ generateHostToken error:", err.message);
+    console.error("Stack:", err.stack);
+    throw new Error("host_token_generation_failed: " + err.message);
   }
 };
 
 const generateViewerToken = async (userId, roomId) => {
   try {
-    console.log('🔵 [generateViewerToken] Creating viewer token...');
-    console.log('   userId:', userId, '(type:', typeof userId, ')');
-    console.log('   roomId:', roomId);
-    
+    console.log("🔵 [generateViewerToken] Creating viewer token...");
+    console.log("   userId:", userId, "(type:", typeof userId, ")");
+    console.log("   roomId:", roomId);
+
     if (!process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) {
-      throw new Error('LIVEKIT credentials missing (LIVEKIT_API_KEY or LIVEKIT_API_SECRET)');
+      throw new Error(
+        "LIVEKIT credentials missing (LIVEKIT_API_KEY or LIVEKIT_API_SECRET)",
+      );
     }
 
     if (!roomId || String(roomId).trim().length === 0) {
-      throw new Error('LIVEKIT roomId missing/empty');
+      throw new Error("LIVEKIT roomId missing/empty");
     }
-    
+
     // ✅ IMPORTANT: Convert userId to string properly (handles ObjectId)
-    const identity = userId && userId.toString ? userId.toString() : String(userId);
-    console.log('   identity:', identity, '(length:', identity.length, ')');
-    
+    const identity =
+      userId && userId.toString ? userId.toString() : String(userId);
+    console.log("   identity:", identity, "(length:", identity.length, ")");
+
     const at = new AccessToken(
       process.env.LIVEKIT_API_KEY,
       process.env.LIVEKIT_API_SECRET,
-      { identity }
+      { identity },
     );
 
     at.addGrant({
@@ -153,46 +175,53 @@ const generateViewerToken = async (userId, roomId) => {
       room: String(roomId),
       canPublish: false,
       canSubscribe: true,
-      canPublishData: true
+      canPublishData: true,
     });
 
     // ✅ FIX: livekit-server-sdk v2.x'te toJwt() Promise döndürür
     const token = await at.toJwt();
-    
-    console.log('🔵 [DEBUG] viewer token type:', typeof token);
-    console.log('🔵 [DEBUG] viewer token exists:', !!token);
-    
+
+    console.log("🔵 [DEBUG] viewer token type:", typeof token);
+    console.log("🔵 [DEBUG] viewer token exists:", !!token);
+
     // ✅ Make sure token is a string
     let tokenString = token;
-    if (typeof token === 'string') {
+    if (typeof token === "string") {
       tokenString = token;
-    } else if (token && typeof token === 'object') {
+    } else if (token && typeof token === "object") {
       tokenString = token.toString();
     } else {
       tokenString = String(token);
     }
-    
-    if (!tokenString || tokenString === 'undefined' || tokenString === '[object Object]') {
-      console.error('❌ Viewer token generation failed! Got:', tokenString);
-      throw new Error('Viewer token generation failed');
+
+    if (
+      !tokenString ||
+      tokenString === "undefined" ||
+      tokenString === "[object Object]"
+    ) {
+      console.error("❌ Viewer token generation failed! Got:", tokenString);
+      throw new Error("Viewer token generation failed");
     }
-    
+
     // ✅ Detailed token validation logging
     try {
-      const parts = tokenString.split('.');
+      const parts = tokenString.split(".");
       if (parts.length === 3) {
-        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-        console.log('✅ [generateViewerToken] Token created successfully, sub:', payload.sub);
+        const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
+        console.log(
+          "✅ [generateViewerToken] Token created successfully, sub:",
+          payload.sub,
+        );
       }
     } catch (decodeErr) {
-      console.warn('⚠️ Viewer token decode failed:', decodeErr.message);
+      console.warn("⚠️ Viewer token decode failed:", decodeErr.message);
     }
-    
+
     return tokenString;
   } catch (err) {
-    console.error('❌ generateViewerToken error:', err.message);
-    console.error('Stack:', err.stack);
-    throw new Error('viewer_token_generation_failed: ' + err.message);
+    console.error("❌ generateViewerToken error:", err.message);
+    console.error("Stack:", err.stack);
+    throw new Error("viewer_token_generation_failed: " + err.message);
   }
 };
 
@@ -205,47 +234,52 @@ exports.startLive = async (req, res) => {
   try {
     const userId = req.user.id;
     let { title, category, description, quality, resolution } = req.body;
-    
+
     // Kategoriyi normalize et (Turkish → English)
     category = normalizeCategory(category);
-    
+
     // Quality settings validation
-    const validQualities = ['low', 'medium', 'high', 'auto'];
-    const validResolutions = ['480p', '720p', '1080p'];
-    quality = validQualities.includes(quality) ? quality : 'auto';
-    resolution = validResolutions.includes(resolution) ? resolution : '720p';
-    
+    const validQualities = ["low", "medium", "high", "auto"];
+    const validResolutions = ["480p", "720p", "1080p"];
+    quality = validQualities.includes(quality) ? quality : "auto";
+    resolution = validResolutions.includes(resolution) ? resolution : "720p";
+
     // Bitrate based on quality
     const bitrateMap = {
-      'low': 1000,
-      'medium': 2000,
-      'high': 4000,
-      'auto': 2500
+      low: 1000,
+      medium: 2000,
+      high: 4000,
+      auto: 2500,
     };
     const bitrate = bitrateMap[quality] || 2000;
-    
-    console.log('🔵 [startLive] Starting live broadcast...');
-    console.log('   userId:', userId);
-    console.log('   title:', title);
-    console.log('   category (normalized):', category);
-    console.log('   quality:', quality, 'resolution:', resolution);
+
+    console.log("🔵 [startLive] Starting live broadcast...");
+    console.log("   userId:", userId);
+    console.log("   title:", title);
+    console.log("   category (normalized):", category);
+    console.log("   quality:", quality, "resolution:", resolution);
 
     // Cinsiyet kontrolü
-    const host = await User.findById(userId).select('gender isBanned isActive username name profileImage');
-    console.log('🔵 [startLive] Host found:', host ? `${host.username} (${host.gender})` : 'NOT FOUND');
-    
+    const host = await User.findById(userId).select(
+      "gender isBanned isActive username name profileImage",
+    );
+    console.log(
+      "🔵 [startLive] Host found:",
+      host ? `${host.username} (${host.gender})` : "NOT FOUND",
+    );
+
     if (!host) {
       return res.status(404).json({ ok: false, error: "user_not_found" });
     }
     if (host.isBanned || host.isActive === false) {
       return res.status(403).json({ ok: false, error: "account_restricted" });
     }
-    if (host.gender !== 'female') {
-      console.log('⚠️ [startLive] Gender check failed:', host.gender);
-      return res.status(403).json({ 
-        ok: false, 
-        error: "only_female_can_broadcast", 
-        message: "Only female users can start a live broadcast" 
+    if (host.gender !== "female") {
+      console.log("⚠️ [startLive] Gender check failed:", host.gender);
+      return res.status(403).json({
+        ok: false,
+        error: "only_female_can_broadcast",
+        message: "Only female users can start a live broadcast",
       });
     }
 
@@ -253,7 +287,7 @@ exports.startLive = async (req, res) => {
     const existing = await LiveStream.findOne({
       host: userId,
       isLive: true,
-      status: "live"
+      status: "live",
     });
 
     if (existing) {
@@ -265,13 +299,13 @@ exports.startLive = async (req, res) => {
         streamId: existing.roomId,
         liveId: existing._id,
         token,
-        livekitUrl: process.env.LIVEKIT_URL
+        livekitUrl: process.env.LIVEKIT_URL,
       });
     }
 
     // Yeni yayın oluştur
     const roomId = "room_" + Date.now().toString() + "_" + uuidv4().slice(0, 8);
-    console.log('🔵 [startLive] Creating stream with roomId:', roomId);
+    console.log("🔵 [startLive] Creating stream with roomId:", roomId);
 
     const stream = await LiveStream.create({
       host: userId,
@@ -288,42 +322,54 @@ exports.startLive = async (req, res) => {
       resolution,
       bitrate,
     });
-    
-    console.log('✅ [startLive] Stream created:', stream._id);
+
+    console.log("✅ [startLive] Stream created:", stream._id);
 
     // ✅ Cache invalidate - yeni yayın eklendi
     try {
       await liveService.invalidateStreamCache();
     } catch (e) {
-      console.warn('⚠️ Cache invalidation failed:', e.message);
+      console.warn("⚠️ Cache invalidation failed:", e.message);
     }
 
     // User'ı live olarak işaretle
-    await User.findByIdAndUpdate(userId, { isLive: true }, { runValidators: false });
+    await User.findByIdAndUpdate(
+      userId,
+      { isLive: true },
+      { runValidators: false },
+    );
 
     // Presence'ı güncelle
     try {
       await presenceService.setLive(userId, true, { streamId: roomId });
     } catch (e) {
-      console.warn('⚠️ presenceService.setLive failed:', e.message);
+      console.warn("⚠️ presenceService.setLive failed:", e.message);
     }
 
     // Token oluştur
-    console.log('🔵 [startLive] Generating host token...');
+    console.log("🔵 [startLive] Generating host token...");
     const token = await generateHostToken(userId, roomId);
-    console.log('✅ [startLive] Token generated, length:', token?.length);
+    console.log("✅ [startLive] Token generated, length:", token?.length);
 
     // ✅ Mission & Achievement tracking for streaming
     try {
-      await trackMissionProgress(userId, 'first_stream');
-      await trackMissionProgress(userId, 'weekly_stream');
+      await trackMissionProgress(userId, "first_stream");
+      await trackMissionProgress(userId, "weekly_stream");
       // Stream count for achievements
       const streamCount = await LiveStream.countDocuments({ host: userId });
       await checkStreamAchievements(userId, streamCount);
-    } catch (e) { console.warn('⚠️ Mission/achievement tracking failed:', e.message); }
+    } catch (e) {
+      console.warn("⚠️ Mission/achievement tracking failed:", e.message);
+    }
 
     // Notify admin sockets
-    adminSocket.emit("stream:started", { roomId, hostId: userId, hostUsername: host.username, title: stream.title, category: stream.category });
+    adminSocket.emit("stream:started", {
+      roomId,
+      hostId: userId,
+      hostUsername: host.username,
+      title: stream.title,
+      category: stream.category,
+    });
 
     res.status(201).json({
       ok: true,
@@ -340,17 +386,17 @@ exports.startLive = async (req, res) => {
           _id: host._id,
           username: host.username,
           name: host.name,
-          profileImage: host.profileImage
-        }
-      }
+          profileImage: host.profileImage,
+        },
+      },
     });
   } catch (err) {
     console.error("❌ startLive error:", err.message);
     console.error("Stack:", err.stack);
-    res.status(500).json({ 
-      ok: false, 
+    res.status(500).json({
+      ok: false,
       error: "live_start_failed",
-      details: err.message 
+      details: err.message,
     });
   }
 };
@@ -371,7 +417,11 @@ exports.endLive = async (req, res) => {
       stream = await LiveStream.findOne({ roomId });
     } else {
       // Kullanıcının aktif yayınını bul
-      stream = await LiveStream.findOne({ host: userId, isLive: true, status: "live" });
+      stream = await LiveStream.findOne({
+        host: userId,
+        isLive: true,
+        status: "live",
+      });
     }
 
     if (!stream) {
@@ -400,30 +450,34 @@ exports.endLive = async (req, res) => {
     try {
       await liveService.invalidateStreamCache(streamRoomId);
     } catch (e) {
-      console.warn('⚠️ Cache invalidation failed:', e.message);
+      console.warn("⚠️ Cache invalidation failed:", e.message);
     }
 
     // ✅ LiveKit room'u proaktif sil
     try {
       await liveService.deleteLiveKitRoom(streamRoomId);
     } catch (e) {
-      console.warn('⚠️ LiveKit room deletion failed:', e.message);
+      console.warn("⚠️ LiveKit room deletion failed:", e.message);
     }
 
     // User'ı offline yap
-    await User.findByIdAndUpdate(userId, { isLive: false }, { runValidators: false });
+    await User.findByIdAndUpdate(
+      userId,
+      { isLive: false },
+      { runValidators: false },
+    );
 
     // Presence'ı güncelle
     try {
       await presenceService.setLive(userId, false);
     } catch (e) {
-      console.warn('⚠️ presenceService.setLive(false) failed:', e.message);
+      console.warn("⚠️ presenceService.setLive(false) failed:", e.message);
     }
 
     // ✅ PROFESSIONAL: İzleyicilere detaylı bildir
     if (global.io) {
       // Odadaki herkese stream_ended eventi
-      global.io.to(streamRoomId).emit('stream_ended', {
+      global.io.to(streamRoomId).emit("stream_ended", {
         roomId: streamRoomId,
         hostId: userId,
         duration: stream.duration,
@@ -431,7 +485,7 @@ exports.endLive = async (req, res) => {
         peakViewerCount: stream.peakViewerCount,
         finalViewerCount,
         endedAt: stream.endedAt,
-        reason: 'host_ended'
+        reason: "host_ended",
       });
 
       // ✅ Socket.io room'daki tüm socket'ları room'dan çıkar
@@ -439,22 +493,30 @@ exports.endLive = async (req, res) => {
       for (const s of sockets) {
         s.leave(streamRoomId);
       }
-      
-      console.log(`📺 Stream ${streamRoomId} ended by host. ${sockets.length} sockets removed from room.`);
+
+      console.log(
+        `📺 Stream ${streamRoomId} ended by host. ${sockets.length} sockets removed from room.`,
+      );
     }
 
     // Notify admin sockets
-    adminSocket.emit("stream:ended", { roomId: streamRoomId, hostId: userId, duration: stream.duration, totalGiftsValue: stream.totalGiftsValue, peakViewerCount: stream.peakViewerCount });
+    adminSocket.emit("stream:ended", {
+      roomId: streamRoomId,
+      hostId: userId,
+      duration: stream.duration,
+      totalGiftsValue: stream.totalGiftsValue,
+      peakViewerCount: stream.peakViewerCount,
+    });
 
-    res.json({ 
-      ok: true, 
+    res.json({
+      ok: true,
       message: "Yayın sonlandırıldı",
       stats: {
         duration: stream.duration,
         totalGiftsValue: stream.totalGiftsValue,
         peakViewerCount: stream.peakViewerCount,
-        totalGiftsCount: stream.totalGiftsCount
-      }
+        totalGiftsCount: stream.totalGiftsCount,
+      },
     });
   } catch (err) {
     console.error("endLive error:", err);
@@ -476,8 +538,11 @@ exports.joinAsViewer = async (req, res) => {
       return res.status(400).json({ ok: false, error: "missing_room" });
     }
 
-    const stream = await LiveStream.findOne({ roomId, isLive: true, status: "live" })
-      .populate('host', 'username name profileImage');
+    const stream = await LiveStream.findOne({
+      roomId,
+      isLive: true,
+      status: "live",
+    }).populate("host", "username name profileImage");
 
     if (!stream) {
       return res.status(404).json({ ok: false, error: "stream_not_found" });
@@ -492,9 +557,9 @@ exports.joinAsViewer = async (req, res) => {
       { roomId, isLive: true, status: "live" },
       {
         $inc: { viewerCount: 1 },
-        $addToSet: { viewers: userId }
+        $addToSet: { viewers: userId },
       },
-      { new: true }
+      { new: true },
     );
 
     if (!updatedStream) {
@@ -505,21 +570,23 @@ exports.joinAsViewer = async (req, res) => {
     if (updatedStream.viewerCount > updatedStream.peakViewerCount) {
       await LiveStream.updateOne(
         { _id: updatedStream._id },
-        { $max: { peakViewerCount: updatedStream.viewerCount } }
+        { $max: { peakViewerCount: updatedStream.viewerCount } },
       );
     }
 
     // Socket ile bildir
     if (global.io) {
-      global.io.to(roomId).emit('viewer_joined', {
+      global.io.to(roomId).emit("viewer_joined", {
         roomId,
         viewerCount: updatedStream.viewerCount,
-        userId
+        userId,
       });
     }
 
     // ✅ Mission tracking for watching streams
-    try { await trackMissionProgress(userId, 'watch_stream'); } catch (_) {}
+    try {
+      await trackMissionProgress(userId, "watch_stream");
+    } catch (_) {}
 
     res.json({
       ok: true,
@@ -531,8 +598,8 @@ exports.joinAsViewer = async (req, res) => {
         roomId: updatedStream.roomId,
         title: updatedStream.title,
         category: updatedStream.category,
-        host: stream.host
-      }
+        host: stream.host,
+      },
     });
   } catch (err) {
     console.error("joinAsViewer error:", err);
@@ -557,11 +624,11 @@ exports.leaveAsViewer = async (req, res) => {
       { roomId },
       {
         $inc: { viewerCount: -1 },
-        $pull: { viewers: userId }
+        $pull: { viewers: userId },
       },
-      { new: true }
+      { new: true },
     );
-    
+
     if (!stream) {
       return res.status(404).json({ ok: false, error: "stream_not_found" });
     }
@@ -570,17 +637,17 @@ exports.leaveAsViewer = async (req, res) => {
     if (stream.viewerCount < 0) {
       await LiveStream.updateOne(
         { _id: stream._id },
-        { $set: { viewerCount: 0 } }
+        { $set: { viewerCount: 0 } },
       );
       stream.viewerCount = 0;
     }
 
     // Socket ile bildir
     if (global.io) {
-      global.io.to(roomId).emit('viewer_left', {
+      global.io.to(roomId).emit("viewer_left", {
         roomId,
         viewerCount: stream.viewerCount,
-        userId
+        userId,
       });
     }
 
@@ -599,25 +666,25 @@ exports.leaveAsViewer = async (req, res) => {
 exports.getActiveLives = async (req, res) => {
   try {
     const { category, limit = 50, page = 1 } = req.query;
-    
+
     // ✅ Redis cache kullan
     const result = await liveService.getActiveStreamsWithCache({
       category,
       limit: parseInt(limit),
-      page: parseInt(page)
+      page: parseInt(page),
     });
 
     const formattedStreams = result.streams
-      .filter(s => s.host && s.host._id)
-      .map(stream => ({
+      .filter((s) => s.host && s.host._id)
+      .map((stream) => ({
         _id: stream._id,
         roomId: stream.roomId,
         title: stream.title,
         category: stream.category,
         description: stream.description,
         viewerCount: stream.viewerCount || 0,
-        quality: stream.quality || 'auto',
-        resolution: stream.resolution || '720p',
+        quality: stream.quality || "auto",
+        resolution: stream.resolution || "720p",
         // ✅ CDN optimized thumbnail
         thumbnailUrl: getStreamThumbnail(stream),
         startedAt: stream.startedAt,
@@ -627,15 +694,15 @@ exports.getActiveLives = async (req, res) => {
           name: stream.host.name,
           // ✅ CDN optimized profile image
           profileImage: getProfileImageUrl(stream.host.profileImage),
-          gender: stream.host.gender
-        }
+          gender: stream.host.gender,
+        },
       }));
 
     res.json({
       ok: true,
       streams: formattedStreams,
       pagination: result.pagination,
-      cached: result.cached || false
+      cached: result.cached || false,
     });
   } catch (err) {
     console.error("getActiveLives error:", err);
@@ -672,15 +739,15 @@ exports.getViewers = async (req, res) => {
     const { roomId } = req.params;
 
     const stream = await LiveStream.findOne({ roomId })
-      .populate('viewers', 'username name profileImage')
-      .select('viewers viewerCount')
+      .populate("viewers", "username name profileImage")
+      .select("viewers viewerCount")
       .lean();
 
     if (!stream) {
       return res.status(404).json({ ok: false, error: "stream_not_found" });
     }
 
-    const viewers = (stream.viewers || []).map(v => ({
+    const viewers = (stream.viewers || []).map((v) => ({
       userId: v._id,
       username: v.username,
       name: v.name,
@@ -702,13 +769,15 @@ exports.getUserStreamHistory = async (req, res) => {
     const { userId } = req.params;
     const { limit = 20 } = req.query;
 
-    const streams = await LiveStream.find({ 
-      host: userId, 
-      status: "ended" 
+    const streams = await LiveStream.find({
+      host: userId,
+      status: "ended",
     })
       .sort({ endedAt: -1 })
       .limit(parseInt(limit))
-      .select('title category viewerCount peakViewerCount totalGiftsValue duration startedAt endedAt')
+      .select(
+        "title category viewerCount peakViewerCount totalGiftsValue duration startedAt endedAt",
+      )
       .lean();
 
     res.json({ ok: true, streams });
@@ -743,7 +812,9 @@ exports.sendChatMessage = async (req, res) => {
     }
 
     // Kullanıcı bilgilerini al
-    const user = await User.findById(userId).select('username name profileImage');
+    const user = await User.findById(userId).select(
+      "username name profileImage",
+    );
 
     // Mesajı kaydet
     const msg = await Message.create({
@@ -755,7 +826,7 @@ exports.sendChatMessage = async (req, res) => {
 
     // Socket ile tüm izleyicilere gönder
     if (global.io) {
-      global.io.to(roomId).emit('chat_message', {
+      global.io.to(roomId).emit("chat_message", {
         _id: msg._id,
         roomId,
         type,
@@ -764,9 +835,9 @@ exports.sendChatMessage = async (req, res) => {
           _id: userId,
           username: user.username,
           name: user.name,
-          profileImage: user.profileImage
+          profileImage: user.profileImage,
         },
-        timestamp: msg.createdAt
+        timestamp: msg.createdAt,
       });
     }
 
@@ -791,14 +862,14 @@ exports.getChatHistory = async (req, res) => {
     }
 
     const messages = await Message.find(query)
-      .populate('from', 'username name profileImage')
+      .populate("from", "username name profileImage")
       .sort({ createdAt: -1 })
       .limit(parseInt(limit))
       .lean();
 
-    res.json({ 
-      ok: true, 
-      messages: messages.reverse() 
+    res.json({
+      ok: true,
+      messages: messages.reverse(),
     });
   } catch (err) {
     console.error("getChatHistory error:", err);
@@ -881,17 +952,17 @@ exports.banStream = async (req, res) => {
     stream.viewerCount = 0;
     stream.viewers = [];
     await stream.save();
-    
+
     // ✅ Cache invalidate
     try {
       await liveService.invalidateStreamCache(streamRoomId);
     } catch (e) {
-      console.warn('⚠️ Cache invalidation failed:', e.message);
+      console.warn("⚠️ Cache invalidation failed:", e.message);
     }
 
     // Host'u offline yap
     await User.findByIdAndUpdate(hostId, { isLive: false });
-    
+
     // Presence güncelle
     try {
       await presenceService.setLive(hostId, false);
@@ -899,20 +970,22 @@ exports.banStream = async (req, res) => {
 
     // ✅ PROFESSIONAL: İzleyicilere detaylı bildir
     if (global.io) {
-      global.io.to(streamRoomId).emit('stream_banned', {
+      global.io.to(streamRoomId).emit("stream_banned", {
         roomId: streamRoomId,
         hostId: String(hostId),
         reason,
-        bannedAt: stream.bannedAt
+        bannedAt: stream.bannedAt,
       });
-      
+
       // ✅ Socket.io room'daki tüm socket'ları room'dan çıkar
       const sockets = await global.io.in(streamRoomId).fetchSockets();
       for (const s of sockets) {
         s.leave(streamRoomId);
       }
-      
-      console.log(`🚫 Stream ${streamRoomId} banned by admin. ${sockets.length} sockets removed from room.`);
+
+      console.log(
+        `🚫 Stream ${streamRoomId} banned by admin. ${sockets.length} sockets removed from room.`,
+      );
     }
 
     res.json({ ok: true, message: "Yayın yasaklandı" });
@@ -970,22 +1043,22 @@ const generateCoHostToken = async (userId, roomId, canPublish = true) => {
     const at = new AccessToken(
       process.env.LIVEKIT_API_KEY,
       process.env.LIVEKIT_API_SECRET,
-      { identity: String(userId) }
+      { identity: String(userId) },
     );
 
     at.addGrant({
       roomJoin: true,
-      rooms: [roomId],  // ✅ FIXED: 'room' -> 'rooms' (array)
-      canPublish: canPublish,       // Video/ses paylaşabilir
-      canSubscribe: true,           // Diğerlerini izleyebilir
-      canPublishData: true          // Chat mesajı gönderebilir
+      rooms: [roomId], // ✅ FIXED: 'room' -> 'rooms' (array)
+      canPublish: canPublish, // Video/ses paylaşabilir
+      canSubscribe: true, // Diğerlerini izleyebilir
+      canPublishData: true, // Chat mesajı gönderebilir
     });
 
     // ✅ FIX: livekit-server-sdk v2.x'te toJwt() Promise döndürür
     return await at.toJwt();
   } catch (err) {
-    console.error('❌ generateCoHostToken error:', err.message);
-    throw new Error('token_generation_failed: ' + err.message);
+    console.error("❌ generateCoHostToken error:", err.message);
+    throw new Error("token_generation_failed: " + err.message);
   }
 };
 
@@ -995,7 +1068,7 @@ const generateCoHostToken = async (userId, roomId, canPublish = true) => {
 exports.inviteCoHost = async (req, res) => {
   try {
     const hostId = req.user.id;
-    const { roomId, userId, role = 'guest' } = req.body;
+    const { roomId, userId, role = "guest" } = req.body;
 
     if (!userId) {
       return res.status(400).json({ ok: false, error: "user_id_required" });
@@ -1013,32 +1086,38 @@ exports.inviteCoHost = async (req, res) => {
 
     // Co-host isteklerine açık mı?
     if (!stream.allowCoHostRequests) {
-      return res.status(403).json({ ok: false, error: "cohost_requests_disabled" });
+      return res
+        .status(403)
+        .json({ ok: false, error: "cohost_requests_disabled" });
     }
 
     // Max co-host kontrolü
-    const activeCoHosts = stream.coHosts.filter(c => c.status === 'accepted');
+    const activeCoHosts = stream.coHosts.filter((c) => c.status === "accepted");
     if (activeCoHosts.length >= stream.maxCoHosts) {
-      return res.status(400).json({ 
-        ok: false, 
+      return res.status(400).json({
+        ok: false,
         error: "max_cohosts_reached",
-        max: stream.maxCoHosts 
+        max: stream.maxCoHosts,
       });
     }
 
     // Zaten co-host mu veya beklemede mi?
-    const existingCoHost = stream.coHosts.find(c => String(c.user) === String(userId));
+    const existingCoHost = stream.coHosts.find(
+      (c) => String(c.user) === String(userId),
+    );
     if (existingCoHost) {
-      if (existingCoHost.status === 'accepted') {
+      if (existingCoHost.status === "accepted") {
         return res.status(400).json({ ok: false, error: "already_cohost" });
       }
-      if (existingCoHost.status === 'pending') {
+      if (existingCoHost.status === "pending") {
         return res.status(400).json({ ok: false, error: "already_invited" });
       }
     }
 
     // Kullanıcıyı kontrol et
-    const user = await User.findById(userId).select('username name profileImage isBanned');
+    const user = await User.findById(userId).select(
+      "username name profileImage isBanned",
+    );
     if (!user || user.isBanned) {
       return res.status(404).json({ ok: false, error: "user_not_found" });
     }
@@ -1047,31 +1126,31 @@ exports.inviteCoHost = async (req, res) => {
     stream.coHosts.push({
       user: userId,
       role: role,
-      status: 'pending',
+      status: "pending",
       canPublish: true,
-      canModerate: role === 'moderator'
+      canModerate: role === "moderator",
     });
     await stream.save();
 
     // Kullanıcıya bildirim gönder (socket)
     if (global.io) {
-      global.io.to(`user_${userId}`).emit('cohost:invite', {
+      global.io.to(`user_${userId}`).emit("cohost:invite", {
         roomId,
         streamId: stream._id,
         hostId,
-        role
+        role,
       });
     }
 
-    res.json({ 
-      ok: true, 
+    res.json({
+      ok: true,
       message: "Davet gönderildi",
       invite: {
         userId,
         username: user.username,
         role,
-        status: 'pending'
-      }
+        status: "pending",
+      },
     });
   } catch (err) {
     console.error("inviteCoHost error:", err);
@@ -1094,21 +1173,21 @@ exports.acceptCoHostInvite = async (req, res) => {
 
     // Davet edilmiş mi?
     const coHostIndex = stream.coHosts.findIndex(
-      c => String(c.user) === String(userId) && c.status === 'pending'
+      (c) => String(c.user) === String(userId) && c.status === "pending",
     );
-    
+
     if (coHostIndex === -1) {
       return res.status(404).json({ ok: false, error: "invite_not_found" });
     }
 
     // Max co-host kontrolü (son anda dolmuş olabilir)
-    const activeCoHosts = stream.coHosts.filter(c => c.status === 'accepted');
+    const activeCoHosts = stream.coHosts.filter((c) => c.status === "accepted");
     if (activeCoHosts.length >= stream.maxCoHosts) {
       return res.status(400).json({ ok: false, error: "max_cohosts_reached" });
     }
 
     // Daveti kabul et
-    stream.coHosts[coHostIndex].status = 'accepted';
+    stream.coHosts[coHostIndex].status = "accepted";
     stream.coHosts[coHostIndex].joinedAt = new Date();
     await stream.save();
 
@@ -1118,37 +1197,42 @@ exports.acceptCoHostInvite = async (req, res) => {
       const canPublish = stream.coHosts[coHostIndex].canPublish;
       token = await generateCoHostToken(userId, roomId, canPublish);
     } catch (tokenErr) {
-      console.error('⚠️ Token generation failed, returning error:', tokenErr.message);
-      return res.status(500).json({ 
-        ok: false, 
+      console.error(
+        "⚠️ Token generation failed, returning error:",
+        tokenErr.message,
+      );
+      return res.status(500).json({
+        ok: false,
         error: "token_generation_failed",
-        details: tokenErr.message 
+        details: tokenErr.message,
       });
     }
 
     // Herkese bildir
     if (global.io) {
-      const user = await User.findById(userId).select('username name profileImage');
-      global.io.to(roomId).emit('cohost:joined', {
+      const user = await User.findById(userId).select(
+        "username name profileImage",
+      );
+      global.io.to(roomId).emit("cohost:joined", {
         roomId,
         userId,
         user: {
           _id: user._id,
           username: user.username,
           name: user.name,
-          profileImage: user.profileImage
+          profileImage: user.profileImage,
         },
-        role: stream.coHosts[coHostIndex].role
+        role: stream.coHosts[coHostIndex].role,
       });
     }
 
-    res.json({ 
-      ok: true, 
+    res.json({
+      ok: true,
       message: "Yayına katıldınız",
       token,
       livekitUrl: process.env.LIVEKIT_URL,
       role: stream.coHosts[coHostIndex].role,
-      canPublish: stream.coHosts[coHostIndex].canPublish
+      canPublish: stream.coHosts[coHostIndex].canPublish,
     });
   } catch (err) {
     console.error("acceptCoHostInvite error:", err);
@@ -1170,21 +1254,21 @@ exports.rejectCoHostInvite = async (req, res) => {
     }
 
     const coHostIndex = stream.coHosts.findIndex(
-      c => String(c.user) === String(userId) && c.status === 'pending'
+      (c) => String(c.user) === String(userId) && c.status === "pending",
     );
-    
+
     if (coHostIndex === -1) {
       return res.status(404).json({ ok: false, error: "invite_not_found" });
     }
 
-    stream.coHosts[coHostIndex].status = 'rejected';
+    stream.coHosts[coHostIndex].status = "rejected";
     await stream.save();
 
     // Host'a bildir
     if (global.io) {
-      global.io.to(roomId).emit('cohost:rejected', {
+      global.io.to(roomId).emit("cohost:rejected", {
         roomId,
-        userId
+        userId,
       });
     }
 
@@ -1209,21 +1293,21 @@ exports.leaveAsCoHost = async (req, res) => {
     }
 
     const coHostIndex = stream.coHosts.findIndex(
-      c => String(c.user) === String(userId) && c.status === 'accepted'
+      (c) => String(c.user) === String(userId) && c.status === "accepted",
     );
-    
+
     if (coHostIndex === -1) {
       return res.status(404).json({ ok: false, error: "not_a_cohost" });
     }
 
-    stream.coHosts[coHostIndex].status = 'left';
+    stream.coHosts[coHostIndex].status = "left";
     await stream.save();
 
     // Herkese bildir
     if (global.io) {
-      global.io.to(roomId).emit('cohost:left', {
+      global.io.to(roomId).emit("cohost:left", {
         roomId,
-        userId
+        userId,
       });
     }
 
@@ -1253,25 +1337,25 @@ exports.removeCoHost = async (req, res) => {
     }
 
     const coHostIndex = stream.coHosts.findIndex(
-      c => String(c.user) === String(userId) && c.status === 'accepted'
+      (c) => String(c.user) === String(userId) && c.status === "accepted",
     );
-    
+
     if (coHostIndex === -1) {
       return res.status(404).json({ ok: false, error: "cohost_not_found" });
     }
 
-    stream.coHosts[coHostIndex].status = 'left';
+    stream.coHosts[coHostIndex].status = "left";
     await stream.save();
 
     // Co-host'a ve herkese bildir
     if (global.io) {
-      global.io.to(`user_${userId}`).emit('cohost:removed', {
-        roomId
+      global.io.to(`user_${userId}`).emit("cohost:removed", {
+        roomId,
       });
-      global.io.to(roomId).emit('cohost:left', {
+      global.io.to(roomId).emit("cohost:left", {
         roomId,
         userId,
-        removedByHost: true
+        removedByHost: true,
       });
     }
 
@@ -1289,16 +1373,18 @@ exports.getCoHosts = async (req, res) => {
   try {
     const { roomId } = req.params;
 
-    const stream = await LiveStream.findOne({ roomId })
-      .populate('coHosts.user', 'username name profileImage');
-    
+    const stream = await LiveStream.findOne({ roomId }).populate(
+      "coHosts.user",
+      "username name profileImage",
+    );
+
     if (!stream) {
       return res.status(404).json({ ok: false, error: "stream_not_found" });
     }
 
     const activeCoHosts = stream.coHosts
-      .filter(c => c.status === 'accepted')
-      .map(c => ({
+      .filter((c) => c.status === "accepted")
+      .map((c) => ({
         userId: c.user._id,
         username: c.user.username,
         name: c.user.name,
@@ -1306,14 +1392,14 @@ exports.getCoHosts = async (req, res) => {
         role: c.role,
         joinedAt: c.joinedAt,
         canPublish: c.canPublish,
-        canModerate: c.canModerate
+        canModerate: c.canModerate,
       }));
 
-    res.json({ 
-      ok: true, 
+    res.json({
+      ok: true,
       coHosts: activeCoHosts,
       maxCoHosts: stream.maxCoHosts,
-      allowRequests: stream.allowCoHostRequests
+      allowRequests: stream.allowCoHostRequests,
     });
   } catch (err) {
     console.error("getCoHosts error:", err);
@@ -1347,10 +1433,10 @@ exports.updateCoHostSettings = async (req, res) => {
 
     await stream.save();
 
-    res.json({ 
-      ok: true, 
+    res.json({
+      ok: true,
       maxCoHosts: stream.maxCoHosts,
-      allowCoHostRequests: stream.allowCoHostRequests
+      allowCoHostRequests: stream.allowCoHostRequests,
     });
   } catch (err) {
     console.error("updateCoHostSettings error:", err);
@@ -1368,17 +1454,23 @@ exports.translateMessage = async (req, res) => {
     const { text, targetLang, sourceLang } = req.body;
 
     if (!text || !targetLang) {
-      return res.status(400).json({ ok: false, error: "text and targetLang required" });
+      return res
+        .status(400)
+        .json({ ok: false, error: "text and targetLang required" });
     }
 
-    const result = await translationService.translateText(text, targetLang, sourceLang || 'auto');
+    const result = await translationService.translateText(
+      text,
+      targetLang,
+      sourceLang || "auto",
+    );
 
     res.json({
       ok: true,
       original: text,
       translated: result.translatedText,
       detectedLanguage: result.detectedLanguage,
-      targetLang
+      targetLang,
     });
   } catch (err) {
     console.error("translateMessage error:", err);
@@ -1394,19 +1486,27 @@ exports.translateBatch = async (req, res) => {
     const { texts, targetLang, sourceLang } = req.body;
 
     if (!texts || !Array.isArray(texts) || !targetLang) {
-      return res.status(400).json({ ok: false, error: "texts array and targetLang required" });
+      return res
+        .status(400)
+        .json({ ok: false, error: "texts array and targetLang required" });
     }
 
     if (texts.length > 50) {
-      return res.status(400).json({ ok: false, error: "max 50 texts per request" });
+      return res
+        .status(400)
+        .json({ ok: false, error: "max 50 texts per request" });
     }
 
-    const results = await translationService.translateBatch(texts, targetLang, sourceLang || 'auto');
+    const results = await translationService.translateBatch(
+      texts,
+      targetLang,
+      sourceLang || "auto",
+    );
 
     res.json({
       ok: true,
       translations: results,
-      targetLang
+      targetLang,
     });
   } catch (err) {
     console.error("translateBatch error:", err);
@@ -1423,11 +1523,13 @@ exports.getTranslatedChatHistory = async (req, res) => {
     const { limit = 100, targetLang } = req.query;
 
     if (!targetLang) {
-      return res.status(400).json({ ok: false, error: "targetLang query param required" });
+      return res
+        .status(400)
+        .json({ ok: false, error: "targetLang query param required" });
     }
 
     const messages = await Message.find({ roomId })
-      .populate('from', 'username name profileImage')
+      .populate("from", "username name profileImage")
       .sort({ createdAt: -1 })
       .limit(parseInt(limit))
       .lean();
@@ -1435,23 +1537,26 @@ exports.getTranslatedChatHistory = async (req, res) => {
     // Mesajları çevir
     const translatedMessages = await Promise.all(
       messages.map(async (msg) => {
-        if (msg.type === 'gift') return msg;
-        
-        const translated = await translationService.translateChatMessage(msg, targetLang);
+        if (msg.type === "gift") return msg;
+
+        const translated = await translationService.translateChatMessage(
+          msg,
+          targetLang,
+        );
         return {
           ...msg,
           content: translated.content,
           originalContent: translated.originalContent,
           isTranslated: translated.isTranslated,
-          detectedLanguage: translated.detectedLanguage
+          detectedLanguage: translated.detectedLanguage,
         };
-      })
+      }),
     );
 
-    res.json({ 
-      ok: true, 
+    res.json({
+      ok: true,
       messages: translatedMessages.reverse(),
-      targetLang
+      targetLang,
     });
   } catch (err) {
     console.error("getTranslatedChatHistory error:", err);
@@ -1488,15 +1593,17 @@ exports.requestPaidCall = async (req, res) => {
     }
 
     // Yayını bul
-    const stream = await LiveStream.findOne({ roomId, isLive: true })
-      .populate('host', 'username name profileImage callPricePerMinute');
+    const stream = await LiveStream.findOne({ roomId, isLive: true }).populate(
+      "host",
+      "username name profileImage callPricePerMinute",
+    );
 
     if (!stream) {
       return res.status(404).json({ ok: false, error: "stream_not_found" });
     }
 
     const hostId = stream.host._id;
-    
+
     // Kendini arayamaz
     if (String(hostId) === String(callerId)) {
       return res.status(400).json({ ok: false, error: "cannot_call_yourself" });
@@ -1506,13 +1613,14 @@ exports.requestPaidCall = async (req, res) => {
     const pricePerMinute = stream.host.callPricePerMinute || 100; // Default: 100 coin/dk
     const parsedDuration = Number(duration) || 0;
     const flatEntryPrice = 899;
-    const totalPrice = parsedDuration > 0 ? pricePerMinute * parsedDuration : flatEntryPrice;
+    const totalPrice =
+      parsedDuration > 0 ? pricePerMinute * parsedDuration : flatEntryPrice;
 
     // Coin kontrolü + atomik düşürme (TOCTOU race condition önleme)
     const updatedCaller = await User.findOneAndUpdate(
       { _id: callerId, coins: { $gte: totalPrice } },
       { $inc: { coins: -totalPrice } },
-      { new: true, select: "coins name username profileImage" }
+      { new: true, select: "coins name username profileImage" },
     );
     if (!updatedCaller) {
       // Tekrar bak: kullanıcı var mı yoksa coin mi yetersiz?
@@ -1520,18 +1628,18 @@ exports.requestPaidCall = async (req, res) => {
       if (!callerCheck) {
         return res.status(404).json({ ok: false, error: "caller_not_found" });
       }
-      return res.status(400).json({ 
-        ok: false, 
+      return res.status(400).json({
+        ok: false,
         error: "insufficient_coins",
         required: totalPrice,
-        available: callerCheck.coins
+        available: callerCheck.coins,
       });
     }
 
     // Host'a coin ekle (%45) — zaten atomik
     const hostShare = Math.floor(totalPrice * 0.45);
     await User.findByIdAndUpdate(hostId, {
-      $inc: { coins: hostShare, totalEarnings: hostShare }
+      $inc: { coins: hostShare, totalEarnings: hostShare },
     });
 
     // Talep ID oluştur
@@ -1546,15 +1654,22 @@ exports.requestPaidCall = async (req, res) => {
       hostToken = await generateHostToken(hostId, callRoomName);
     } catch (tokenErr) {
       // 🛡️ Token üretilemezse coin'leri geri iade et
-      console.error("❌ Token generation failed, rolling back coins:", tokenErr.message);
+      console.error(
+        "❌ Token generation failed, rolling back coins:",
+        tokenErr.message,
+      );
       await User.findByIdAndUpdate(callerId, { $inc: { coins: totalPrice } });
-      await User.findByIdAndUpdate(hostId, { $inc: { coins: -hostShare, totalEarnings: -hostShare } });
-      return res.status(500).json({ ok: false, error: "token_generation_failed" });
+      await User.findByIdAndUpdate(hostId, {
+        $inc: { coins: -hostShare, totalEarnings: -hostShare },
+      });
+      return res
+        .status(500)
+        .json({ ok: false, error: "token_generation_failed" });
     }
 
     // Global state'e kaydet (gerçek uygulamada Redis kullanılmalı)
     if (!global.callRequests) global.callRequests = new Map();
-    
+
     global.callRequests.set(requestId, {
       requestId,
       callerId,
@@ -1565,30 +1680,42 @@ exports.requestPaidCall = async (req, res) => {
       duration: parsedDuration,
       pricePerMinute,
       totalPrice,
-      status: 'accepted',
+      status: "accepted",
       callRoomName,
       createdAt: Date.now(),
-      expiresAt: Date.now() + (2 * 60 * 60 * 1000) // 2 saat sonra temizlenebilir
+      expiresAt: Date.now() + 2 * 60 * 60 * 1000, // 2 saat sonra temizlenebilir
     });
 
     // ✅ FIX: Auto-refund timeout — eğer 2 dakika içinde görüşme başlamazsa coin'leri iade et
-    const callTimeout = setTimeout(() => {
-      const req = global.callRequests?.get(requestId);
-      if (req && req.status !== 'connected') {
-        // Görüşme başlamadı — refund
-        console.log(`⏰ Call request ${requestId} timed out, refunding ${totalPrice} coins to caller`);
-        User.findByIdAndUpdate(callerId, { $inc: { coins: totalPrice } }).catch(() => {});
-        User.findByIdAndUpdate(hostId, { $inc: { coins: -hostShare, totalEarnings: -hostShare } }).catch(() => {});
-        global.callRequests.delete(requestId);
-        if (global.activeCalls) global.activeCalls.delete(callRoomName);
-        // Notify both sides
-        if (global.io) {
-          const { emitToUserSockets } = require('../socket/helpers');
-          emitToUserSockets(String(callerId), 'call:timeout_refund', { requestId, refundAmount: totalPrice });
-          emitToUserSockets(String(hostId), 'call:timeout', { requestId });
+    const callTimeout = setTimeout(
+      () => {
+        const req = global.callRequests?.get(requestId);
+        if (req && req.status !== "connected") {
+          // Görüşme başlamadı — refund
+          console.log(
+            `⏰ Call request ${requestId} timed out, refunding ${totalPrice} coins to caller`,
+          );
+          User.findByIdAndUpdate(callerId, {
+            $inc: { coins: totalPrice },
+          }).catch(() => {});
+          User.findByIdAndUpdate(hostId, {
+            $inc: { coins: -hostShare, totalEarnings: -hostShare },
+          }).catch(() => {});
+          global.callRequests.delete(requestId);
+          if (global.activeCalls) global.activeCalls.delete(callRoomName);
+          // Notify both sides
+          if (global.io) {
+            const { emitToUserSockets } = require("../socket/helpers");
+            emitToUserSockets(String(callerId), "call:timeout_refund", {
+              requestId,
+              refundAmount: totalPrice,
+            });
+            emitToUserSockets(String(hostId), "call:timeout", { requestId });
+          }
         }
-      }
-    }, 2 * 60 * 1000); // 2 dakika
+      },
+      2 * 60 * 1000,
+    ); // 2 dakika
     // Timeout referansını kaydet (clearTimeout için)
     if (global.callRequests.has(requestId)) {
       global.callRequests.get(requestId)._timeout = callTimeout;
@@ -1600,7 +1727,7 @@ exports.requestPaidCall = async (req, res) => {
         callerId: String(callerId),
         targetUserId: String(hostId),
         roomName: callRoomName,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       });
     }
 
@@ -1608,15 +1735,15 @@ exports.requestPaidCall = async (req, res) => {
     if (global.io) {
       const callerSocketKey = String(callerId);
       if (global.userSockets?.has(callerSocketKey)) {
-        global.userSockets.get(callerSocketKey).forEach(socketId => {
-          global.io.to(socketId).emit('paid_call_accepted', {
+        global.userSockets.get(callerSocketKey).forEach((socketId) => {
+          global.io.to(socketId).emit("paid_call_accepted", {
             requestId,
             callRoomName,
             token: callerToken,
             livekitUrl: process.env.LIVEKIT_URL,
             duration: parsedDuration,
             hostName: stream.host?.name || stream.host?.username,
-            directConnect: true
+            directConnect: true,
           });
         });
       }
@@ -1635,27 +1762,29 @@ exports.requestPaidCall = async (req, res) => {
           callRoomName,
           token: hostToken,
           livekitUrl: process.env.LIVEKIT_URL,
-          directConnect: true
+          directConnect: true,
         };
 
-        global.userSockets.get(hostSocketKey).forEach(socketId => {
+        global.userSockets.get(hostSocketKey).forEach((socketId) => {
           // ✅ Host mobilde 'paid_call_request' dinliyor - bunu gönder
-          global.io.to(socketId).emit('paid_call_request', hostPayload);
+          global.io.to(socketId).emit("paid_call_request", hostPayload);
           // Geriye dönük uyumluluk
-          global.io.to(socketId).emit('paid_call_direct_started', hostPayload);
-          global.io.to(socketId).emit('paid_call_accepted', hostPayload);
+          global.io.to(socketId).emit("paid_call_direct_started", hostPayload);
+          global.io.to(socketId).emit("paid_call_accepted", hostPayload);
         });
       }
 
       // Odaya host'un özel görüşmede olduğunu bildir
-      global.io.to(roomId).emit('host_in_private_call', {
+      global.io.to(roomId).emit("host_in_private_call", {
         hostId,
-        duration: parsedDuration
+        duration: parsedDuration,
       });
     }
 
     // ✅ Mission tracking for making calls
-    try { await trackMissionProgress(callerId, 'make_call'); } catch (_) {}
+    try {
+      await trackMissionProgress(callerId, "make_call");
+    } catch (_) {}
 
     res.json({
       ok: true,
@@ -1667,7 +1796,7 @@ exports.requestPaidCall = async (req, res) => {
       totalPrice,
       pricePerMinute,
       directConnect: true,
-      message: "Özel görüşme başlatıldı"
+      message: "Özel görüşme başlatıldı",
     });
   } catch (err) {
     console.error("requestPaidCall error:", err);
@@ -1709,14 +1838,14 @@ exports.acceptPaidCall = async (req, res) => {
 
     // Call room oluştur
     const callRoomName = `paid_call_${requestId}`;
-    
+
     // Token oluştur (hem caller hem host için)
     // ✅ FIX: Both sides need canPublish:true for 1-on-1 video call
     const callerToken = await generateHostToken(request.callerId, callRoomName);
     const hostToken = await generateHostToken(hostId, callRoomName);
 
     // Request durumunu güncelle
-    request.status = 'accepted';
+    request.status = "accepted";
     request.callRoomName = callRoomName;
     global.callRequests.set(requestId, request);
 
@@ -1725,22 +1854,22 @@ exports.acceptPaidCall = async (req, res) => {
       // Caller'a bildir
       const callerSocketKey = String(request.callerId);
       if (global.userSockets?.has(callerSocketKey)) {
-        global.userSockets.get(callerSocketKey).forEach(socketId => {
-          global.io.to(socketId).emit('paid_call_accepted', {
+        global.userSockets.get(callerSocketKey).forEach((socketId) => {
+          global.io.to(socketId).emit("paid_call_accepted", {
             requestId,
             callRoomName,
             token: callerToken,
             livekitUrl: process.env.LIVEKIT_URL,
             duration: request.duration,
-            hostName: request.hostName
+            hostName: request.hostName,
           });
         });
       }
 
       // Room'daki herkese bildir (yayın duraklatılabilir)
-      global.io.to(request.roomId).emit('host_in_private_call', {
+      global.io.to(request.roomId).emit("host_in_private_call", {
         hostId,
-        duration: request.duration
+        duration: request.duration,
       });
     }
 
@@ -1752,7 +1881,7 @@ exports.acceptPaidCall = async (req, res) => {
       livekitUrl: process.env.LIVEKIT_URL,
       duration: request.duration,
       earnings: hostEarnings,
-      message: "Arama başlatıldı"
+      message: "Arama başlatıldı",
     });
   } catch (err) {
     console.error("acceptPaidCall error:", err);
@@ -1784,8 +1913,12 @@ exports.rejectPaidCall = async (req, res) => {
     // 💰 Coin iadesi: requestPaidCall'da peşin alınan coinleri geri ver
     const refundAmount = request.totalPrice;
     const hostShareRefund = Math.floor(refundAmount * 0.45);
-    await User.findByIdAndUpdate(request.callerId, { $inc: { coins: refundAmount } });
-    await User.findByIdAndUpdate(hostId, { $inc: { coins: -hostShareRefund, totalEarnings: -hostShareRefund } });
+    await User.findByIdAndUpdate(request.callerId, {
+      $inc: { coins: refundAmount },
+    });
+    await User.findByIdAndUpdate(hostId, {
+      $inc: { coins: -hostShareRefund, totalEarnings: -hostShareRefund },
+    });
 
     // ✅ FIX: Clear auto-refund timeout
     if (request._timeout) clearTimeout(request._timeout);
@@ -1797,10 +1930,10 @@ exports.rejectPaidCall = async (req, res) => {
     if (global.io) {
       const callerSocketKey = String(request.callerId);
       if (global.userSockets?.has(callerSocketKey)) {
-        global.userSockets.get(callerSocketKey).forEach(socketId => {
-          global.io.to(socketId).emit('paid_call_rejected', {
+        global.userSockets.get(callerSocketKey).forEach((socketId) => {
+          global.io.to(socketId).emit("paid_call_rejected", {
             requestId,
-            message: "Yayıncı arama talebinizi reddetti"
+            message: "Yayıncı arama talebinizi reddetti",
           });
         });
       }
@@ -1808,22 +1941,25 @@ exports.rejectPaidCall = async (req, res) => {
 
     // 🔔 Arayanı bilgilendir: cevapsız arama push bildirimi
     try {
-      const { createNotification } = require('./notificationController');
-      const host = await User.findById(hostId).select('name username').lean();
-      const hostName = host?.name || host?.username || 'Yayıncı';
+      const { createNotification } = require("./notificationController");
+      const host = await User.findById(hostId).select("name username").lean();
+      const hostName = host?.name || host?.username || "Yayıncı";
       await createNotification({
         recipientId: request.callerId,
-        type: 'call_missed',
-        title: 'Cevapsız Arama',
-        titleEn: 'Missed Call',
+        type: "call_missed",
+        title: "Cevapsız Arama",
+        titleEn: "Missed Call",
         body: `${hostName} aramanızı yanıtlayamadı`,
         bodyEn: `${hostName} couldn't answer your call`,
         senderId: hostId,
         relatedId: requestId,
-        relatedType: 'paid_call',
+        relatedType: "paid_call",
       });
     } catch (notifErr) {
-      console.error('❌ Ücretli cevapsız arama bildirimi hatası:', notifErr.message);
+      console.error(
+        "❌ Ücretli cevapsız arama bildirimi hatası:",
+        notifErr.message,
+      );
     }
 
     res.json({ ok: true, message: "Talep reddedildi" });
@@ -1847,7 +1983,10 @@ exports.endPaidCall = async (req, res) => {
     }
 
     // Caller veya host sonlandırabilir
-    if (String(request.callerId) !== String(userId) && String(request.hostId) !== String(userId)) {
+    if (
+      String(request.callerId) !== String(userId) &&
+      String(request.hostId) !== String(userId)
+    ) {
       return res.status(403).json({ ok: false, error: "not_authorized" });
     }
 
@@ -1865,21 +2004,21 @@ exports.endPaidCall = async (req, res) => {
 
     // Her iki tarafa da bildir
     if (global.io) {
-      [request.callerId, request.hostId].forEach(id => {
+      [request.callerId, request.hostId].forEach((id) => {
         const socketKey = String(id);
         if (global.userSockets?.has(socketKey)) {
-          global.userSockets.get(socketKey).forEach(socketId => {
-            global.io.to(socketId).emit('paid_call_ended', {
+          global.userSockets.get(socketKey).forEach((socketId) => {
+            global.io.to(socketId).emit("paid_call_ended", {
               requestId,
-              endedBy: userId
+              endedBy: userId,
             });
           });
         }
       });
 
       // Yayın odasına host'un döndüğünü bildir
-      global.io.to(request.roomId).emit('host_returned_from_call', {
-        hostId: request.hostId
+      global.io.to(request.roomId).emit("host_returned_from_call", {
+        hostId: request.hostId,
       });
     }
 
@@ -1897,7 +2036,9 @@ exports.getHostCallPrice = async (req, res) => {
   try {
     const { hostId } = req.params;
 
-    const host = await User.findById(hostId).select('callPricePerMinute username name');
+    const host = await User.findById(hostId).select(
+      "callPricePerMinute username name",
+    );
     if (!host) {
       return res.status(404).json({ ok: false, error: "host_not_found" });
     }
@@ -1907,7 +2048,7 @@ exports.getHostCallPrice = async (req, res) => {
       hostId,
       hostName: host.name || host.username,
       pricePerMinute: host.callPricePerMinute || 100,
-      currency: 'coins'
+      currency: "coins",
     });
   } catch (err) {
     console.error("getHostCallPrice error:", err);
@@ -1924,7 +2065,9 @@ exports.setCallPrice = async (req, res) => {
     const userId = req.user.id;
 
     if (pricePerMinute === undefined || pricePerMinute < 0) {
-      return res.status(400).json({ ok: false, error: "valid pricePerMinute required" });
+      return res
+        .status(400)
+        .json({ ok: false, error: "valid pricePerMinute required" });
     }
 
     // Max fiyat kontrolü
@@ -1936,7 +2079,7 @@ exports.setCallPrice = async (req, res) => {
     res.json({
       ok: true,
       pricePerMinute: finalPrice,
-      message: "Arama fiyatı güncellendi"
+      message: "Arama fiyatı güncellendi",
     });
   } catch (err) {
     console.error("setCallPrice error:", err);
@@ -1953,26 +2096,33 @@ exports.getGiftLeaderboard = async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit) || 10, 50);
 
     const leaderboard = await Message.aggregate([
-      { $match: { roomId, type: 'gift' } },
+      { $match: { roomId, type: "gift" } },
       {
         $addFields: {
           parsedContent: {
             $cond: {
-              if: { $eq: [{ $type: '$content' }, 'string'] },
-              then: { $ifNull: [{ $convert: { input: '$content', to: 'object', onError: {} } }, {}] },
-              else: '$content',
+              if: { $eq: [{ $type: "$content" }, "string"] },
+              then: {
+                $ifNull: [
+                  {
+                    $convert: { input: "$content", to: "object", onError: {} },
+                  },
+                  {},
+                ],
+              },
+              else: "$content",
             },
           },
         },
       },
       {
         $group: {
-          _id: '$from',
+          _id: "$from",
           totalCoins: {
             $sum: {
               $cond: {
-                if: { $isNumber: '$parsedContent.valueCoins' },
-                then: '$parsedContent.valueCoins',
+                if: { $isNumber: "$parsedContent.valueCoins" },
+                then: "$parsedContent.valueCoins",
                 else: 0,
               },
             },
@@ -1984,20 +2134,20 @@ exports.getGiftLeaderboard = async (req, res) => {
       { $limit: limit },
       {
         $lookup: {
-          from: 'users',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'user',
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "user",
           pipeline: [{ $project: { username: 1, name: 1, profileImage: 1 } }],
         },
       },
-      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
       {
         $project: {
-          userId: '$_id',
-          username: '$user.username',
-          name: '$user.name',
-          profileImage: '$user.profileImage',
+          userId: "$_id",
+          username: "$user.username",
+          name: "$user.name",
+          profileImage: "$user.profileImage",
           totalCoins: 1,
           giftCount: 1,
         },
