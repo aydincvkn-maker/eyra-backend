@@ -65,12 +65,13 @@ function register(socket, io) {
   socket.on('call:cancel', ({ roomName }) => forwardCallEvent('call:cancelled', roomName));
 
   // Paid call coin tick (dakikalık ücretlendirme)
+  // ✅ FIX: Server-side timer ile destekle — client tick gelirse kabul et,
+  // gelmezse server kendi timer'ı ile ücretlendir
   socket.on('call:coin_tick', async ({ roomName, requestId, minuteIndex }) => {
     const senderId = socket.data.userId;
     if (!senderId || !roomName) return;
 
     try {
-      // callRequests veya activeCalls'dan bilgiyi bul
       let callInfo = null;
       if (global.callRequests) {
         for (const [, req] of global.callRequests) {
@@ -86,58 +87,104 @@ function register(socket, io) {
         return;
       }
 
-      // Sadece caller'dan gelen tick'leri işle (çift tick önleme)
+      // Sadece caller'dan gelen tick'leri işle
       if (String(senderId) !== String(callInfo.callerId)) {
         return;
       }
 
-      // Duplicate tick önleme (aynı minuteIndex için)
-      if (!callInfo._lastTickMinute) callInfo._lastTickMinute = -1;
-      if (minuteIndex <= callInfo._lastTickMinute) {
-        return;
-      }
-      callInfo._lastTickMinute = minuteIndex;
-
-      const pricePerMinute = callInfo.pricePerMinute || 120;
-
-      // Caller'dan atomik coin düşürme (coins >= pricePerMinute kontrolü filter'da)
-      const updatedCaller = await User.findOneAndUpdate(
-        { _id: callInfo.callerId, coins: { $gte: pricePerMinute } },
-        { $inc: { coins: -pricePerMinute } },
-        { new: true, select: "coins" }
-      );
-      if (!updatedCaller) {
-        emitToUserSockets(callInfo.callerId, 'call:insufficient_coins', { roomName });
-        emitToUserSockets(callInfo.hostId, 'call:insufficient_coins', { roomName });
-        console.log(`💰 Insufficient coins for call ${roomName}, ending call`);
-        return;
+      // ✅ FIX: Server-side timer varsa resetle (client aktif)
+      if (callInfo._serverTickTimer) {
+        clearInterval(callInfo._serverTickTimer);
+        callInfo._serverTickTimer = null;
       }
 
-      // Host'a coin ekle (%70) — zaten atomik
-      const hostShare = Math.floor(pricePerMinute * 0.7);
-      await User.findByIdAndUpdate(callInfo.hostId, {
-        $inc: { coins: hostShare, totalEarnings: hostShare },
-      });
-
-      // Her iki tarafa bildir
-      emitToUserSockets(callInfo.callerId, 'call:coin_charged', {
-        roomName,
-        amount: pricePerMinute,
-        remaining: updatedCaller.coins,
-        minute: minuteIndex + 1,
-      });
-      emitToUserSockets(callInfo.hostId, 'call:coin_charged', {
-        roomName,
-        amount: hostShare,
-        earned: true,
-        minute: minuteIndex + 1,
-      });
-
-      console.log(`💰 Call tick: ${callInfo.callerId} charged ${pricePerMinute} coins (minute ${minuteIndex + 1}), host earned ${hostShare}`);
+      _processCallTick(callInfo, minuteIndex);
     } catch (e) {
       console.error('❌ call:coin_tick error:', e.message);
     }
   });
 }
 
-module.exports = { register };
+/**
+ * ✅ Server-side tick timer başlat — eğer client tick göndermezse server ücretlendirir
+ */
+function startServerSideTickTimer(callRoomName) {
+  if (!global.callRequests) return;
+
+  let callInfo = null;
+  for (const [, req] of global.callRequests) {
+    if (req.callRoomName === callRoomName) {
+      callInfo = req;
+      break;
+    }
+  }
+  if (!callInfo) return;
+
+  let serverMinute = 0;
+  callInfo._serverTickTimer = setInterval(() => {
+    // Call hala aktif mi?
+    let stillActive = false;
+    if (global.callRequests) {
+      for (const [, req] of global.callRequests) {
+        if (req.callRoomName === callRoomName) {
+          stillActive = true;
+          break;
+        }
+      }
+    }
+    if (!stillActive) {
+      clearInterval(callInfo._serverTickTimer);
+      return;
+    }
+
+    serverMinute++;
+    _processCallTick(callInfo, serverMinute);
+  }, 60 * 1000); // Her 60 saniyede bir
+}
+
+module.exports = { register, startServerSideTickTimer };
+async function _processCallTick(callInfo, minuteIndex) {
+  try {
+    if (!callInfo._lastTickMinute) callInfo._lastTickMinute = -1;
+    if (minuteIndex <= callInfo._lastTickMinute) return;
+    callInfo._lastTickMinute = minuteIndex;
+
+    const pricePerMinute = callInfo.pricePerMinute || 120;
+
+    const updatedCaller = await User.findOneAndUpdate(
+      { _id: callInfo.callerId, coins: { $gte: pricePerMinute } },
+      { $inc: { coins: -pricePerMinute } },
+      { new: true, select: "coins" }
+    );
+    if (!updatedCaller) {
+      emitToUserSockets(callInfo.callerId, 'call:insufficient_coins', { roomName: callInfo.callRoomName });
+      emitToUserSockets(callInfo.hostId, 'call:insufficient_coins', { roomName: callInfo.callRoomName });
+      console.log(`💰 Insufficient coins for call ${callInfo.callRoomName}, ending call`);
+      // Stop server timer
+      if (callInfo._serverTickTimer) clearInterval(callInfo._serverTickTimer);
+      return;
+    }
+
+    const hostShare = Math.floor(pricePerMinute * 0.7);
+    await User.findByIdAndUpdate(callInfo.hostId, {
+      $inc: { coins: hostShare, totalEarnings: hostShare },
+    });
+
+    emitToUserSockets(callInfo.callerId, 'call:coin_charged', {
+      roomName: callInfo.callRoomName,
+      amount: pricePerMinute,
+      remaining: updatedCaller.coins,
+      minute: minuteIndex + 1,
+    });
+    emitToUserSockets(callInfo.hostId, 'call:coin_charged', {
+      roomName: callInfo.callRoomName,
+      amount: hostShare,
+      earned: true,
+      minute: minuteIndex + 1,
+    });
+
+    console.log(`💰 Call tick: ${callInfo.callerId} charged ${pricePerMinute} coins (minute ${minuteIndex + 1}), host earned ${hostShare}`);
+  } catch (e) {
+    console.error('❌ _processCallTick error:', e.message);
+  }
+}
