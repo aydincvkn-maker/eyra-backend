@@ -61,9 +61,31 @@ const validateLogin = [
 const validateSendMessage = [
   body('to')
     .isMongoId().withMessage('Valid recipient ID required'),
-  body('content')
+  body('text')
+    .optional({ checkFalsy: true })
     .trim()
-    .isLength({ min: 1, max: 5000 }).withMessage('Message must be 1-5000 characters'),
+    .isLength({ max: 5000 }).withMessage('Text must be at most 5000 characters'),
+  body('content')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 5000 }).withMessage('Content must be at most 5000 characters'),
+  body().custom((_, { req }) => {
+    const text = String(req.body?.text ?? '').trim();
+    const content = String(req.body?.content ?? '').trim();
+    const mediaUrl = String(req.body?.mediaUrl ?? '').trim();
+
+    if (!text && !content && !mediaUrl) {
+      throw new Error('Message must include text/content or mediaUrl');
+    }
+
+    const resolved = text || content;
+    if (resolved) {
+      req.body.text = resolved;
+      req.body.content = resolved;
+    }
+
+    return true;
+  }),
   body('type')
     .optional()
     .isIn(['text', 'image', 'video', 'audio', 'gif', 'system', 'gift', 'call_ended', 'voice', 'file'])
