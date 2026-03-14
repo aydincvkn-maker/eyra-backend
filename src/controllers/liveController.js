@@ -619,9 +619,10 @@ exports.leaveAsViewer = async (req, res) => {
       return res.status(400).json({ ok: false, error: "missing_room" });
     }
 
-    // ✅ ATOMIC UPDATE: İzleyici sayısını güvenli şekilde azalt
+    // ✅ FIX: Only decrement if user is actually in viewers array (idempotent)
+    // This prevents double-decrement when both HTTP leave and socket disconnect fire
     const stream = await LiveStream.findOneAndUpdate(
-      { roomId },
+      { roomId, viewers: userId },
       {
         $inc: { viewerCount: -1 },
         $pull: { viewers: userId },
@@ -630,7 +631,8 @@ exports.leaveAsViewer = async (req, res) => {
     );
 
     if (!stream) {
-      return res.status(404).json({ ok: false, error: "stream_not_found" });
+      // User wasn't in viewers — either already left or stream not found
+      return res.json({ ok: true, viewerCount: 0 });
     }
 
     // viewerCount negatif olmasın
