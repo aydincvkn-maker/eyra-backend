@@ -248,10 +248,16 @@ const applyPaidEffectsWithTransaction = async (paymentDoc) => {
 
 /**
  * Transaction olmadan ödeme uygulama (standalone MongoDB için fallback)
+ * ✅ FIX: Atomic findOneAndUpdate ile race condition önleme
  */
 const applyPaidEffectsWithoutTransaction = async (paymentDoc) => {
-  const lockedPayment = await Payment.findById(paymentDoc._id);
-  if (!lockedPayment || lockedPayment.status === "paid") return;
+  // ✅ Atomik status kontrolü — iki eşzamanlı webhook aynı ödemeyi işleyemez
+  const lockedPayment = await Payment.findOneAndUpdate(
+    { _id: paymentDoc._id, status: { $ne: "paid" } },
+    { $set: { status: "paid", paidAt: new Date() } },
+    { new: true }
+  );
+  if (!lockedPayment) return; // Already paid or not found
 
   const user = await User.findById(lockedPayment.user);
   if (!user) {
@@ -268,14 +274,18 @@ const applyPaidEffectsWithoutTransaction = async (paymentDoc) => {
       throw err;
     }
 
-    user.coins = Number(user.coins || 0) + coins;
-    await user.save();
+    // ✅ FIX: Atomic $inc yerine read-modify-write kullanılmıyordu
+    const updatedUser = await User.findByIdAndUpdate(
+      user._id,
+      { $inc: { coins: coins } },
+      { new: true }
+    );
 
     await Transaction.create({
       user: user._id,
       type: "purchase",
       amount: coins,
-      balanceAfter: user.coins,
+      balanceAfter: updatedUser.coins,
       status: "completed",
       description: `${lockedPayment.metadata?.title || "Coin topup"} satın alındı`,
       metadata: {
@@ -312,10 +322,6 @@ const applyPaidEffectsWithoutTransaction = async (paymentDoc) => {
       },
     });
   }
-
-  lockedPayment.status = "paid";
-  lockedPayment.paidAt = new Date();
-  await lockedPayment.save();
 };
 
 const processWebhook = async ({ provider, eventId, eventType, providerPaymentId, orderId, status, amountMinor, signature, payload }) => {
