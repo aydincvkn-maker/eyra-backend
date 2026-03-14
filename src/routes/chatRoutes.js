@@ -14,9 +14,19 @@ const upload = multer({
   limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit
   fileFilter: (req, file) => {
     const allowedTypes = [
-      "image/jpeg", "image/png", "image/gif", "image/webp",
-      "video/mp4", "video/quicktime",
-      "audio/mpeg", "audio/mp4", "audio/ogg", "audio/wav", "audio/aac", "audio/x-m4a", "audio/m4a",
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "video/mp4",
+      "video/quicktime",
+      "audio/mpeg",
+      "audio/mp4",
+      "audio/ogg",
+      "audio/wav",
+      "audio/aac",
+      "audio/x-m4a",
+      "audio/m4a",
       "application/pdf",
     ];
     if (!allowedTypes.includes(file.mimetype)) {
@@ -29,28 +39,52 @@ const upload = multer({
 router.get("/room/:roomId", auth, chatController.getRoomMessages);
 
 // Private chat (used by Flutter ChatApiService)
-const { validateSendMessage, sanitizeMongoQuery } = require("../middleware/validate");
+const {
+  validateSendMessage,
+  sanitizeMongoQuery,
+} = require("../middleware/validate");
 router.use(sanitizeMongoQuery);
 
 router.get("/users", auth, chatController.getChatUsers);
 router.get("/conversation/:userId", auth, chatController.getConversation);
 router.delete("/conversation/:userId", auth, chatController.deleteConversation);
-router.post("/send", auth, chatLimiter, validateSendMessage, chatController.sendMessage);
+router.post(
+  "/send",
+  auth,
+  chatLimiter,
+  validateSendMessage,
+  chatController.sendMessage,
+);
 router.post("/read/:userId", auth, chatController.markAsRead);
 router.get("/unread/:userId", auth, chatController.getUnreadCount);
 
 // Medya yükleme
-router.post("/upload", auth, chatLimiter, upload.single("media"), chatController.uploadMedia);
+router.post(
+  "/upload",
+  auth,
+  chatLimiter,
+  upload.single("media"),
+  chatController.uploadMedia,
+);
 
 router.delete("/message/:messageId", auth, chatController.deleteMessage);
 router.put("/message/:messageId", auth, chatController.editMessage);
 router.post("/message/:messageId/reaction", auth, chatController.addReaction);
-router.delete("/message/:messageId/reaction", auth, chatController.removeReaction);
+router.delete(
+  "/message/:messageId/reaction",
+  auth,
+  chatController.removeReaction,
+);
 
 // Forward
 router.post("/message/:messageId/forward", auth, chatController.forwardMessage);
 
 // Admin: Send message to a user (admin panel → host)
-router.post("/admin/send", auth, requirePermission("users:edit"), chatController.adminSendMessage);
+router.post(
+  "/admin/send",
+  auth,
+  requirePermission("users:edit"),
+  chatController.adminSendMessage,
+);
 
 module.exports = router;

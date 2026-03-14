@@ -20,13 +20,38 @@ const upload = multer({
 });
 
 // Kullanıcı endpoint'leri
-router.post("/request", auth, upload.single("selfie"), verificationController.requestVerification);
+router.post(
+  "/request",
+  auth,
+  upload.single("selfie"),
+  verificationController.requestVerification,
+);
 router.get("/status", auth, verificationController.getVerificationStatus);
 
 // Admin endpoint'leri
-router.get("/admin/pending", auth, requirePermission("users:edit"), verificationController.adminGetPending);
-router.get("/admin/all", auth, requirePermission("users:edit"), verificationController.adminGetAll);
-router.put("/admin/:verificationId/approve", auth, requirePermission("users:edit"), verificationController.adminApprove);
-router.put("/admin/:verificationId/reject", auth, requirePermission("users:edit"), verificationController.adminReject);
+router.get(
+  "/admin/pending",
+  auth,
+  requirePermission("users:edit"),
+  verificationController.adminGetPending,
+);
+router.get(
+  "/admin/all",
+  auth,
+  requirePermission("users:edit"),
+  verificationController.adminGetAll,
+);
+router.put(
+  "/admin/:verificationId/approve",
+  auth,
+  requirePermission("users:edit"),
+  verificationController.adminApprove,
+);
+router.put(
+  "/admin/:verificationId/reject",
+  auth,
+  requirePermission("users:edit"),
+  verificationController.adminReject,
+);
 
 module.exports = router;

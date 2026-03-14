@@ -17,7 +17,7 @@ const upload = multer({
     if (!allowedTypes.includes(file.mimetype)) {
       throw new Error("Sadece resim dosyaları yüklenebilir");
     }
-  }
+  },
 });
 
 // Optional auth middleware — never reject, just enrich req.user if token is valid
@@ -62,7 +62,12 @@ router.put("/me", auth, userController.updateMyProfile);
 router.delete("/me", auth, userController.deleteAccount);
 
 // POST /api/users/me/avatar - Avatar yükle
-router.post("/me/avatar", auth, upload.single("avatar"), userController.uploadAvatar);
+router.post(
+  "/me/avatar",
+  auth,
+  upload.single("avatar"),
+  userController.uploadAvatar,
+);
 
 // DELETE /api/users/me/avatar - Avatar sil
 router.delete("/me/avatar", auth, userController.deleteAvatar);
@@ -102,10 +107,20 @@ router.get("/me/blocked", auth, blockController.getBlockedUsers);
 // =============================================
 
 // ADMIN: Tüm kullanıcıları listele (pagination + search)
-router.get("/admin", auth, requirePermission("users:view"), userController.getAdminUsers);
+router.get(
+  "/admin",
+  auth,
+  requirePermission("users:view"),
+  userController.getAdminUsers,
+);
 
 // ADMIN: Panel admin kullanıcılarını listele (admin, super_admin, moderator)
-router.get("/panel-admins", auth, requirePermission("users:view"), userController.getPanelAdmins);
+router.get(
+  "/panel-admins",
+  auth,
+  requirePermission("users:view"),
+  userController.getPanelAdmins,
+);
 
 // GET /api/users - Tüm kullanıcıları getir (search query destekli)
 router.get("/", optionalAuth, userController.getUsers);
@@ -161,27 +176,67 @@ router.post("/:userId/end-broadcast", auth, userController.endBroadcast);
 // =============================================
 
 // PATCH /api/users/:userId/ban - Ban toggle
-router.patch("/:userId/ban", auth, requirePermission("users:ban"), userController.toggleBan);
+router.patch(
+  "/:userId/ban",
+  auth,
+  requirePermission("users:ban"),
+  userController.toggleBan,
+);
 
 // PATCH /api/users/:userId/unban - Unban
-router.patch("/:userId/unban", auth, requirePermission("users:ban"), userController.unbanUser);
+router.patch(
+  "/:userId/unban",
+  auth,
+  requirePermission("users:ban"),
+  userController.unbanUser,
+);
 
 // PATCH /api/users/:userId/restrict-admin - Panel admin kısıtla/kısıtı kaldır (süper admin veya patron)
-router.patch("/:userId/restrict-admin", auth, requirePermission("users:ban"), userController.restrictPanelAdmin);
+router.patch(
+  "/:userId/restrict-admin",
+  auth,
+  requirePermission("users:ban"),
+  userController.restrictPanelAdmin,
+);
 
 // DELETE /api/users/:userId/panel-admin - Panel admin hesabını sil (sadece süper admin, patron hariç)
-router.delete("/:userId/panel-admin", auth, requirePermission("users:ban"), userController.deletePanelAdminUser);
+router.delete(
+  "/:userId/panel-admin",
+  auth,
+  requirePermission("users:ban"),
+  userController.deletePanelAdminUser,
+);
 
 // DELETE /api/users/:userId - Admin kullanıcı sil
-router.delete("/:userId", auth, requirePermission("users:ban"), userController.adminDeleteUser);
+router.delete(
+  "/:userId",
+  auth,
+  requirePermission("users:ban"),
+  userController.adminDeleteUser,
+);
 
 // PATCH /api/users/:userId/coins - Coin güncelle (set)
-router.patch("/:userId/coins", auth, requirePermission("users:edit"), userController.updateCoins);
+router.patch(
+  "/:userId/coins",
+  auth,
+  requirePermission("users:edit"),
+  userController.updateCoins,
+);
 
 // POST /api/users/:userId/add-coins - Coin ekle (increment)
-router.post("/:userId/add-coins", auth, requirePermission("users:edit"), userController.addCoins);
+router.post(
+  "/:userId/add-coins",
+  auth,
+  requirePermission("users:edit"),
+  userController.addCoins,
+);
 
 // POST /api/users/:userId/remove-coins - Coin çıkar (decrement, 0'ın altına düşmez)
-router.post("/:userId/remove-coins", auth, requirePermission("users:edit"), userController.removeCoins);
+router.post(
+  "/:userId/remove-coins",
+  auth,
+  requirePermission("users:edit"),
+  userController.removeCoins,
+);
 
 module.exports = router;
