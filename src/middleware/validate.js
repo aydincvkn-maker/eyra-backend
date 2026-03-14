@@ -1,7 +1,7 @@
 // src/middleware/validate.js
 // Centralized input validation middleware using express-validator
 
-const { body, param, query, validationResult } = require('express-validator');
+const { body, param, query, validationResult } = require("express-validator");
 
 /**
  * Middleware that checks validation results and returns errors if any
@@ -11,8 +11,8 @@ const handleValidationErrors = (req, res, next) => {
   if (!errors.isEmpty()) {
     return res.status(400).json({
       success: false,
-      error: 'Validation failed',
-      details: errors.array().map(e => ({
+      error: "Validation failed",
+      details: errors.array().map((e) => ({
         field: e.path,
         message: e.msg,
       })),
@@ -26,31 +26,38 @@ const handleValidationErrors = (req, res, next) => {
 // ========================================
 
 const validateRegister = [
-  body('email')
-    .isEmail().withMessage('Valid email is required')
+  body("email")
+    .isEmail()
+    .withMessage("Valid email is required")
     .normalizeEmail()
-    .isLength({ max: 255 }).withMessage('Email too long'),
-  body('password')
-    .isLength({ min: 6, max: 128 }).withMessage('Password must be 6-128 characters'),
-  body('username')
+    .isLength({ max: 255 })
+    .withMessage("Email too long"),
+  body("password")
+    .isLength({ min: 6, max: 128 })
+    .withMessage("Password must be 6-128 characters"),
+  body("username")
     .trim()
-    .isLength({ min: 2, max: 30 }).withMessage('Username must be 2-30 characters')
-    .matches(/^[a-zA-Z0-9_.\-\s]+$/).withMessage('Username contains invalid characters'),
-  body('gender')
+    .isLength({ min: 2, max: 30 })
+    .withMessage("Username must be 2-30 characters")
+    .matches(/^[a-zA-Z0-9_.\-\s]+$/)
+    .withMessage("Username contains invalid characters"),
+  body("gender")
     .optional()
-    .isIn(['male', 'female']).withMessage('Gender must be male or female'),
-  body('age')
+    .isIn(["male", "female"])
+    .withMessage("Gender must be male or female"),
+  body("age")
     .optional()
-    .isInt({ min: 18, max: 120 }).withMessage('Age must be between 18-120'),
+    .isInt({ min: 18, max: 120 })
+    .withMessage("Age must be between 18-120"),
   handleValidationErrors,
 ];
 
 const validateLogin = [
-  body('email')
-    .isEmail().withMessage('Valid email is required')
+  body("email")
+    .isEmail()
+    .withMessage("Valid email is required")
     .normalizeEmail(),
-  body('password')
-    .notEmpty().withMessage('Password is required'),
+  body("password").notEmpty().withMessage("Password is required"),
   handleValidationErrors,
 ];
 
@@ -59,23 +66,24 @@ const validateLogin = [
 // ========================================
 
 const validateSendMessage = [
-  body('to')
-    .isMongoId().withMessage('Valid recipient ID required'),
-  body('text')
+  body("to").isMongoId().withMessage("Valid recipient ID required"),
+  body("text")
     .optional({ checkFalsy: true })
     .trim()
-    .isLength({ max: 5000 }).withMessage('Text must be at most 5000 characters'),
-  body('content')
+    .isLength({ max: 5000 })
+    .withMessage("Text must be at most 5000 characters"),
+  body("content")
     .optional({ checkFalsy: true })
     .trim()
-    .isLength({ max: 5000 }).withMessage('Content must be at most 5000 characters'),
+    .isLength({ max: 5000 })
+    .withMessage("Content must be at most 5000 characters"),
   body().custom((_, { req }) => {
-    const text = String(req.body?.text ?? '').trim();
-    const content = String(req.body?.content ?? '').trim();
-    const mediaUrl = String(req.body?.mediaUrl ?? '').trim();
+    const text = String(req.body?.text ?? "").trim();
+    const content = String(req.body?.content ?? "").trim();
+    const mediaUrl = String(req.body?.mediaUrl ?? "").trim();
 
     if (!text && !content && !mediaUrl) {
-      throw new Error('Message must include text/content or mediaUrl');
+      throw new Error("Message must include text/content or mediaUrl");
     }
 
     const resolved = text || content;
@@ -86,10 +94,21 @@ const validateSendMessage = [
 
     return true;
   }),
-  body('type')
+  body("type")
     .optional()
-    .isIn(['text', 'image', 'video', 'audio', 'gif', 'system', 'gift', 'call_ended', 'voice', 'file'])
-    .withMessage('Invalid message type'),
+    .isIn([
+      "text",
+      "image",
+      "video",
+      "audio",
+      "gif",
+      "system",
+      "gift",
+      "call_ended",
+      "voice",
+      "file",
+    ])
+    .withMessage("Invalid message type"),
   handleValidationErrors,
 ];
 
@@ -98,32 +117,41 @@ const validateSendMessage = [
 // ========================================
 
 const validateCreatePaymentIntent = [
-  body('productCode')
+  body("productCode")
     .trim()
-    .notEmpty().withMessage('Product code is required')
-    .isLength({ max: 50 }).withMessage('Product code too long'),
-  body('method')
+    .notEmpty()
+    .withMessage("Product code is required")
+    .isLength({ max: 50 })
+    .withMessage("Product code too long"),
+  body("method")
     .optional()
-    .isIn(['card', 'crypto']).withMessage('Invalid payment method'),
-  body('idempotencyKey')
+    .isIn(["card", "crypto"])
+    .withMessage("Invalid payment method"),
+  body("idempotencyKey")
     .optional()
     .isString()
-    .isLength({ max: 100 }).withMessage('Idempotency key too long'),
+    .isLength({ max: 100 })
+    .withMessage("Idempotency key too long"),
   handleValidationErrors,
 ];
 
 const validateIapPurchase = [
-  body('productId')
+  body("productId")
     .trim()
-    .notEmpty().withMessage('Product ID is required')
-    .isLength({ max: 100 }).withMessage('Product ID too long'),
-  body('transactionId')
+    .notEmpty()
+    .withMessage("Product ID is required")
+    .isLength({ max: 100 })
+    .withMessage("Product ID too long"),
+  body("transactionId")
     .trim()
-    .notEmpty().withMessage('Transaction ID is required')
-    .isLength({ max: 200 }).withMessage('Transaction ID too long'),
-  body('platform')
+    .notEmpty()
+    .withMessage("Transaction ID is required")
+    .isLength({ max: 200 })
+    .withMessage("Transaction ID too long"),
+  body("platform")
     .optional()
-    .isIn(['android', 'ios']).withMessage('Platform must be android or ios'),
+    .isIn(["android", "ios"])
+    .withMessage("Platform must be android or ios"),
   handleValidationErrors,
 ];
 
@@ -132,21 +160,26 @@ const validateIapPurchase = [
 // ========================================
 
 const validateUpdateProfile = [
-  body('username')
+  body("username")
     .optional()
     .trim()
-    .isLength({ min: 2, max: 30 }).withMessage('Username must be 2-30 characters')
-    .matches(/^[a-zA-Z0-9_.\-\s]+$/).withMessage('Username contains invalid characters'),
-  body('bio')
+    .isLength({ min: 2, max: 30 })
+    .withMessage("Username must be 2-30 characters")
+    .matches(/^[a-zA-Z0-9_.\-\s]+$/)
+    .withMessage("Username contains invalid characters"),
+  body("bio")
     .optional()
     .trim()
-    .isLength({ max: 500 }).withMessage('Bio must be max 500 characters'),
-  body('age')
+    .isLength({ max: 500 })
+    .withMessage("Bio must be max 500 characters"),
+  body("age")
     .optional()
-    .isInt({ min: 18, max: 120 }).withMessage('Age must be between 18-120'),
-  body('gender')
+    .isInt({ min: 18, max: 120 })
+    .withMessage("Age must be between 18-120"),
+  body("gender")
     .optional()
-    .isIn(['male', 'female']).withMessage('Gender must be male or female'),
+    .isIn(["male", "female"])
+    .withMessage("Gender must be male or female"),
   handleValidationErrors,
 ];
 
@@ -155,13 +188,12 @@ const validateUpdateProfile = [
 // ========================================
 
 const validateSendGift = [
-  body('giftId')
-    .isMongoId().withMessage('Valid gift ID required'),
-  body('recipientId')
-    .isMongoId().withMessage('Valid receiver ID required'),
-  body('streamId')
+  body("giftId").isMongoId().withMessage("Valid gift ID required"),
+  body("recipientId").isMongoId().withMessage("Valid receiver ID required"),
+  body("streamId")
     .optional()
-    .isMongoId().withMessage('Valid stream ID required'),
+    .isMongoId()
+    .withMessage("Valid stream ID required"),
   handleValidationErrors,
 ];
 
@@ -170,14 +202,16 @@ const validateSendGift = [
 // ========================================
 
 const validateStartLive = [
-  body('title')
+  body("title")
     .optional()
     .trim()
-    .isLength({ max: 100 }).withMessage('Title must be max 100 characters'),
-  body('category')
+    .isLength({ max: 100 })
+    .withMessage("Title must be max 100 characters"),
+  body("category")
     .optional()
     .trim()
-    .isLength({ max: 50 }).withMessage('Category must be max 50 characters'),
+    .isLength({ max: 50 })
+    .withMessage("Category must be max 50 characters"),
   handleValidationErrors,
 ];
 
@@ -186,15 +220,18 @@ const validateStartLive = [
 // ========================================
 
 const validateReport = [
-  body('targetId')
+  body("targetId")
     .optional()
-    .isMongoId().withMessage('Valid target user ID required'),
-  body('streamId')
+    .isMongoId()
+    .withMessage("Valid target user ID required"),
+  body("streamId")
     .optional()
-    .isMongoId().withMessage('Valid stream ID required'),
-  body('reason')
+    .isMongoId()
+    .withMessage("Valid stream ID required"),
+  body("reason")
     .trim()
-    .isLength({ min: 3, max: 500 }).withMessage('Reason must be 3-500 characters'),
+    .isLength({ min: 3, max: 500 })
+    .withMessage("Reason must be 3-500 characters"),
   handleValidationErrors,
 ];
 
@@ -203,18 +240,19 @@ const validateReport = [
 // ========================================
 
 const validateMongoId = [
-  param('id')
-    .isMongoId().withMessage('Valid ID required'),
+  param("id").isMongoId().withMessage("Valid ID required"),
   handleValidationErrors,
 ];
 
 const validatePagination = [
-  query('page')
+  query("page")
     .optional()
-    .isInt({ min: 1, max: 1000 }).withMessage('Page must be 1-1000'),
-  query('limit')
+    .isInt({ min: 1, max: 1000 })
+    .withMessage("Page must be 1-1000"),
+  query("limit")
     .optional()
-    .isInt({ min: 1, max: 100 }).withMessage('Limit must be 1-100'),
+    .isInt({ min: 1, max: 100 })
+    .withMessage("Limit must be 1-100"),
   handleValidationErrors,
 ];
 
@@ -228,11 +266,11 @@ const validatePagination = [
  */
 const sanitizeMongoQuery = (req, res, next) => {
   const sanitize = (obj) => {
-    if (typeof obj !== 'object' || obj === null) return obj;
+    if (typeof obj !== "object" || obj === null) return obj;
     for (const key of Object.keys(obj)) {
-      if (key.startsWith('$')) {
+      if (key.startsWith("$")) {
         delete obj[key];
-      } else if (typeof obj[key] === 'object') {
+      } else if (typeof obj[key] === "object") {
         obj[key] = sanitize(obj[key]);
       }
     }
