@@ -25,6 +25,6 @@ router.post("/webhook", paymentController.webhook);
 
 router.get("/:orderId", auth, paymentController.getMyPaymentByOrderId);
 router.post("/:orderId/confirm", auth, paymentController.confirmMyPaymentByOrderId);
-router.post("/:orderId/refund", auth, requirePermission("finance:view"), paymentController.refundPayment);
+router.post("/:orderId/refund", auth, requirePermission("finance:manage"), paymentController.refundPayment);
 
 module.exports = router;
