@@ -142,7 +142,9 @@ function startServerSideTickTimer(callRoomName) {
   }, 60 * 1000); // Her 60 saniyede bir
 }
 
-module.exports = { register, startServerSideTickTimer };
+/**
+ * Ortak coin tick işleme mantığı
+ */
 async function _processCallTick(callInfo, minuteIndex) {
   try {
     if (!callInfo._lastTickMinute) callInfo._lastTickMinute = -1;
@@ -188,3 +190,5 @@ async function _processCallTick(callInfo, minuteIndex) {
     console.error('❌ _processCallTick error:', e.message);
   }
 }
+
+module.exports = { register, startServerSideTickTimer };
