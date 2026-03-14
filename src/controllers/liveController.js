@@ -1787,6 +1787,9 @@ exports.rejectPaidCall = async (req, res) => {
     await User.findByIdAndUpdate(request.callerId, { $inc: { coins: refundAmount } });
     await User.findByIdAndUpdate(hostId, { $inc: { coins: -hostShareRefund, totalEarnings: -hostShareRefund } });
 
+    // ✅ FIX: Clear auto-refund timeout
+    if (request._timeout) clearTimeout(request._timeout);
+
     // Talebi sil
     global.callRequests.delete(requestId);
 
@@ -1847,6 +1850,9 @@ exports.endPaidCall = async (req, res) => {
     if (String(request.callerId) !== String(userId) && String(request.hostId) !== String(userId)) {
       return res.status(403).json({ ok: false, error: "not_authorized" });
     }
+
+    // ✅ FIX: Clear auto-refund timeout
+    if (request._timeout) clearTimeout(request._timeout);
 
     // Talebi sil
     global.callRequests.delete(requestId);
