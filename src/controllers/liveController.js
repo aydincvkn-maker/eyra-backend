@@ -1571,6 +1571,29 @@ exports.requestPaidCall = async (req, res) => {
       expiresAt: Date.now() + (2 * 60 * 60 * 1000) // 2 saat sonra temizlenebilir
     });
 
+    // ✅ FIX: Auto-refund timeout — eğer 2 dakika içinde görüşme başlamazsa coin'leri iade et
+    const callTimeout = setTimeout(() => {
+      const req = global.callRequests?.get(requestId);
+      if (req && req.status !== 'connected') {
+        // Görüşme başlamadı — refund
+        console.log(`⏰ Call request ${requestId} timed out, refunding ${totalPrice} coins to caller`);
+        User.findByIdAndUpdate(callerId, { $inc: { coins: totalPrice } }).catch(() => {});
+        User.findByIdAndUpdate(hostId, { $inc: { coins: -hostShare, totalEarnings: -hostShare } }).catch(() => {});
+        global.callRequests.delete(requestId);
+        if (global.activeCalls) global.activeCalls.delete(callRoomName);
+        // Notify both sides
+        if (global.io) {
+          const { emitToUserSockets } = require('../socket/helpers');
+          emitToUserSockets(String(callerId), 'call:timeout_refund', { requestId, refundAmount: totalPrice });
+          emitToUserSockets(String(hostId), 'call:timeout', { requestId });
+        }
+      }
+    }, 2 * 60 * 1000); // 2 dakika
+    // Timeout referansını kaydet (clearTimeout için)
+    if (global.callRequests.has(requestId)) {
+      global.callRequests.get(requestId)._timeout = callTimeout;
+    }
+
     // ✅ FIX: activeCalls'a da kaydet - mesajlaşma getCounterpartyForRoom bunu kullanıyor
     if (global.activeCalls) {
       global.activeCalls.set(callRoomName, {
