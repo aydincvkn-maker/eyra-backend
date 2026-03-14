@@ -12,17 +12,15 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit
-  fileFilter: (req, file, cb) => {
+  fileFilter: (req, file) => {
     const allowedTypes = [
       "image/jpeg", "image/png", "image/gif", "image/webp",
       "video/mp4", "video/quicktime",
       "audio/mpeg", "audio/mp4", "audio/ogg", "audio/wav", "audio/aac", "audio/x-m4a", "audio/m4a",
       "application/pdf",
     ];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error("Bu dosya türü desteklenmiyor"), false);
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new Error("Bu dosya türü desteklenmiyor");
     }
   },
 });
