@@ -57,27 +57,27 @@ function register(socket, io) {
       // Send to recipient
       const delivered = emitToUserSockets(data.to, 'chat:new_message', messageData);
 
-      // If recipient is offline/has no active sockets, send push notification
-      if (!delivered) {
-        try {
-          const sender = await User.findById(fromUserId).select('username name').lean();
-          const senderName = sender?.name || sender?.username || 'Birisi';
-          const previewText = (message.content || '').length > 80
-            ? message.content.substring(0, 80) + '...'
-            : (message.content || 'Yeni mesaj');
+      // ✅ FIX: Always send push notification for chat messages.
+      // Even if socket delivery succeeded, the recipient's app may be
+      // backgrounded or ChatService listeners may be dead after reconnect.
+      try {
+        const sender = await User.findById(fromUserId).select('username name').lean();
+        const senderName = sender?.name || sender?.username || 'Birisi';
+        const previewText = (message.content || '').length > 80
+          ? message.content.substring(0, 80) + '...'
+          : (message.content || 'Yeni mesaj');
 
-          await createNotification({
-            recipientId: data.to,
-            type: 'chat_message',
-            title: senderName,
-            body: previewText,
-            senderId: fromUserId,
-            relatedId: message._id.toString(),
-            relatedType: 'Message',
-          });
-        } catch (pushErr) {
-          logger.error('Chat push notification error', pushErr);
-        }
+        await createNotification({
+          recipientId: data.to,
+          type: 'chat_message',
+          title: senderName,
+          body: previewText,
+          senderId: fromUserId,
+          relatedId: message._id.toString(),
+          relatedType: 'Message',
+        });
+      } catch (pushErr) {
+        logger.error('Chat push notification error', pushErr);
       }
 
       // Confirm to sender
