@@ -352,7 +352,7 @@ exports.deletePanelAdminUser = async (req, res) => {
 
     await User.findByIdAndDelete(userId);
 
-    try { await LiveStream.deleteMany({ hostId: userId }); } catch (e) {}
+    try { await LiveStream.deleteMany({ host: userId }); } catch (e) {}
 
     logger.info('Panel admin deleted', { adminId: req.user.id, targetUsername: target.username, targetId: userId });
 
@@ -581,7 +581,7 @@ exports.adminDeleteUser = async (req, res) => {
 
     // Ä°liÅŸkili yayÄ±nlarÄ± da temizle
     try {
-      await LiveStream.deleteMany({ hostId: userId });
+      await LiveStream.deleteMany({ host: userId });
     } catch (e) {
       console.warn("LiveStream cleanup warning:", e.message);
     }

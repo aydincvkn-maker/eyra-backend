@@ -817,11 +817,13 @@ exports.sendChatMessage = async (req, res) => {
     );
 
     // Mesajı kaydet
+    // ✅ FIX: Strip HTML tags like the socket handler does (XSS prevention)
+    const sanitizedMessage = String(message || '').replace(/<[^>]*>/g, '');
     const msg = await Message.create({
       roomId,
       from: userId,
       type,
-      content: message,
+      content: sanitizedMessage,
     });
 
     // Socket ile tüm izleyicilere gönder
