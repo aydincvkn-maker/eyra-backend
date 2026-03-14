@@ -8,7 +8,10 @@ const Visitor = require("../models/Visitor");
 const CallHistory = require("../models/CallHistory");
 const path = require("path");
 const fs = require("fs");
-const { normalizeGender, genderVisibilityQueryForViewer } = require("../utils/gender");
+const {
+  normalizeGender,
+  genderVisibilityQueryForViewer,
+} = require("../utils/gender");
 const presenceService = require("../services/presenceService");
 const { trackMissionProgress } = require("./missionController");
 const { checkFollowerAchievements } = require("./achievementController");
@@ -28,19 +31,27 @@ const ensureFollowIndexes = async (force = false) => {
 };
 
 const normalizePresenceStatus = (presenceData = {}) => {
-  const raw = String(presenceData.status || '').trim().toLowerCase();
-  if (raw === 'online' || raw === 'offline' || raw === 'live' || raw === 'in_call') {
+  const raw = String(presenceData.status || "")
+    .trim()
+    .toLowerCase();
+  if (
+    raw === "online" ||
+    raw === "offline" ||
+    raw === "live" ||
+    raw === "in_call"
+  ) {
     return raw;
   }
 
   // Backward compatible mapping
   if (presenceData.online === true) {
-    if (presenceData.live === true) return 'live';
-    if (presenceData.inCall === true || presenceData.busy === true) return 'in_call';
-    return 'online';
+    if (presenceData.live === true) return "live";
+    if (presenceData.inCall === true || presenceData.busy === true)
+      return "in_call";
+    return "online";
   }
 
-  return 'offline';
+  return "offline";
 };
 
 // =============================================
@@ -58,28 +69,29 @@ const formatUser = (user, presenceData = {}) => {
   // MongoDB'deki isOnline deÄŸeri eski/stale olabilir, KULLANILMAZ
   const presenceStatus = normalizePresenceStatus(presenceData);
 
-  const isOnline = presenceStatus !== 'offline';
-  const isLive = presenceStatus === 'live';
-  const isBusy = presenceStatus === 'in_call';
-  const lastSeen = presenceData.lastSeen || user.lastSeen || user.lastOnlineAt || null;
+  const isOnline = presenceStatus !== "offline";
+  const isLive = presenceStatus === "live";
+  const isBusy = presenceStatus === "in_call";
+  const lastSeen =
+    presenceData.lastSeen || user.lastSeen || user.lastOnlineAt || null;
 
   return {
     _id: user._id,
     username: user.username,
     name: user.name,
     email: user.email,
-    profileImage: user.profileImage || '',
-    gender: user.gender || 'other',
+    profileImage: user.profileImage || "",
+    gender: user.gender || "other",
     age: user.age || 20,
-    location: user.location || 'TR',
-    country: user.country || 'TR',
+    location: user.location || "TR",
+    country: user.country || "TR",
     followers: user.followers || 0,
     following: user.following || 0,
     gifts: user.gifts || 0,
     coins: user.coins || 0,
     level: user.level || 1,
     totalEarnings: user.totalEarnings || 0,
-    role: user.role || 'viewer',
+    role: user.role || "viewer",
     isBanned: user.isBanned || false,
     isVerified: user.isVerified || false,
     // Presence bilgisi: Socket heartbeat (memory) + Mongo fallback
@@ -98,28 +110,30 @@ const formatUser = (user, presenceData = {}) => {
 
 // Helper function to escape regex special characters
 const escapeRegex = (str) => {
-  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 };
 
 exports.getUsers = async (req, res) => {
   try {
     const currentUserId = req.user?.id ? String(req.user.id) : null;
-    const searchQuery = req.query.search ? String(req.query.search).trim() : null;
-    logger.debug('getUsers', { currentUserId, searchQuery });
+    const searchQuery = req.query.search
+      ? String(req.query.search).trim()
+      : null;
+    logger.debug("getUsers", { currentUserId, searchQuery });
 
     // âœ… Query: banned olmayan, kendisi hariÃ§
-    const query = { 
+    const query = {
       isBanned: { $ne: true },
       isActive: { $ne: false },
     };
-    
+
     // âœ… Kendisini hariÃ§ tut (ObjectId olarak)
     if (currentUserId) {
       try {
         query._id = { $ne: new mongoose.Types.ObjectId(currentUserId) };
-        logger.debug('Excluding user', { currentUserId });
+        logger.debug("Excluding user", { currentUserId });
       } catch (e) {
-        logger.warn('Invalid ObjectId in getUsers', { currentUserId });
+        logger.warn("Invalid ObjectId in getUsers", { currentUserId });
       }
     }
 
@@ -128,18 +142,18 @@ exports.getUsers = async (req, res) => {
       const trimmedQuery = searchQuery.substring(0, 100); // Max 100 karakter (ReDoS korumasÄ±)
       const escapedQuery = escapeRegex(trimmedQuery);
       query.$or = [
-        { username: { $regex: escapedQuery, $options: 'i' } },
-        { name: { $regex: escapedQuery, $options: 'i' } }
+        { username: { $regex: escapedQuery, $options: "i" } },
+        { name: { $regex: escapedQuery, $options: "i" } },
       ];
     }
 
     // âœ… Cinsiyet filtreleme
     if (currentUserId) {
       const currentUser = await User.findById(currentUserId).select("gender");
-      logger.debug('Gender filter', { gender: currentUser?.gender });
+      logger.debug("Gender filter", { gender: currentUser?.gender });
       query.gender = genderVisibilityQueryForViewer(currentUser?.gender);
     } else {
-      logger.debug('Unauthenticated user - showing only female');
+      logger.debug("Unauthenticated user - showing only female");
       query.gender = genderVisibilityQueryForViewer(null);
     }
 
@@ -155,38 +169,37 @@ exports.getUsers = async (req, res) => {
 
     // âœ… KullanÄ±cÄ±larÄ± format et ve sÄ±rala
     const formattedUsers = users
-      .map(user => {
+      .map((user) => {
         const presenceData = presenceMap[String(user._id)] || {
           online: false,
           busy: false,
           live: false,
           inCall: false,
-          status: 'offline',
+          status: "offline",
           lastSeen: null,
         };
-        
+
         return formatUser(user, presenceData);
       })
       .sort((a, b) => {
         // SÄ±rala: Live > Online > Offline
-        const aScore = a.isLive ? 3 : (a.isOnline ? 2 : 1);
-        const bScore = b.isLive ? 3 : (b.isOnline ? 2 : 1);
-        
+        const aScore = a.isLive ? 3 : a.isOnline ? 2 : 1;
+        const bScore = b.isLive ? 3 : b.isOnline ? 2 : 1;
+
         if (aScore !== bScore) return bScore - aScore;
-        
+
         // AynÄ± statÃ¼deyse, en yeni ilk
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
 
-    logger.debug('getUsers result', { count: formattedUsers.length });
+    logger.debug("getUsers result", { count: formattedUsers.length });
     res.json({
       success: true,
       users: formattedUsers,
-      count: formattedUsers.length
+      count: formattedUsers.length,
     });
-
   } catch (err) {
-    logger.error('getUsers error', err);
+    logger.error("getUsers error", err);
     res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
   }
 };
@@ -194,7 +207,9 @@ exports.getUsers = async (req, res) => {
 // ADMIN: TÃ¼m kullanÄ±cÄ±larÄ± listele (pagination destekli) - panel adminler hariÃ§
 exports.getAdminUsers = async (req, res) => {
   try {
-    const searchQuery = req.query.search ? String(req.query.search).trim() : null;
+    const searchQuery = req.query.search
+      ? String(req.query.search).trim()
+      : null;
     const page = Math.max(parseInt(req.query.page || "1"), 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit || "50"), 1), 200);
 
@@ -206,9 +221,9 @@ exports.getAdminUsers = async (req, res) => {
     if (searchQuery) {
       const escapedQuery = escapeRegex(searchQuery);
       query.$or = [
-        { username: { $regex: escapedQuery, $options: 'i' } },
-        { name: { $regex: escapedQuery, $options: 'i' } },
-        { email: { $regex: escapedQuery, $options: 'i' } },
+        { username: { $regex: escapedQuery, $options: "i" } },
+        { name: { $regex: escapedQuery, $options: "i" } },
+        { email: { $regex: escapedQuery, $options: "i" } },
       ];
     }
 
@@ -224,13 +239,13 @@ exports.getAdminUsers = async (req, res) => {
     const userIds = users.map((u) => String(u._id));
     const presenceMap = await presenceService.getMultiplePresence(userIds);
 
-    const formattedUsers = users.map(user => {
+    const formattedUsers = users.map((user) => {
       const presenceData = presenceMap[String(user._id)] || {
         online: false,
         busy: false,
         live: false,
         inCall: false,
-        status: 'offline',
+        status: "offline",
         lastSeen: null,
       };
 
@@ -312,9 +327,13 @@ exports.getPanelAdmins = async (req, res) => {
 // DELETE /api/users/:userId/panel-admin - Panel admin hesabÄ±nÄ± sil (sadece super_admin, patron hariÃ§)
 exports.deletePanelAdminUser = async (req, res) => {
   try {
-    const requestingUser = await User.findById(req.user.id).select("role isOwner").lean();
+    const requestingUser = await User.findById(req.user.id)
+      .select("role isOwner")
+      .lean();
     if (!requestingUser) {
-      return res.status(401).json({ success: false, message: "Yetkilendirme hatasÄ±" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Yetkilendirme hatasÄ±" });
     }
 
     // Sadece sÃ¼per admin veya patron kullanabilir
@@ -322,39 +341,69 @@ exports.deletePanelAdminUser = async (req, res) => {
     const isRequesterSuperAdmin = requestingUser.role === "super_admin";
 
     if (!isRequesterSuperAdmin) {
-      return res.status(403).json({ success: false, message: "Bu iÅŸlem iÃ§in sÃ¼per admin yetkisi gerekli" });
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "Bu iÅŸlem iÃ§in sÃ¼per admin yetkisi gerekli",
+        });
     }
 
     const { userId } = req.params;
-    const target = await User.findById(userId).select("role isOwner username email");
+    const target = await User.findById(userId).select(
+      "role isOwner username email",
+    );
     if (!target) {
-      return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+      return res
+        .status(404)
+        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
     // Kendini silemez
     if (String(target._id) === String(req.user.id)) {
-      return res.status(400).json({ success: false, message: "Kendinizi silemezsiniz" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Kendinizi silemezsiniz" });
     }
 
     // Patron silinemez
     if (target.isOwner === true) {
-      return res.status(403).json({ success: false, message: "Patron hesabÄ± silinemez" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Patron hesabÄ± silinemez" });
     }
 
     // Patron deÄŸilse sÃ¼per admin hesabÄ±nÄ± silemez
     if (target.role === "super_admin" && !isRequesterOwner) {
-      return res.status(403).json({ success: false, message: "SÃ¼per admin hesabÄ± silinemez" });
+      return res
+        .status(403)
+        .json({ success: false, message: "SÃ¼per admin hesabÄ± silinemez" });
     }
 
-    if (target.role !== "admin" && target.role !== "moderator" && target.role !== "super_admin") {
-      return res.status(400).json({ success: false, message: "Sadece panel hesaplarÄ± silinebilir" });
+    if (
+      target.role !== "admin" &&
+      target.role !== "moderator" &&
+      target.role !== "super_admin"
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Sadece panel hesaplarÄ± silinebilir",
+        });
     }
 
     await User.findByIdAndDelete(userId);
 
-    try { await LiveStream.deleteMany({ host: userId }); } catch (e) {}
+    try {
+      await LiveStream.deleteMany({ host: userId });
+    } catch (e) {}
 
-    logger.info('Panel admin deleted', { adminId: req.user.id, targetUsername: target.username, targetId: userId });
+    logger.info("Panel admin deleted", {
+      adminId: req.user.id,
+      targetUsername: target.username,
+      targetId: userId,
+    });
 
     res.json({
       success: true,
@@ -369,25 +418,37 @@ exports.deletePanelAdminUser = async (req, res) => {
 // PATCH /api/users/:userId/restrict-admin - Panel admin kÄ±sÄ±tla/kÄ±sÄ±tÄ± kaldÄ±r
 exports.restrictPanelAdmin = async (req, res) => {
   try {
-    const requestingUser = await User.findById(req.user.id).select("role isOwner").lean();
+    const requestingUser = await User.findById(req.user.id)
+      .select("role isOwner")
+      .lean();
     if (!requestingUser) {
-      return res.status(401).json({ success: false, message: "Yetkilendirme hatasÄ±" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Yetkilendirme hatasÄ±" });
     }
 
     const { userId } = req.params;
-    const targetUser = await User.findById(userId).select("role isOwner username isPanelRestricted");
+    const targetUser = await User.findById(userId).select(
+      "role isOwner username isPanelRestricted",
+    );
     if (!targetUser) {
-      return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+      return res
+        .status(404)
+        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
     // Kendini kÄ±sÄ±tlayamazsÄ±n
     if (String(targetUser._id) === String(req.user.id)) {
-      return res.status(403).json({ success: false, message: "Kendinizi kÄ±sÄ±tlayamazsÄ±nÄ±z" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Kendinizi kÄ±sÄ±tlayamazsÄ±nÄ±z" });
     }
 
     // Owner (patron) hiÃ§bir zaman kÄ±sÄ±tlanamaz
     if (targetUser.isOwner === true) {
-      return res.status(403).json({ success: false, message: "Patron kÄ±sÄ±tlanamaz" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Patron kÄ±sÄ±tlanamaz" });
     }
 
     const isRequesterOwner = requestingUser.isOwner === true;
@@ -398,12 +459,19 @@ exports.restrictPanelAdmin = async (req, res) => {
     // - Super admin: sadece admin/moderator'Ä± kÄ±sÄ±tlayabilir; diÄŸer super_admin'larÄ± kÄ±sÄ±tlayamaz
     // - Admin/moderator: kimseyi kÄ±sÄ±tlayamaz
     if (!isRequesterOwner && !isRequesterSuperAdmin) {
-      return res.status(403).json({ success: false, message: "Bu iÅŸlem iÃ§in yetkiniz yok" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Bu iÅŸlem iÃ§in yetkiniz yok" });
     }
 
     if (!isRequesterOwner && isRequesterSuperAdmin) {
       if (targetUser.role === "super_admin") {
-        return res.status(403).json({ success: false, message: "SÃ¼per adminler birbirini kÄ±sÄ±tlayamaz" });
+        return res
+          .status(403)
+          .json({
+            success: false,
+            message: "SÃ¼per adminler birbirini kÄ±sÄ±tlayamaz",
+          });
       }
     }
 
@@ -435,7 +503,7 @@ exports.getFemaleUsers = async (req, res) => {
     const currentUserId = req.user?.id ? String(req.user.id) : null;
 
     // Cinsiyet görünürlük filtresi: erkek sadece kadınları, kadın herkesi görür
-    const baseQuery = { 
+    const baseQuery = {
       isBanned: { $ne: true },
       isActive: { $ne: false },
     };
@@ -460,41 +528,39 @@ exports.getFemaleUsers = async (req, res) => {
 
     // âœ… KullanÄ±cÄ±larÄ± format et ve sÄ±rala
     const formattedUsers = users
-      .map(user => {
+      .map((user) => {
         const presenceData = presenceMap[String(user._id)] || {
           online: false,
           busy: false,
           live: false,
           inCall: false,
-          status: 'offline',
+          status: "offline",
           lastSeen: null,
         };
-        
+
         return formatUser(user, presenceData);
       })
       .sort((a, b) => {
         // SÄ±rala: Live > Online > Offline
-        const aScore = a.isLive ? 3 : (a.isOnline ? 2 : 1);
-        const bScore = b.isLive ? 3 : (b.isOnline ? 2 : 1);
-        
+        const aScore = a.isLive ? 3 : a.isOnline ? 2 : 1;
+        const bScore = b.isLive ? 3 : b.isOnline ? 2 : 1;
+
         if (aScore !== bScore) return bScore - aScore;
-        
+
         // AynÄ± statÃ¼deyse, en yeni ilk
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
 
-    logger.debug('getFemaleUsers result', { count: formattedUsers.length });
+    logger.debug("getFemaleUsers result", { count: formattedUsers.length });
     res.json({
       success: true,
       users: formattedUsers,
-      count: formattedUsers.length
+      count: formattedUsers.length,
     });
-
   } catch (err) {
     logger.error("âŒ getFemaleUsers error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
   }
-
 };
 
 exports.toggleBan = async (req, res) => {
@@ -515,20 +581,30 @@ exports.toggleBan = async (req, res) => {
 
     // Admin sadece super_admin tarafÄ±ndan banlanabilir
     if (user.role === "admin" && req.user.role !== "super_admin") {
-      return sendError(res, 403, "Admin hesaplar sadece super admin tarafÄ±ndan banlanabilir");
+      return sendError(
+        res,
+        403,
+        "Admin hesaplar sadece super admin tarafÄ±ndan banlanabilir",
+      );
     }
 
     const newBanState = !user.isBanned;
     const updated = await User.findByIdAndUpdate(
       userId,
       { $set: { isBanned: newBanState, name: user.name || "User" } },
-      { new: true }
+      { new: true },
     ).select("-password");
 
     // Notify admin sockets
-    adminSocket.emit(newBanState ? "user:banned" : "user:unbanned", { userId, username: updated.username });
+    adminSocket.emit(newBanState ? "user:banned" : "user:unbanned", {
+      userId,
+      username: updated.username,
+    });
 
-    res.json({ message: "Ban durumu gÃ¼ncellendi", isBanned: updated.isBanned });
+    res.json({
+      message: "Ban durumu gÃ¼ncellendi",
+      isBanned: updated.isBanned,
+    });
   } catch (err) {
     logger.error("toggleBan error:", err);
     sendError(res, 500, "Sunucu hatasÄ±");
@@ -541,7 +617,7 @@ exports.unbanUser = async (req, res) => {
     const updated = await User.findByIdAndUpdate(
       userId,
       { $set: { isBanned: false } },
-      { new: true }
+      { new: true },
     ).select("-password");
 
     if (!updated) return sendError(res, 404, "KullanÄ±cÄ± yok");
@@ -559,22 +635,33 @@ exports.adminDeleteUser = async (req, res) => {
     const { userId } = req.params;
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+      return res
+        .status(404)
+        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
     // Admin kendini silemesin
     if (String(user._id) === String(req.user.id)) {
-      return res.status(400).json({ success: false, message: "Kendinizi silemezsiniz" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Kendinizi silemezsiniz" });
     }
 
     // Super admin hiÃ§bir zaman silinemez
     if (user.role === "super_admin") {
-      return res.status(403).json({ success: false, message: "Super admin silinemez" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Super admin silinemez" });
     }
 
     // Admin sadece super_admin tarafÄ±ndan silinebilir
     if (user.role === "admin" && req.user.role !== "super_admin") {
-      return res.status(403).json({ success: false, message: "Admin hesaplar sadece super admin tarafÄ±ndan silinebilir" });
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "Admin hesaplar sadece super admin tarafÄ±ndan silinebilir",
+        });
     }
 
     await User.findByIdAndDelete(userId);
@@ -586,7 +673,11 @@ exports.adminDeleteUser = async (req, res) => {
       console.warn("LiveStream cleanup warning:", e.message);
     }
 
-    logger.info('Admin deleted user', { adminId: req.user.id, targetUsername: user.username, targetId: userId });
+    logger.info("Admin deleted user", {
+      adminId: req.user.id,
+      targetUsername: user.username,
+      targetId: userId,
+    });
 
     res.json({
       success: true,
@@ -606,7 +697,7 @@ exports.updateCoins = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { $set: { coins } },
-      { new: true, runValidators: false }
+      { new: true, runValidators: false },
     ).select("-password");
 
     if (!user) return sendError(res, 404, "KullanÄ±cÄ± bulunamadÄ±");
@@ -626,12 +717,16 @@ exports.removeCoins = async (req, res) => {
     const amount = Number(rawAmount);
 
     if (!amount || !Number.isFinite(amount) || amount <= 0) {
-      return res.status(400).json({ success: false, message: "GeÃ§erli bir miktar girin" });
+      return res
+        .status(400)
+        .json({ success: false, message: "GeÃ§erli bir miktar girin" });
     }
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+      return res
+        .status(404)
+        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
     const currentCoins = user.coins || 0;
@@ -641,16 +736,21 @@ exports.removeCoins = async (req, res) => {
     const updated = await User.findByIdAndUpdate(
       userId,
       { $set: { coins: newCoins } },
-      { new: true }
+      { new: true },
     ).select("-password -refreshToken");
 
-    logger.info('Admin removed coins', { adminId: req.user.id, targetUsername: user.username, removed: actualRemoved, newBalance: updated.coins });
+    logger.info("Admin removed coins", {
+      adminId: req.user.id,
+      targetUsername: user.username,
+      removed: actualRemoved,
+      newBalance: updated.coins,
+    });
 
     if (global.io && global.userSockets) {
       const targetSockets = global.userSockets.get(String(userId));
       if (targetSockets && targetSockets.size > 0) {
-        targetSockets.forEach(socketId => {
-          global.io.to(socketId).emit('coins:updated', {
+        targetSockets.forEach((socketId) => {
+          global.io.to(socketId).emit("coins:updated", {
             coins: updated.coins,
             removed: actualRemoved,
             message: `${actualRemoved} coin hesabÄ±nÄ±zdan Ã§Ä±karÄ±ldÄ±.`,
@@ -679,35 +779,43 @@ exports.addCoins = async (req, res) => {
     const amount = Number(rawAmount);
 
     if (!amount || !Number.isFinite(amount) || amount <= 0) {
-      return res.status(400).json({ success: false, message: "GeÃ§erli bir miktar girin" });
+      return res
+        .status(400)
+        .json({ success: false, message: "GeÃ§erli bir miktar girin" });
     }
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+      return res
+        .status(404)
+        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
     const updated = await User.findByIdAndUpdate(
       userId,
       { $inc: { coins: amount } },
-      { new: true }
+      { new: true },
     ).select("-password -refreshToken");
 
-    logger.info(`ğŸ’° Admin ${req.user.id} â†’ ${user.username}'a ${amount} coin ekledi (yeni: ${updated.coins})`);
+    logger.info(
+      `ğŸ’° Admin ${req.user.id} â†’ ${user.username}'a ${amount} coin ekledi (yeni: ${updated.coins})`,
+    );
 
     // Socket ile kullanÄ±cÄ±ya anlÄ±k bildirim gÃ¶nder
     if (global.io && global.userSockets) {
       const targetKey = String(userId);
       const targetSockets = global.userSockets.get(targetKey);
       if (targetSockets && targetSockets.size > 0) {
-        targetSockets.forEach(socketId => {
-          global.io.to(socketId).emit('coins:updated', {
+        targetSockets.forEach((socketId) => {
+          global.io.to(socketId).emit("coins:updated", {
             coins: updated.coins,
             added: amount,
             message: `${amount} coin hesabÄ±nÄ±za eklendi!`,
           });
         });
-        logger.info(`ğŸ“¡ coins:updated event sent to ${targetSockets.size} socket(s) for user ${userId}`);
+        logger.info(
+          `ğŸ“¡ coins:updated event sent to ${targetSockets.size} socket(s) for user ${userId}`,
+        );
       }
     }
 
@@ -735,7 +843,9 @@ exports.getMyProfile = async (req, res) => {
     const user = await User.findById(userId).select("-password -refreshToken");
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+      return res
+        .status(404)
+        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
     res.json({
@@ -768,9 +878,9 @@ exports.getMyProfile = async (req, res) => {
           showOnlineStatus: true,
           profileVisibility: true,
           allowMessages: true,
-          showActivity: false
-        }
-      }
+          showActivity: false,
+        },
+      },
     });
   } catch (err) {
     logger.error("getMyProfile error:", err);
@@ -788,12 +898,12 @@ exports.updateMyProfile = async (req, res) => {
     if (username) {
       const existingUser = await User.findOne({
         username,
-        _id: { $ne: userId }
+        _id: { $ne: userId },
       });
       if (existingUser) {
         return res.status(400).json({
           success: false,
-          message: "Bu kullanÄ±cÄ± adÄ± zaten kullanÄ±mda"
+          message: "Bu kullanÄ±cÄ± adÄ± zaten kullanÄ±mda",
         });
       }
     }
@@ -810,11 +920,13 @@ exports.updateMyProfile = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { $set: updateData },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("-password -refreshToken");
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+      return res
+        .status(404)
+        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
     logger.info(`âœ… Profil gÃ¼ncellendi: ${user.username}`);
@@ -832,8 +944,8 @@ exports.updateMyProfile = async (req, res) => {
         age: user.age,
         location: user.location,
         country: user.country,
-        bio: user.bio || ""
-      }
+        bio: user.bio || "",
+      },
     });
   } catch (err) {
     logger.error("updateMyProfile error:", err);
@@ -847,7 +959,9 @@ exports.uploadAvatar = async (req, res) => {
     const userId = req.user.id;
 
     if (!req.file) {
-      return res.status(400).json({ success: false, message: "Dosya yÃ¼klenmedi" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Dosya yÃ¼klenmedi" });
     }
 
     const fileName = `avatar_${userId}_${Date.now()}${path.extname(req.file.originalname)}`;
@@ -874,7 +988,7 @@ exports.uploadAvatar = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { $set: { profileImage: avatarUrl } },
-      { new: true }
+      { new: true },
     ).select("-password -refreshToken");
 
     logger.info(`ğŸ“· Avatar gÃ¼ncellendi: ${user.username}`);
@@ -882,7 +996,7 @@ exports.uploadAvatar = async (req, res) => {
     res.json({
       success: true,
       message: "Avatar gÃ¼ncellendi",
-      profileImage: avatarUrl
+      profileImage: avatarUrl,
     });
   } catch (err) {
     logger.error("uploadAvatar error:", err);
@@ -897,7 +1011,9 @@ exports.deleteAvatar = async (req, res) => {
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+      return res
+        .status(404)
+        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
     if (user.profileImage) {
@@ -923,10 +1039,14 @@ exports.getMyStats = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const user = await User.findById(userId).select("coins level followers following gifts totalEarnings");
+    const user = await User.findById(userId).select(
+      "coins level followers following gifts totalEarnings",
+    );
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+      return res
+        .status(404)
+        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
     const stats = {
@@ -938,19 +1058,21 @@ exports.getMyStats = async (req, res) => {
       totalEarnings: user.totalEarnings || 0,
       streams: 0,
       likes: 0,
-      views: 0
+      views: 0,
     };
 
     try {
       const LiveStream = require("../models/LiveStream");
       const streamStats = await LiveStream.aggregate([
         { $match: { hostId: user._id } },
-        { $group: {
-          _id: null,
-          totalStreams: { $sum: 1 },
-          totalViews: { $sum: "$viewCount" },
-          totalLikes: { $sum: "$likeCount" }
-        }}
+        {
+          $group: {
+            _id: null,
+            totalStreams: { $sum: 1 },
+            totalViews: { $sum: "$viewCount" },
+            totalLikes: { $sum: "$likeCount" },
+          },
+        },
       ]);
 
       if (streamStats.length > 0) {
@@ -976,22 +1098,30 @@ exports.updateSettings = async (req, res) => {
     const { settings } = req.body;
 
     if (!settings) {
-      return res.status(400).json({ success: false, message: "Ayarlar gerekli" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Ayarlar gerekli" });
     }
 
     const user = await User.findByIdAndUpdate(
       userId,
       { $set: { settings } },
-      { new: true }
+      { new: true },
     ).select("settings");
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+      return res
+        .status(404)
+        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
     logger.info(`âš™ï¸ Ayarlar gÃ¼ncellendi: ${userId}`);
 
-    res.json({ success: true, message: "Ayarlar gÃ¼ncellendi", settings: user.settings });
+    res.json({
+      success: true,
+      message: "Ayarlar gÃ¼ncellendi",
+      settings: user.settings,
+    });
   } catch (err) {
     logger.error("updateSettings error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
@@ -1006,11 +1136,13 @@ exports.freezeAccount = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { $set: { isActive: false, isFrozen: true } },
-      { new: true }
+      { new: true },
     );
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+      return res
+        .status(404)
+        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
     logger.info(`â„ Hesap donduruldu: ${user.username}`);
@@ -1054,20 +1186,26 @@ exports.getUserById = async (req, res) => {
     let user;
 
     if (mongoose.Types.ObjectId.isValid(userId)) {
-      user = await User.findById(userId).select("-password -refreshToken -email");
+      user = await User.findById(userId).select(
+        "-password -refreshToken -email",
+      );
     } else {
       // Allow username lookup to avoid ObjectId cast errors
-      user = await User.findOne({ username: userId }).select("-password -refreshToken -email");
+      user = await User.findOne({ username: userId }).select(
+        "-password -refreshToken -email",
+      );
     }
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+      return res
+        .status(404)
+        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
     const presenceData = await presenceService.getPresence(user._id);
     const presenceStatus = normalizePresenceStatus(presenceData);
 
-    const isLive = presenceStatus === 'live';
+    const isLive = presenceStatus === "live";
 
     res.json({
       success: true,
@@ -1087,11 +1225,11 @@ exports.getUserById = async (req, res) => {
         coins: user.coins || 0,
         bio: user.bio || "",
         presenceStatus,
-        isOnline: presenceStatus !== 'offline',
+        isOnline: presenceStatus !== "offline",
         isLive,
         isVerified: user.isVerified || false,
-        lastSeen: presenceData.lastSeen || null
-      }
+        lastSeen: presenceData.lastSeen || null,
+      },
     });
   } catch (err) {
     logger.error("getUserById error:", err);
@@ -1112,18 +1250,29 @@ exports.followUser = async (req, res) => {
     const { userId } = req.params;
 
     if (currentUserId === userId) {
-      return res.status(400).json({ success: false, message: "Kendinizi takip edemezsiniz" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Kendinizi takip edemezsiniz" });
     }
 
     const userToFollow = await User.findById(userId);
     if (!userToFollow) {
-      return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+      return res
+        .status(404)
+        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
     // Zaten takip ediyor mu kontrol et
-    const existing = await Follow.findOne({ follower: currentUserId, following: userId });
+    const existing = await Follow.findOne({
+      follower: currentUserId,
+      following: userId,
+    });
     if (existing) {
-      return res.json({ success: true, message: "Zaten takip ediyorsunuz", isFollowing: true });
+      return res.json({
+        success: true,
+        message: "Zaten takip ediyorsunuz",
+        isFollowing: true,
+      });
     }
 
     // Follow kaydÄ± oluÅŸtur
@@ -1139,7 +1288,11 @@ exports.followUser = async (req, res) => {
 
         if (already) {
           // Ä°stek yarÄ±ÅŸÄ±nda baÅŸka bir worker/istek kaydÄ± oluÅŸturduysa idempotent baÅŸarÄ± dÃ¶n
-          return res.json({ success: true, message: "Zaten takip ediyorsunuz", isFollowing: true });
+          return res.json({
+            success: true,
+            message: "Zaten takip ediyorsunuz",
+            isFollowing: true,
+          });
         }
 
         // 11000 alÄ±ndÄ± ama kayÄ±t bulunamadÄ±ysa gerÃ§ek index/veri problemi olabilir
@@ -1154,20 +1307,26 @@ exports.followUser = async (req, res) => {
     await User.findByIdAndUpdate(currentUserId, { $inc: { following: 1 } });
 
     // Achievement & Notification hooks
-    const updatedFollowTarget = await User.findById(userId).select("followers username name");
+    const updatedFollowTarget = await User.findById(userId).select(
+      "followers username name",
+    );
     if (updatedFollowTarget) {
-      checkFollowerAchievements(userId, updatedFollowTarget.followers).catch(() => {});
+      checkFollowerAchievements(userId, updatedFollowTarget.followers).catch(
+        () => {},
+      );
     }
-    
+
     // TakipÃ§iye bildirim gÃ¶nder
-    const currentUser = await User.findById(currentUserId).select("username name profileImage");
+    const currentUser = await User.findById(currentUserId).select(
+      "username name profileImage",
+    );
     createNotification({
       recipientId: userId,
       type: "follow",
       title: "Yeni TakipÃ§i! ğŸ‘‹",
       titleEn: "New Follower! ğŸ‘‹",
-      body: `${currentUser?.name || currentUser?.username || 'Birisi'} seni takip etmeye baÅŸladÄ±`,
-      bodyEn: `${currentUser?.name || currentUser?.username || 'Someone'} started following you`,
+      body: `${currentUser?.name || currentUser?.username || "Birisi"} seni takip etmeye baÅŸladÄ±`,
+      bodyEn: `${currentUser?.name || currentUser?.username || "Someone"} started following you`,
       senderId: currentUserId,
       relatedId: currentUserId,
       relatedType: "user",
@@ -1190,11 +1349,19 @@ exports.unfollowUser = async (req, res) => {
     const { userId } = req.params;
 
     if (currentUserId === userId) {
-      return res.status(400).json({ success: false, message: "Kendinizi takipten Ã§Ä±karamazsÄ±nÄ±z" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Kendinizi takipten Ã§Ä±karamazsÄ±nÄ±z",
+        });
     }
 
     // Follow kaydÄ±nÄ± sil
-    const deleted = await Follow.findOneAndDelete({ follower: currentUserId, following: userId });
+    const deleted = await Follow.findOneAndDelete({
+      follower: currentUserId,
+      following: userId,
+    });
 
     if (deleted) {
       // Counter azalt
@@ -1202,13 +1369,23 @@ exports.unfollowUser = async (req, res) => {
       await User.findByIdAndUpdate(currentUserId, { $inc: { following: -1 } });
 
       // Negatif deÄŸerleri dÃ¼zelt
-      await User.updateOne({ _id: userId, followers: { $lt: 0 } }, { $set: { followers: 0 } });
-      await User.updateOne({ _id: currentUserId, following: { $lt: 0 } }, { $set: { following: 0 } });
+      await User.updateOne(
+        { _id: userId, followers: { $lt: 0 } },
+        { $set: { followers: 0 } },
+      );
+      await User.updateOne(
+        { _id: currentUserId, following: { $lt: 0 } },
+        { $set: { following: 0 } },
+      );
     }
 
     logger.info(`âœ… ${currentUserId} -> ${userId} takipten Ã§Ä±ktÄ±`);
 
-    res.json({ success: true, message: "Takipten Ã§Ä±kÄ±ldÄ±", isFollowing: false });
+    res.json({
+      success: true,
+      message: "Takipten Ã§Ä±kÄ±ldÄ±",
+      isFollowing: false,
+    });
   } catch (err) {
     logger.error("unfollowUser error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
@@ -1224,29 +1401,34 @@ exports.getMyFollowers = async (req, res) => {
     const follows = await Follow.find({ following: userId })
       .sort({ createdAt: -1 })
       .limit(limit)
-      .populate('follower', '_id username name profileImage gender age location country level isOnline isLive isBusy presenceStatus followers following');
+      .populate(
+        "follower",
+        "_id username name profileImage gender age location country level isOnline isLive isBusy presenceStatus followers following",
+      );
 
-    const users = follows.map(f => {
-      const u = f.follower;
-      if (!u) return null;
-      return {
-        _id: u._id,
-        username: u.username,
-        name: u.name || u.username,
-        profileImage: u.profileImage || '',
-        gender: u.gender,
-        age: u.age,
-        location: u.location,
-        country: u.country,
-        level: u.level || 1,
-        isOnline: u.isOnline || false,
-        isLive: u.isLive || false,
-        isBusy: u.isBusy || false,
-        presenceStatus: u.presenceStatus || 'offline',
-        followers: u.followers || 0,
-        following: u.following || 0,
-      };
-    }).filter(Boolean);
+    const users = follows
+      .map((f) => {
+        const u = f.follower;
+        if (!u) return null;
+        return {
+          _id: u._id,
+          username: u.username,
+          name: u.name || u.username,
+          profileImage: u.profileImage || "",
+          gender: u.gender,
+          age: u.age,
+          location: u.location,
+          country: u.country,
+          level: u.level || 1,
+          isOnline: u.isOnline || false,
+          isLive: u.isLive || false,
+          isBusy: u.isBusy || false,
+          presenceStatus: u.presenceStatus || "offline",
+          followers: u.followers || 0,
+          following: u.following || 0,
+        };
+      })
+      .filter(Boolean);
 
     res.json({ success: true, users });
   } catch (err) {
@@ -1264,29 +1446,34 @@ exports.getMyFollowing = async (req, res) => {
     const follows = await Follow.find({ follower: userId })
       .sort({ createdAt: -1 })
       .limit(limit)
-      .populate('following', '_id username name profileImage gender age location country level isOnline isLive isBusy presenceStatus followers following');
+      .populate(
+        "following",
+        "_id username name profileImage gender age location country level isOnline isLive isBusy presenceStatus followers following",
+      );
 
-    const users = follows.map(f => {
-      const u = f.following;
-      if (!u) return null;
-      return {
-        _id: u._id,
-        username: u.username,
-        name: u.name || u.username,
-        profileImage: u.profileImage || '',
-        gender: u.gender,
-        age: u.age,
-        location: u.location,
-        country: u.country,
-        level: u.level || 1,
-        isOnline: u.isOnline || false,
-        isLive: u.isLive || false,
-        isBusy: u.isBusy || false,
-        presenceStatus: u.presenceStatus || 'offline',
-        followers: u.followers || 0,
-        following: u.following || 0,
-      };
-    }).filter(Boolean);
+    const users = follows
+      .map((f) => {
+        const u = f.following;
+        if (!u) return null;
+        return {
+          _id: u._id,
+          username: u.username,
+          name: u.name || u.username,
+          profileImage: u.profileImage || "",
+          gender: u.gender,
+          age: u.age,
+          location: u.location,
+          country: u.country,
+          level: u.level || 1,
+          isOnline: u.isOnline || false,
+          isLive: u.isLive || false,
+          isBusy: u.isBusy || false,
+          presenceStatus: u.presenceStatus || "offline",
+          followers: u.followers || 0,
+          following: u.following || 0,
+        };
+      })
+      .filter(Boolean);
 
     res.json({ success: true, users });
   } catch (err) {
@@ -1310,7 +1497,7 @@ exports.visitProfile = async (req, res) => {
     await Visitor.findOneAndUpdate(
       { profileOwner: userId, visitor: visitorId },
       { $set: { lastVisitAt: new Date() }, $inc: { visitCount: 1 } },
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     );
 
     res.json({ success: true, message: "Ziyaret kaydedildi" });
@@ -1329,34 +1516,39 @@ exports.getMyVisitors = async (req, res) => {
     const visitors = await Visitor.find({ profileOwner: userId })
       .sort({ lastVisitAt: -1 })
       .limit(limit)
-      .populate('visitor', '_id username name profileImage gender age location country level isOnline isLive isBusy presenceStatus followers following');
+      .populate(
+        "visitor",
+        "_id username name profileImage gender age location country level isOnline isLive isBusy presenceStatus followers following",
+      );
 
-    const result = visitors.map(v => {
-      const u = v.visitor;
-      if (!u) return null;
-      return {
-        id: v._id,
-        user: {
-          _id: u._id,
-          username: u.username,
-          name: u.name || u.username,
-          profileImage: u.profileImage || '',
-          gender: u.gender,
-          age: u.age,
-          location: u.location,
-          country: u.country,
-          level: u.level || 1,
-          isOnline: u.isOnline || false,
-          isLive: u.isLive || false,
-          isBusy: u.isBusy || false,
-          presenceStatus: u.presenceStatus || 'offline',
-          followers: u.followers || 0,
-          following: u.following || 0,
-        },
-        time: v.lastVisitAt,
-        visitCount: v.visitCount,
-      };
-    }).filter(Boolean);
+    const result = visitors
+      .map((v) => {
+        const u = v.visitor;
+        if (!u) return null;
+        return {
+          id: v._id,
+          user: {
+            _id: u._id,
+            username: u.username,
+            name: u.name || u.username,
+            profileImage: u.profileImage || "",
+            gender: u.gender,
+            age: u.age,
+            location: u.location,
+            country: u.country,
+            level: u.level || 1,
+            isOnline: u.isOnline || false,
+            isLive: u.isLive || false,
+            isBusy: u.isBusy || false,
+            presenceStatus: u.presenceStatus || "offline",
+            followers: u.followers || 0,
+            following: u.following || 0,
+          },
+          time: v.lastVisitAt,
+          visitCount: v.visitCount,
+        };
+      })
+      .filter(Boolean);
 
     res.json({ success: true, visitors: result });
   } catch (err) {
@@ -1371,7 +1563,10 @@ exports.isFollowing = async (req, res) => {
     const currentUserId = req.user.id;
     const { userId } = req.params;
 
-    const existing = await Follow.findOne({ follower: currentUserId, following: userId });
+    const existing = await Follow.findOne({
+      follower: currentUserId,
+      following: userId,
+    });
     res.json({ success: true, isFollowing: !!existing });
   } catch (err) {
     logger.error("isFollowing error:", err);
@@ -1393,12 +1588,14 @@ exports.updateVisibility = async (req, res) => {
 
     const user = await User.findByIdAndUpdate(
       userId,
-      { $set: { 'settings.profileVisibility': !isHidden } },
-      { new: true }
+      { $set: { "settings.profileVisibility": !isHidden } },
+      { new: true },
     ).select("settings");
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+      return res
+        .status(404)
+        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
     logger.info(`âœ… ${userId} visibility gÃ¼ncellendi: ${!isHidden}`);
@@ -1406,7 +1603,7 @@ exports.updateVisibility = async (req, res) => {
     res.json({
       success: true,
       message: "GÃ¶rÃ¼nÃ¼rlÃ¼k gÃ¼ncellendi",
-      isHidden: isHidden
+      isHidden: isHidden,
     });
   } catch (err) {
     logger.error("updateVisibility error:", err);
@@ -1423,7 +1620,7 @@ exports.getVipUsers = async (req, res) => {
     const query = {
       isBanned: { $ne: true },
       isActive: { $ne: false },
-      level: { $gte: 5 }
+      level: { $gte: 5 },
     };
 
     if (currentUserId) {
@@ -1447,13 +1644,13 @@ exports.getVipUsers = async (req, res) => {
     const userIds = users.map((u) => String(u._id));
     const presenceMap = await presenceService.getMultiplePresence(userIds);
 
-    const formattedUsers = users.map(user => {
+    const formattedUsers = users.map((user) => {
       const presenceData = presenceMap[String(user._id)] || {
         online: false,
         busy: false,
         live: false,
         inCall: false,
-        status: 'offline',
+        status: "offline",
         lastSeen: null,
       };
       return formatUser(user, presenceData);
@@ -1463,9 +1660,8 @@ exports.getVipUsers = async (req, res) => {
     res.json({
       success: true,
       users: formattedUsers,
-      count: formattedUsers.length
+      count: formattedUsers.length,
     });
-
   } catch (err) {
     logger.error("getVipUsers error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
@@ -1486,12 +1682,19 @@ exports.startBroadcast = async (req, res) => {
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+      return res
+        .status(404)
+        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
     // Sadece kadÄ±n kullanÄ±cÄ±lar yayÄ±n yapabilir
-    if (user.gender !== 'female') {
-      return res.status(403).json({ success: false, message: "Sadece kadÄ±n kullanÄ±cÄ±lar yayÄ±n yapabilir" });
+    if (user.gender !== "female") {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "Sadece kadÄ±n kullanÄ±cÄ±lar yayÄ±n yapabilir",
+        });
     }
 
     // âœ… Presence is socket-driven: require an active presence record
@@ -1500,7 +1703,8 @@ exports.startBroadcast = async (req, res) => {
     if (!currentPresence?.online) {
       return res.status(409).json({
         success: false,
-        message: "YayÄ±n baÅŸlatmak iÃ§in online (socket baÄŸlÄ±) olmalÄ±sÄ±nÄ±z",
+        message:
+          "YayÄ±n baÅŸlatmak iÃ§in online (socket baÄŸlÄ±) olmalÄ±sÄ±nÄ±z",
       });
     }
 
@@ -1508,8 +1712,8 @@ exports.startBroadcast = async (req, res) => {
     await User.findByIdAndUpdate(userId, {
       $set: {
         isLive: true,
-        presenceStatus: 'live'
-      }
+        presenceStatus: "live",
+      },
     });
 
     // Presence service'i gÃ¼ncelle
@@ -1524,8 +1728,8 @@ exports.startBroadcast = async (req, res) => {
         userId: userId,
         title: title || "CanlÄ± YayÄ±n",
         category: category || "Genel",
-        startedAt: new Date()
-      }
+        startedAt: new Date(),
+      },
     });
   } catch (err) {
     logger.error("startBroadcast error:", err);
@@ -1546,15 +1750,17 @@ exports.endBroadcast = async (req, res) => {
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+      return res
+        .status(404)
+        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
     // User'Ä± offline olarak iÅŸaretle (yayÄ±n bitti = online)
     await User.findByIdAndUpdate(userId, {
       $set: {
         isLive: false,
-        presenceStatus: 'online'
-      }
+        presenceStatus: "online",
+      },
     });
 
     // Presence service'i gÃ¼ncelle
@@ -1564,7 +1770,7 @@ exports.endBroadcast = async (req, res) => {
 
     res.json({
       success: true,
-      message: "YayÄ±n sonlandÄ±rÄ±ldÄ±"
+      message: "YayÄ±n sonlandÄ±rÄ±ldÄ±",
     });
   } catch (err) {
     logger.error("endBroadcast error:", err);
@@ -1586,8 +1792,8 @@ exports.updateUserStatus = async (req, res) => {
 
     const updateData = {
       isOnline: isOnline,
-      presenceStatus: isOnline ? 'online' : 'offline',
-      lastSeen: new Date()
+      presenceStatus: isOnline ? "online" : "offline",
+      lastSeen: new Date(),
     };
 
     if (isOnline) {
@@ -1605,7 +1811,7 @@ exports.updateUserStatus = async (req, res) => {
 
     res.json({
       success: true,
-      message: `Durum gÃ¼ncellendi: ${isOnline ? 'online' : 'offline'}`
+      message: `Durum gÃ¼ncellendi: ${isOnline ? "online" : "offline"}`,
     });
   } catch (err) {
     logger.error("updateUserStatus error:", err);
@@ -1617,16 +1823,28 @@ exports.updateUserStatus = async (req, res) => {
 exports.changeEmail = async (req, res) => {
   try {
     const { email } = req.body;
-    const newEmail = String(email || "").trim().toLowerCase();
+    const newEmail = String(email || "")
+      .trim()
+      .toLowerCase();
 
     if (!newEmail || !newEmail.includes("@")) {
-      return res.status(400).json({ success: false, message: "Geçerli bir e-posta adresi girin" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Geçerli bir e-posta adresi girin" });
     }
 
     // Aynı e-posta zaten kullanılıyor mu?
-    const existing = await User.findOne({ email: newEmail, _id: { $ne: req.user.id } });
+    const existing = await User.findOne({
+      email: newEmail,
+      _id: { $ne: req.user.id },
+    });
     if (existing) {
-      return res.status(409).json({ success: false, message: "Bu e-posta adresi zaten kullanılıyor" });
+      return res
+        .status(409)
+        .json({
+          success: false,
+          message: "Bu e-posta adresi zaten kullanılıyor",
+        });
     }
 
     await User.findByIdAndUpdate(req.user.id, { $set: { email: newEmail } });
@@ -1645,7 +1863,12 @@ exports.changePhone = async (req, res) => {
     const newPhone = String(phone || "").trim();
 
     if (!newPhone || newPhone.length < 10) {
-      return res.status(400).json({ success: false, message: "Geçerli bir telefon numarası girin" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Geçerli bir telefon numarası girin",
+        });
     }
 
     await User.findByIdAndUpdate(req.user.id, { $set: { phone: newPhone } });
@@ -1662,12 +1885,15 @@ exports.getLoginHistory = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("loginHistory");
     if (!user) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     // En son girişler önce
-    const history = (user.loginHistory || [])
-      .sort((a, b) => new Date(b.loginAt) - new Date(a.loginAt));
+    const history = (user.loginHistory || []).sort(
+      (a, b) => new Date(b.loginAt) - new Date(a.loginAt),
+    );
 
     res.json({ success: true, history });
   } catch (err) {

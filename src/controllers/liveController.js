@@ -818,7 +818,7 @@ exports.sendChatMessage = async (req, res) => {
 
     // Mesajı kaydet
     // ✅ FIX: Strip HTML tags like the socket handler does (XSS prevention)
-    const sanitizedMessage = String(message || '').replace(/<[^>]*>/g, '');
+    const sanitizedMessage = String(message || "").replace(/<[^>]*>/g, "");
     const msg = await Message.create({
       roomId,
       from: userId,
@@ -832,7 +832,7 @@ exports.sendChatMessage = async (req, res) => {
         _id: msg._id,
         roomId,
         type,
-        content: message,
+        content: sanitizedMessage,
         sender: {
           _id: userId,
           username: user.username,
