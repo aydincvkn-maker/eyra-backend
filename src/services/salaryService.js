@@ -22,56 +22,92 @@ const { COIN_TO_USD_RATE } = require("../config/env");
 
 const HOST_SALARY_LEVELS = [
   {
-    level: 1, minGifts: 0, maxGifts: 34999,
-    minGiftsWithCalls: 0, maxGiftsWithCalls: 34999,
-    salaryPerHour: 0, salaryPerDay: 0,
-    hoursPerDayLabel: "-", salaryPerWeek: 0,
-    salaryType: "none", label: "Seviye 1",
+    level: 1,
+    minGifts: 0,
+    maxGifts: 34999,
+    minGiftsWithCalls: 0,
+    maxGiftsWithCalls: 34999,
+    salaryPerHour: 0,
+    salaryPerDay: 0,
+    hoursPerDayLabel: "-",
+    salaryPerWeek: 0,
+    salaryType: "none",
+    label: "Seviye 1",
     description: "Başlangıç seviyesi",
     maxHoursPerDay: 0,
   },
   {
-    level: 2, minGifts: 35000, maxGifts: 69999,
-    minGiftsWithCalls: 35000, maxGiftsWithCalls: 99999,
-    salaryPerHour: 0, salaryPerDay: 5,
-    hoursPerDayLabel: "2 Saat/gün", salaryPerWeek: 35,
-    salaryType: "daily", label: "Seviye 2",
+    level: 2,
+    minGifts: 35000,
+    maxGifts: 69999,
+    minGiftsWithCalls: 35000,
+    maxGiftsWithCalls: 99999,
+    salaryPerHour: 0,
+    salaryPerDay: 5,
+    hoursPerDayLabel: "2 Saat/gün",
+    salaryPerWeek: 35,
+    salaryType: "daily",
+    label: "Seviye 2",
     description: "$5/Gün • 2 Saat/gün • $35/Hafta",
     maxHoursPerDay: 2,
   },
   {
-    level: 3, minGifts: 70000, maxGifts: 174999,
-    minGiftsWithCalls: 100000, maxGiftsWithCalls: 209999,
-    salaryPerHour: 5, salaryPerDay: 10,
-    hoursPerDayLabel: "2 Saat/gün", salaryPerWeek: 70,
-    salaryType: "hourly", label: "Seviye 3",
+    level: 3,
+    minGifts: 70000,
+    maxGifts: 174999,
+    minGiftsWithCalls: 100000,
+    maxGiftsWithCalls: 209999,
+    salaryPerHour: 5,
+    salaryPerDay: 10,
+    hoursPerDayLabel: "2 Saat/gün",
+    salaryPerWeek: 70,
+    salaryType: "hourly",
+    label: "Seviye 3",
     description: "$5/Saat • 2 Saat/gün • $70/Hafta",
     maxHoursPerDay: 2,
   },
   {
-    level: 4, minGifts: 175000, maxGifts: 209999,
-    minGiftsWithCalls: 210000, maxGiftsWithCalls: 299999,
-    salaryPerHour: 6, salaryPerDay: 18,
-    hoursPerDayLabel: "2-3 Saat/gün", salaryPerWeek: 126,
-    salaryType: "hourly", label: "Seviye 4",
+    level: 4,
+    minGifts: 175000,
+    maxGifts: 209999,
+    minGiftsWithCalls: 210000,
+    maxGiftsWithCalls: 299999,
+    salaryPerHour: 6,
+    salaryPerDay: 18,
+    hoursPerDayLabel: "2-3 Saat/gün",
+    salaryPerWeek: 126,
+    salaryType: "hourly",
+    label: "Seviye 4",
     description: "$6/Saat • 2-3 Saat/gün • $126/Hafta",
     maxHoursPerDay: 3,
   },
   {
-    level: 5, minGifts: 210000, maxGifts: 499999,
-    minGiftsWithCalls: 300000, maxGiftsWithCalls: 499999,
-    salaryPerHour: 7, salaryPerDay: 21,
-    hoursPerDayLabel: "2-3 Saat/gün", salaryPerWeek: 147,
-    salaryType: "hourly", label: "Seviye 5",
+    level: 5,
+    minGifts: 210000,
+    maxGifts: 499999,
+    minGiftsWithCalls: 300000,
+    maxGiftsWithCalls: 499999,
+    salaryPerHour: 7,
+    salaryPerDay: 21,
+    hoursPerDayLabel: "2-3 Saat/gün",
+    salaryPerWeek: 147,
+    salaryType: "hourly",
+    label: "Seviye 5",
     description: "$7/Saat • 2-3 Saat/gün • $147/Hafta",
     maxHoursPerDay: 3,
   },
   {
-    level: 6, minGifts: 500000, maxGifts: Infinity,
-    minGiftsWithCalls: 500000, maxGiftsWithCalls: Infinity,
-    salaryPerHour: 10, salaryPerDay: 30,
-    hoursPerDayLabel: "2-3 Saat/gün", salaryPerWeek: 210,
-    salaryType: "hourly", label: "Seviye 6",
+    level: 6,
+    minGifts: 500000,
+    maxGifts: Infinity,
+    minGiftsWithCalls: 500000,
+    maxGiftsWithCalls: Infinity,
+    salaryPerHour: 10,
+    salaryPerDay: 30,
+    hoursPerDayLabel: "2-3 Saat/gün",
+    salaryPerWeek: 210,
+    salaryType: "hourly",
+    label: "Seviye 6",
     description: "$10/Saat • 2-3 Saat/gün • $210/Hafta",
     maxHoursPerDay: 3,
   },
@@ -142,7 +178,8 @@ function getCurrentWeekRange() {
  * Belirli bir kullanıcının belirli hafta performansını hesapla
  */
 async function calculateWeeklyPerformance(userId, weekStart, weekEnd) {
-  const userObjectId = typeof userId === "string" ? new mongoose.Types.ObjectId(userId) : userId;
+  const userObjectId =
+    typeof userId === "string" ? new mongoose.Types.ObjectId(userId) : userId;
 
   // 1. Haftalık hediye geliri (sadece gift_received)
   const giftAgg = await Transaction.aggregate([
@@ -183,7 +220,13 @@ async function calculateWeeklyPerformance(userId, weekStart, weekEnd) {
     },
     {
       $group: {
-        _id: { $dateToString: { format: "%Y-%m-%d", date: "$startedAt", timezone: "UTC" } },
+        _id: {
+          $dateToString: {
+            format: "%Y-%m-%d",
+            date: "$startedAt",
+            timezone: "UTC",
+          },
+        },
         totalDuration: { $sum: "$duration" }, // saniye
         streamCount: { $sum: 1 },
       },
@@ -207,7 +250,8 @@ async function calculateWeeklyPerformance(userId, weekStart, weekEnd) {
     });
   }
 
-  const totalStreamingHours = Math.round((totalStreamingMinutes / 60) * 100) / 100;
+  const totalStreamingHours =
+    Math.round((totalStreamingMinutes / 60) * 100) / 100;
 
   return {
     weeklyGifts,
@@ -237,7 +281,13 @@ async function calculateWeeklyPerformance(userId, weekStart, weekEnd) {
  */
 function calculateSalary(levelData, performance, options = {}) {
   if (levelData.level === 1) {
-    return { salaryUSD: 0, salaryCoins: 0, method: "none", violationPenalty: 0, minHoursmet: true };
+    return {
+      salaryUSD: 0,
+      salaryCoins: 0,
+      method: "none",
+      violationPenalty: 0,
+      minHoursmet: true,
+    };
   }
 
   let salaryUSD = 0;
@@ -248,7 +298,7 @@ function calculateSalary(levelData, performance, options = {}) {
     // Minimum 30 dakika yayın yapılmış günler sayılır (kötüye kullanım önlemi)
     const MIN_STREAM_MINUTES_PER_DAY = 30;
     const eligibleDays = performance.dailyStreaming.filter(
-      (d) => d.minutes >= MIN_STREAM_MINUTES_PER_DAY
+      (d) => d.minutes >= MIN_STREAM_MINUTES_PER_DAY,
     ).length;
     salaryUSD = Math.min(eligibleDays, 7) * levelData.salaryPerDay;
     method = `${eligibleDays} gün × $${levelData.salaryPerDay}/gün (min ${MIN_STREAM_MINUTES_PER_DAY}dk/gün)`;
@@ -280,12 +330,12 @@ function calculateSalary(levelData, performance, options = {}) {
 
   // ── Violation (ihlal) cezası uygula ──
   let violationPenalty = 0;
-  const activeViolations = (options.violations || []).filter(v => v.active);
+  const activeViolations = (options.violations || []).filter((v) => v.active);
   if (activeViolations.length > 0) {
     // Toplam ceza yüzdesini hesapla (max %100)
     violationPenalty = Math.min(
       activeViolations.reduce((sum, v) => sum + (v.penaltyPercent || 0), 0),
-      100
+      100,
     );
     if (violationPenalty > 0) {
       salaryUSD = salaryUSD * (1 - violationPenalty / 100);
@@ -298,14 +348,22 @@ function calculateSalary(levelData, performance, options = {}) {
   // USD → Coin dönüşümü (1 coin = $0.01, yani $1 = 100 coin)
   const salaryCoins = Math.round(salaryUSD / COIN_TO_USD_RATE);
 
-  return { salaryUSD, salaryCoins, method, violationPenalty, minHoursMet, minHoursPenalty };
+  return {
+    salaryUSD,
+    salaryCoins,
+    method,
+    violationPenalty,
+    minHoursMet,
+    minHoursPenalty,
+  };
 }
 
 /**
  * Tek bir yayıncı için haftalık maaş işle
  */
 async function processUserWeeklySalary(userId, weekStart, weekEnd) {
-  const userObjectId = typeof userId === "string" ? new mongoose.Types.ObjectId(userId) : userId;
+  const userObjectId =
+    typeof userId === "string" ? new mongoose.Types.ObjectId(userId) : userId;
 
   // Zaten bu hafta için ödeme yapılmış mı kontrol et
   const existing = await SalaryPayment.findOne({
@@ -318,22 +376,35 @@ async function processUserWeeklySalary(userId, weekStart, weekEnd) {
   }
 
   // Performans hesapla
-  const performance = await calculateWeeklyPerformance(userId, weekStart, weekEnd);
+  const performance = await calculateWeeklyPerformance(
+    userId,
+    weekStart,
+    weekEnd,
+  );
 
   // Seviye belirle
-  const levelData = calculateHostLevel(performance.weeklyGifts, performance.weeklyGiftsWithCalls);
+  const levelData = calculateHostLevel(
+    performance.weeklyGifts,
+    performance.weeklyGiftsWithCalls,
+  );
 
   // Kullanıcının aktif ihlallerini al (ceza hesabı için)
   const user = await User.findById(userObjectId).select("violations");
-  const activeViolations = (user?.violations || []).filter(v => {
+  const activeViolations = (user?.violations || []).filter((v) => {
     if (!v.active) return false;
     if (v.expiresAt && new Date(v.expiresAt) < new Date()) return false;
     return true;
   });
 
   // Maaş hesapla (ihlal cezası dahil)
-  const { salaryUSD, salaryCoins, method, violationPenalty, minHoursMet, minHoursPenalty } =
-    calculateSalary(levelData, performance, { violations: activeViolations });
+  const {
+    salaryUSD,
+    salaryCoins,
+    method,
+    violationPenalty,
+    minHoursMet,
+    minHoursPenalty,
+  } = calculateSalary(levelData, performance, { violations: activeViolations });
 
   // SalaryPayment kaydı oluştur
   const salaryPayment = new SalaryPayment({
@@ -386,25 +457,25 @@ async function processUserWeeklySalary(userId, weekStart, weekEnd) {
 
   // Coin'i kullanıcının hesabına ekle
   try {
-    const user = await User.findById(userObjectId);
-    if (!user) {
+    // ✅ FIX: Atomic $inc instead of read-modify-write (prevents race condition)
+    const updatedUser = await User.findByIdAndUpdate(
+      userObjectId,
+      { $inc: { coins: salaryCoins, totalEarnings: salaryCoins } },
+      { new: true },
+    );
+    if (!updatedUser) {
       salaryPayment.status = "failed";
       salaryPayment.note = "Kullanıcı bulunamadı";
       await salaryPayment.save();
       return { error: true, reason: "user_not_found" };
     }
 
-    // Coin ekle
-    user.coins += salaryCoins;
-    user.totalEarnings += salaryCoins;
-    await user.save();
-
     // Transaction kaydı oluştur
     const transaction = new Transaction({
       user: userObjectId,
       type: "salary_payment",
       amount: salaryCoins,
-      balanceAfter: user.coins,
+      balanceAfter: updatedUser.coins,
       description: `Haftalık maaş ödemesi — ${levelData.label} ($${salaryUSD})`,
       metadata: {
         weekStart: weekStart.toISOString(),
@@ -447,7 +518,9 @@ async function processAllWeeklySalaries(referenceDate) {
 
   console.log(`[SALARY] ═══════════════════════════════════════════════`);
   console.log(`[SALARY] Haftalık maaş işleme başlıyor`);
-  console.log(`[SALARY] Hafta: ${weekStart.toISOString()} → ${weekEnd.toISOString()}`);
+  console.log(
+    `[SALARY] Hafta: ${weekStart.toISOString()} → ${weekEnd.toISOString()}`,
+  );
 
   // Sözleşmesi imzalanmış, kadın yayıncıları bul
   const broadcasters = await User.find({
@@ -472,7 +545,7 @@ async function processAllWeeklySalaries(referenceDate) {
       const result = await processUserWeeklySalary(
         broadcaster._id,
         weekStart,
-        weekEnd
+        weekEnd,
       );
 
       if (result.success) {
@@ -487,7 +560,9 @@ async function processAllWeeklySalaries(referenceDate) {
           salaryUSD: result.salaryUSD,
           salaryCoins: result.salaryCoins,
         });
-        console.log(`[SALARY] ✓ ${broadcaster.username}: Seviye ${result.level}, $${result.salaryUSD} (${result.salaryCoins} coin)`);
+        console.log(
+          `[SALARY] ✓ ${broadcaster.username}: Seviye ${result.level}, $${result.salaryUSD} (${result.salaryCoins} coin)`,
+        );
       } else if (result.skipped) {
         results.skipped++;
         results.details.push({
@@ -496,7 +571,9 @@ async function processAllWeeklySalaries(referenceDate) {
           status: "skipped",
           reason: result.reason,
         });
-        console.log(`[SALARY] ○ ${broadcaster.username}: Atlandı (${result.reason})`);
+        console.log(
+          `[SALARY] ○ ${broadcaster.username}: Atlandı (${result.reason})`,
+        );
       } else if (result.error) {
         results.failed++;
         results.details.push({
@@ -505,7 +582,9 @@ async function processAllWeeklySalaries(referenceDate) {
           status: "failed",
           reason: result.reason,
         });
-        console.log(`[SALARY] ✗ ${broadcaster.username}: Hata (${result.reason})`);
+        console.log(
+          `[SALARY] ✗ ${broadcaster.username}: Hata (${result.reason})`,
+        );
       }
     } catch (err) {
       results.failed++;
@@ -515,13 +594,20 @@ async function processAllWeeklySalaries(referenceDate) {
         status: "error",
         reason: err.message,
       });
-      console.error(`[SALARY] ✗ ${broadcaster.username}: Exception`, err.message);
+      console.error(
+        `[SALARY] ✗ ${broadcaster.username}: Exception`,
+        err.message,
+      );
     }
   }
 
   console.log(`[SALARY] ───────────────────────────────────────────────`);
-  console.log(`[SALARY] Sonuç: ${results.paid} ödendi, ${results.skipped} atlandı, ${results.failed} başarısız`);
-  console.log(`[SALARY] Toplam: $${results.totalUSD} (${results.totalCoins} coin)`);
+  console.log(
+    `[SALARY] Sonuç: ${results.paid} ödendi, ${results.skipped} atlandı, ${results.failed} başarısız`,
+  );
+  console.log(
+    `[SALARY] Toplam: $${results.totalUSD} (${results.totalCoins} coin)`,
+  );
   console.log(`[SALARY] ═══════════════════════════════════════════════`);
 
   return results;
@@ -552,7 +638,9 @@ function getNextPaymentInfo() {
     currentWeekStart: weekStart,
     currentWeekEnd: weekEnd,
     nextPaymentDate: nextMonday,
-    daysUntilPayment: Math.ceil((nextMonday.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+    daysUntilPayment: Math.ceil(
+      (nextMonday.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+    ),
   };
 }
 
