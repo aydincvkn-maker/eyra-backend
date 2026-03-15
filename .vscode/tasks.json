@@ -20,6 +20,24 @@
 				"require('./src/services/paymentProviders/stripeProvider'); require('./src/services/paymentService'); require('./src/controllers/paymentController'); require('./src/routes/paymentRoutes'); console.log('payments-backend-ok')"
 			],
 			"isBackground": false
+		},
+		{
+			"label": "test-multer-routes",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"-e",
+				"try { require('./src/routes/chatRoutes'); require('./src/routes/userRoutes'); require('./src/routes/verificationRoutes'); console.log('ALL-OK'); } catch(e) { console.error('FAIL:', e.message); process.exit(1); }"
+			]
+		},
+		{
+			"label": "test-multer",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"-e",
+				"require(\"./src/routes/chatRoutes\"); require(\"./src/routes/userRoutes\"); require(\"./src/routes/verificationRoutes\"); console.log(\"ALL-OK\")"
+			]
 		}
 	]
 }
