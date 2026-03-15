@@ -7,8 +7,17 @@ const verificationController = require("../controllers/verificationController");
 const multer = require("multer");
 const path = require("path");
 
-const allowedVerificationMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-const allowedVerificationExtensions = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+const allowedVerificationMimeTypes = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+const allowedVerificationExtensions = new Set([
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+]);
 
 // Multer konfigürasyonu - doğrulama fotoğrafı yükleme
 const storage = multer.memoryStorage();
@@ -18,7 +27,10 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     const mimeType = String(file.mimetype || "").toLowerCase();
     const extension = path.extname(file.originalname || "").toLowerCase();
-    if (allowedVerificationMimeTypes.has(mimeType) || allowedVerificationExtensions.has(extension)) {
+    if (
+      allowedVerificationMimeTypes.has(mimeType) ||
+      allowedVerificationExtensions.has(extension)
+    ) {
       return cb(null, true);
     }
 

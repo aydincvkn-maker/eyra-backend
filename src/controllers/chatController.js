@@ -36,7 +36,7 @@ exports.getChatUsers = async (req, res) => {
 };
 
 // Virtual sender ID for all admin-panel messages (shown as "Eyra Destek" in app)
-const EYRA_SUPPORT_ID = 'eyra_support';
+const EYRA_SUPPORT_ID = "eyra_support";
 
 exports.getConversation = async (req, res) => {
   try {
@@ -53,26 +53,31 @@ exports.getConversation = async (req, res) => {
     if (otherUserId === EYRA_SUPPORT_ID) {
       const messages = await Message.find({
         to: userId,
-        'metadata.isAdminMessage': true,
+        "metadata.isAdminMessage": true,
         isDeleted: false,
       })
         .sort({ createdAt: -1 })
         .skip(page * limit)
         .limit(limit)
-        .select('-__v')
+        .select("-__v")
         .lean();
 
       // Normalise: expose virtual sender id so Flutter groups them correctly
-      const normalised = messages.reverse().map(m => ({
+      const normalised = messages.reverse().map((m) => ({
         ...m,
         from: EYRA_SUPPORT_ID,
         isAdminMessage: true,
-        senderName: 'Eyra Destek',
+        senderName: "Eyra Destek",
       }));
       return res.json({ messages: normalised });
     }
 
-    const messages = await chatService.getConversation(userId, otherUserId, page, limit);
+    const messages = await chatService.getConversation(
+      userId,
+      otherUserId,
+      page,
+      limit,
+    );
     return res.json({ messages });
   } catch (err) {
     console.error("getConversation error:", err);
@@ -153,7 +158,7 @@ exports.getUnreadCount = async (req, res) => {
       from: otherUserId,
       to: userId,
       isDeleted: false,
-      'metadata.readAt': { $exists: false },
+      "metadata.readAt": { $exists: false },
     });
 
     return res.json({ unreadCount });
@@ -172,8 +177,10 @@ exports.deleteMessage = async (req, res) => {
     return res.json({ ok: true });
   } catch (err) {
     console.error("deleteMessage error:", err);
-    if (err.message === 'MESSAGE_NOT_FOUND') return sendError(res, 404, "MESSAGE_NOT_FOUND");
-    if (err.message === 'UNAUTHORIZED') return sendError(res, 403, "UNAUTHORIZED");
+    if (err.message === "MESSAGE_NOT_FOUND")
+      return sendError(res, 404, "MESSAGE_NOT_FOUND");
+    if (err.message === "UNAUTHORIZED")
+      return sendError(res, 403, "UNAUTHORIZED");
     return sendError(res, 500, "Sunucu hatası");
   }
 };
@@ -188,8 +195,10 @@ exports.editMessage = async (req, res) => {
     return res.json({ message });
   } catch (err) {
     console.error("editMessage error:", err);
-    if (err.message === 'MESSAGE_NOT_FOUND') return sendError(res, 404, "MESSAGE_NOT_FOUND");
-    if (err.message === 'UNAUTHORIZED') return sendError(res, 403, "UNAUTHORIZED");
+    if (err.message === "MESSAGE_NOT_FOUND")
+      return sendError(res, 404, "MESSAGE_NOT_FOUND");
+    if (err.message === "UNAUTHORIZED")
+      return sendError(res, 403, "UNAUTHORIZED");
     return sendError(res, 500, "Sunucu hatası");
   }
 };
@@ -204,7 +213,8 @@ exports.addReaction = async (req, res) => {
     return res.json({ message });
   } catch (err) {
     console.error("addReaction error:", err);
-    if (err.message === 'MESSAGE_NOT_FOUND') return sendError(res, 404, "MESSAGE_NOT_FOUND");
+    if (err.message === "MESSAGE_NOT_FOUND")
+      return sendError(res, 404, "MESSAGE_NOT_FOUND");
     return sendError(res, 500, "Sunucu hatası");
   }
 };
@@ -218,7 +228,8 @@ exports.removeReaction = async (req, res) => {
     return res.json({ message });
   } catch (err) {
     console.error("removeReaction error:", err);
-    if (err.message === 'MESSAGE_NOT_FOUND') return sendError(res, 404, "MESSAGE_NOT_FOUND");
+    if (err.message === "MESSAGE_NOT_FOUND")
+      return sendError(res, 404, "MESSAGE_NOT_FOUND");
     return sendError(res, 500, "Sunucu hatası");
   }
 };
@@ -233,15 +244,18 @@ exports.adminSendMessage = async (req, res) => {
       return sendError(res, 400, "toUserId ve text gerekli");
     }
 
-    const message = await chatService.sendMessage(adminId, toUserId, { text, isAdmin: true });
+    const message = await chatService.sendMessage(adminId, toUserId, {
+      text,
+      isAdmin: true,
+    });
 
     // Socket ile gerçek zamanlı bildirim
     if (global.io && global.userSockets) {
       const targetKey = String(toUserId);
       const targetSockets = global.userSockets.get(targetKey);
       if (targetSockets && targetSockets.size > 0) {
-        targetSockets.forEach(socketId => {
-          global.io.to(socketId).emit('chat:new_message', {
+        targetSockets.forEach((socketId) => {
+          global.io.to(socketId).emit("chat:new_message", {
             messageId: message._id.toString(),
             from: adminId,
             to: toUserId,
@@ -268,7 +282,9 @@ exports.uploadMedia = async (req, res) => {
   try {
     const userId = String(req.user?.id || "");
     if (!req.file) {
-      return res.status(400).json({ success: false, message: "Dosya yüklenmedi" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Dosya yüklenmedi" });
     }
 
     const file = req.file;
@@ -287,10 +303,18 @@ exports.uploadMedia = async (req, res) => {
       ".ogg": "audio/ogg",
       ".wav": "audio/wav",
       ".pdf": "application/pdf",
+      ".doc": "application/msword",
+      ".docx":
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ".txt": "text/plain",
+      ".zip": "application/zip",
+      ".rar": "application/vnd.rar",
     };
-    const mimeType = String(file.mimetype || fallbackMimeTypeMap[ext] || "application/octet-stream").toLowerCase();
+    const mimeType = String(
+      file.mimetype || fallbackMimeTypeMap[ext] || "application/octet-stream",
+    ).toLowerCase();
     const timestamp = Date.now();
-    
+
     // Dosya tipine göre klasör
     let folder = "files";
     if (mimeType.startsWith("image/")) folder = "images";
@@ -336,13 +360,17 @@ exports.forwardMessage = async (req, res) => {
     const { toUserIds } = req.body; // Birden fazla kişiye iletme
 
     if (!toUserIds || !Array.isArray(toUserIds) || toUserIds.length === 0) {
-      return res.status(400).json({ success: false, message: "Hedef kullanıcı(lar) gerekli" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Hedef kullanıcı(lar) gerekli" });
     }
 
     // Orijinal mesajı bul
     const originalMessage = await Message.findById(messageId);
     if (!originalMessage) {
-      return res.status(404).json({ success: false, message: "Mesaj bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Mesaj bulunamadı" });
     }
 
     const forwardedMessages = [];
@@ -370,8 +398,8 @@ exports.forwardMessage = async (req, res) => {
         if (global.io && global.userSockets) {
           const targetSockets = global.userSockets.get(String(toUserId));
           if (targetSockets && targetSockets.size > 0) {
-            targetSockets.forEach(socketId => {
-              global.io.to(socketId).emit('chat:new_message', {
+            targetSockets.forEach((socketId) => {
+              global.io.to(socketId).emit("chat:new_message", {
                 messageId: forwarded._id.toString(),
                 from: userId,
                 to: toUserId,

@@ -23,6 +23,12 @@ const allowedChatMimeTypes = new Set([
   "audio/x-m4a",
   "audio/m4a",
   "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+  "application/zip",
+  "application/x-rar-compressed",
+  "application/vnd.rar",
 ]);
 
 const allowedChatExtensions = new Set([
@@ -40,6 +46,11 @@ const allowedChatExtensions = new Set([
   ".wav",
   ".aac",
   ".pdf",
+  ".doc",
+  ".docx",
+  ".txt",
+  ".zip",
+  ".rar",
 ]);
 
 // Multer konfigürasyonu - chat medya yükleme
@@ -50,7 +61,10 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     const mimeType = String(file.mimetype || "").toLowerCase();
     const extension = path.extname(file.originalname || "").toLowerCase();
-    if (allowedChatMimeTypes.has(mimeType) || allowedChatExtensions.has(extension)) {
+    if (
+      allowedChatMimeTypes.has(mimeType) ||
+      allowedChatExtensions.has(extension)
+    ) {
       return cb(null, true);
     }
 
