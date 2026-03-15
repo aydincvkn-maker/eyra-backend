@@ -38,6 +38,16 @@
 				"-e",
 				"require(\"./src/routes/chatRoutes\"); require(\"./src/routes/userRoutes\"); require(\"./src/routes/verificationRoutes\"); console.log(\"ALL-OK\")"
 			]
+		},
+		{
+			"label": "backend-chat-static-sanity",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"-e",
+				"require('./src/server'); setTimeout(() => process.exit(0), 1000)"
+			],
+			"isBackground": false
 		}
 	]
 }
