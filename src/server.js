@@ -221,7 +221,15 @@ const { sanitizeMongoQuery } = require('./middleware/validate');
 app.use(sanitizeMongoQuery);
 
 // Static file serving (uploads)
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use(
+  '/uploads',
+  express.static(path.join(__dirname, '../uploads'), {
+    setHeaders: (res) => {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    },
+  }),
+);
 
 // Static file serving (public pages: privacy policy, terms, etc.)
 app.use(express.static(path.join(__dirname, '../public')));
