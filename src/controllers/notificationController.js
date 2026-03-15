@@ -96,7 +96,9 @@ exports.createNotification = async ({
             notificationId: notification._id.toString(),
             relatedId: relatedId || "",
             relatedType: relatedType || "",
-          }
+            senderId: senderId ? String(senderId) : "",
+            senderName: title || "",
+          },
         );
 
         if (pushed) {
@@ -174,7 +176,7 @@ exports.markAsRead = async (req, res) => {
 
     await Notification.findOneAndUpdate(
       { _id: notificationId, recipient: userId },
-      { $set: { isRead: true, readAt: new Date() } }
+      { $set: { isRead: true, readAt: new Date() } },
     );
 
     res.json({ success: true, message: "Okundu olarak işaretlendi" });
@@ -190,7 +192,7 @@ exports.markAllAsRead = async (req, res) => {
     const userId = req.user.id;
     await Notification.updateMany(
       { recipient: userId, isRead: false },
-      { $set: { isRead: true, readAt: new Date() } }
+      { $set: { isRead: true, readAt: new Date() } },
     );
 
     res.json({ success: true, message: "Tüm bildirimler okundu" });
@@ -286,7 +288,9 @@ exports.adminSendNotification = async (req, res) => {
       recipients = await User.find({}).select("_id");
     }
 
-    console.log(`📢 Admin bildirim gönderiliyor: ${recipients.length} alıcı, başlık: "${title}"`);
+    console.log(
+      `📢 Admin bildirim gönderiliyor: ${recipients.length} alıcı, başlık: "${title}"`,
+    );
 
     let sent = 0;
     let failed = 0;
@@ -302,12 +306,17 @@ exports.adminSendNotification = async (req, res) => {
         });
         sent++;
       } catch (e) {
-        console.error(`Bildirim oluşturulamadı (user: ${recipient._id}):`, e.message);
+        console.error(
+          `Bildirim oluşturulamadı (user: ${recipient._id}):`,
+          e.message,
+        );
         failed++;
       }
     }
 
-    console.log(`✅ Admin bildirim sonuç: ${sent} başarılı, ${failed} başarısız`);
+    console.log(
+      `✅ Admin bildirim sonuç: ${sent} başarılı, ${failed} başarısız`,
+    );
 
     res.json({
       success: true,
