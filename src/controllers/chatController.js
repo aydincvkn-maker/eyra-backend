@@ -272,14 +272,30 @@ exports.uploadMedia = async (req, res) => {
     }
 
     const file = req.file;
-    const ext = path.extname(file.originalname);
+    const ext = path.extname(file.originalname || "").toLowerCase();
+    const fallbackMimeTypeMap = {
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".gif": "image/gif",
+      ".webp": "image/webp",
+      ".mp4": "video/mp4",
+      ".mov": "video/quicktime",
+      ".mp3": "audio/mpeg",
+      ".aac": "audio/aac",
+      ".m4a": "audio/m4a",
+      ".ogg": "audio/ogg",
+      ".wav": "audio/wav",
+      ".pdf": "application/pdf",
+    };
+    const mimeType = String(file.mimetype || fallbackMimeTypeMap[ext] || "application/octet-stream").toLowerCase();
     const timestamp = Date.now();
     
     // Dosya tipine göre klasör
     let folder = "files";
-    if (file.mimetype.startsWith("image/")) folder = "images";
-    else if (file.mimetype.startsWith("video/")) folder = "videos";
-    else if (file.mimetype.startsWith("audio/")) folder = "audio";
+    if (mimeType.startsWith("image/")) folder = "images";
+    else if (mimeType.startsWith("video/")) folder = "videos";
+    else if (mimeType.startsWith("audio/")) folder = "audio";
 
     const fileName = `chat_${userId}_${timestamp}${ext}`;
     const uploadDir = path.join(__dirname, `../../uploads/chat/${folder}`);
@@ -291,9 +307,9 @@ exports.uploadMedia = async (req, res) => {
 
     // Dosya tipi belirleme
     let messageType = "file";
-    if (file.mimetype.startsWith("image/")) messageType = "image";
-    else if (file.mimetype.startsWith("video/")) messageType = "video";
-    else if (file.mimetype.startsWith("audio/")) messageType = "audio";
+    if (mimeType.startsWith("image/")) messageType = "image";
+    else if (mimeType.startsWith("video/")) messageType = "video";
+    else if (mimeType.startsWith("audio/")) messageType = "audio";
 
     res.json({
       success: true,
@@ -301,7 +317,7 @@ exports.uploadMedia = async (req, res) => {
       type: messageType,
       fileName: file.originalname,
       fileSize: file.size,
-      mimeType: file.mimetype,
+      mimeType,
     });
   } catch (err) {
     console.error("uploadMedia error:", err);

@@ -5,17 +5,24 @@ const auth = require("../middleware/auth");
 const requirePermission = require("../middleware/requirePermission");
 const verificationController = require("../controllers/verificationController");
 const multer = require("multer");
+const path = require("path");
+
+const allowedVerificationMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const allowedVerificationExtensions = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 
 // Multer konfigürasyonu - doğrulama fotoğrafı yükleme
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-  fileFilter: async (req, file) => {
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-    if (!allowedTypes.includes(file.mimetype)) {
-      throw new Error("Sadece resim dosyaları yüklenebilir");
+  fileFilter: (req, file, cb) => {
+    const mimeType = String(file.mimetype || "").toLowerCase();
+    const extension = path.extname(file.originalname || "").toLowerCase();
+    if (allowedVerificationMimeTypes.has(mimeType) || allowedVerificationExtensions.has(extension)) {
+      return cb(null, true);
     }
+
+    return cb(new Error("Sadece resim dosyaları yüklenebilir"), false);
   },
 });
 

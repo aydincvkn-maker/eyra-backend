@@ -6,17 +6,24 @@ const blockController = require("../controllers/blockController");
 const auth = require("../middleware/auth");
 const requirePermission = require("../middleware/requirePermission");
 const multer = require("multer");
+const path = require("path");
+
+const allowedAvatarMimeTypes = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+const allowedAvatarExtensions = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp"]);
 
 // Multer konfigürasyonu - avatar yükleme için
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  fileFilter: async (req, file) => {
-    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-    if (!allowedTypes.includes(file.mimetype)) {
-      throw new Error("Sadece resim dosyaları yüklenebilir");
+  fileFilter: (req, file, cb) => {
+    const mimeType = String(file.mimetype || "").toLowerCase();
+    const extension = path.extname(file.originalname || "").toLowerCase();
+    if (allowedAvatarMimeTypes.has(mimeType) || allowedAvatarExtensions.has(extension)) {
+      return cb(null, true);
     }
+
+    return cb(new Error("Sadece resim dosyaları yüklenebilir"), false);
   },
 });
 

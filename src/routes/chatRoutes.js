@@ -6,32 +6,55 @@ const auth = require("../middleware/auth");
 const requirePermission = require("../middleware/requirePermission");
 const { chatLimiter } = require("../middleware/rateLimit");
 const multer = require("multer");
+const path = require("path");
+
+const allowedChatMimeTypes = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "video/mp4",
+  "video/quicktime",
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/ogg",
+  "audio/wav",
+  "audio/aac",
+  "audio/x-m4a",
+  "audio/m4a",
+  "application/pdf",
+]);
+
+const allowedChatExtensions = new Set([
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".gif",
+  ".webp",
+  ".mp4",
+  ".mov",
+  ".mp3",
+  ".mp4a",
+  ".m4a",
+  ".ogg",
+  ".wav",
+  ".aac",
+  ".pdf",
+]);
 
 // Multer konfigürasyonu - chat medya yükleme
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit
-  fileFilter: async (req, file) => {
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/gif",
-      "image/webp",
-      "video/mp4",
-      "video/quicktime",
-      "audio/mpeg",
-      "audio/mp4",
-      "audio/ogg",
-      "audio/wav",
-      "audio/aac",
-      "audio/x-m4a",
-      "audio/m4a",
-      "application/pdf",
-    ];
-    if (!allowedTypes.includes(file.mimetype)) {
-      throw new Error("Bu dosya türü desteklenmiyor");
+  fileFilter: (req, file, cb) => {
+    const mimeType = String(file.mimetype || "").toLowerCase();
+    const extension = path.extname(file.originalname || "").toLowerCase();
+    if (allowedChatMimeTypes.has(mimeType) || allowedChatExtensions.has(extension)) {
+      return cb(null, true);
     }
+
+    return cb(new Error("Bu dosya türü desteklenmiyor"), false);
   },
 });
 
