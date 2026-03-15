@@ -12,7 +12,7 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  fileFilter: (req, file) => {
+  fileFilter: async (req, file) => {
     const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
     if (!allowedTypes.includes(file.mimetype)) {
       throw new Error("Sadece resim dosyaları yüklenebilir");
