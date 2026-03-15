@@ -14,6 +14,7 @@ const notificationSchema = new mongoose.Schema(
         "call_incoming",    // Gelen arama
         "call_missed",      // Cevapsız arama
         "message",          // Yeni mesaj
+        "chat_message",     // Özel sohbetten yeni mesaj
         "live_started",     // Takip ettiğiniz kişi yayına başladı
         "mission_completed", // Görev tamamlandı
         "achievement",      // Başarım kazandınız
