@@ -304,14 +304,7 @@ app.use("/api/withdrawals", withdrawalRoutes);
 
 // Debug/maintenance endpoints — PRODUCTION'DA TAMAMEN DEVRE DIŞI
 if (NODE_ENV !== "production") {
-  const allowPublicDebugInDev =
-    process.env.ALLOW_PUBLIC_DEBUG_ROUTES === "true";
-
-  if (!allowPublicDebugInDev) {
-    app.use("/api/debug", authMiddleware, adminMiddleware, debugRoutes);
-  } else {
-    app.use("/api/debug", debugRoutes);
-  }
+  app.use("/api/debug", authMiddleware, adminMiddleware, debugRoutes);
 }
 
 // ---- Health check ----

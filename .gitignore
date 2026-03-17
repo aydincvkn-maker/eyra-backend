@@ -5,6 +5,7 @@ node_modules/
 .env.*.ready
 .env.*.secret
 serviceAccountKey.json
+serviceAccountKey.local.json
 uploads/
 .next/
 .git/

@@ -14,31 +14,53 @@ function initFirebaseAdmin() {
 
   try {
     let serviceAccount;
+    const isProduction = process.env.NODE_ENV === "production";
 
     // 1. Try FIREBASE_SERVICE_ACCOUNT env variable first (recommended for production)
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
       try {
         serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-        console.log("🔔 Firebase credentials loaded from FIREBASE_SERVICE_ACCOUNT env var");
+        console.log(
+          "🔔 Firebase credentials loaded from FIREBASE_SERVICE_ACCOUNT env var",
+        );
       } catch (parseErr) {
-        console.error("❌ FIREBASE_SERVICE_ACCOUNT env var is not valid JSON:", parseErr.message);
+        console.error(
+          "❌ FIREBASE_SERVICE_ACCOUNT env var is not valid JSON:",
+          parseErr.message,
+        );
         return;
       }
     }
 
-    // 2. Fallback to serviceAccountKey.json file (development only)
-    if (!serviceAccount) {
+    // 2. Preferred local fallback for non-production only
+    if (!serviceAccount && !isProduction) {
+      const localKeyPath = path.resolve(
+        __dirname,
+        "../../serviceAccountKey.local.json",
+      );
+      if (fs.existsSync(localKeyPath)) {
+        serviceAccount = require(localKeyPath);
+        console.log(
+          "🔔 Firebase credentials loaded from serviceAccountKey.local.json",
+        );
+      }
+    }
+
+    // 3. Deprecated compatibility fallback for existing development setups
+    if (!serviceAccount && !isProduction) {
       const keyPath = path.resolve(__dirname, "../../serviceAccountKey.json");
       if (fs.existsSync(keyPath)) {
         serviceAccount = require(keyPath);
-        console.log("🔔 Firebase credentials loaded from serviceAccountKey.json (dev fallback)");
+        console.warn(
+          "⚠️ Firebase credentials loaded from deprecated serviceAccountKey.json fallback",
+        );
       }
     }
 
     if (!serviceAccount) {
       console.warn(
         "⚠️ Firebase credentials not found — push notifications disabled.\n" +
-        "   Set FIREBASE_SERVICE_ACCOUNT env var or provide serviceAccountKey.json"
+          "   Set FIREBASE_SERVICE_ACCOUNT env var or provide serviceAccountKey.local.json",
       );
       return;
     }
@@ -82,7 +104,7 @@ async function sendPushNotification(fcmToken, title, body, data = {}) {
       data: {
         // Tüm data değerleri string olmalı (FCM kuralı)
         ...Object.fromEntries(
-          Object.entries(data).map(([k, v]) => [k, String(v)])
+          Object.entries(data).map(([k, v]) => [k, String(v)]),
         ),
         click_action: "FLUTTER_NOTIFICATION_CLICK",
       },
@@ -112,11 +134,13 @@ async function sendPushNotification(fcmToken, title, body, data = {}) {
       err.code === "messaging/invalid-registration-token" ||
       err.code === "messaging/registration-token-not-registered"
     ) {
-      console.warn(`⚠️ Geçersiz FCM token temizleniyor: ${fcmToken.substring(0, 20)}...`);
+      console.warn(
+        `⚠️ Geçersiz FCM token temizleniyor: ${fcmToken.substring(0, 20)}...`,
+      );
       const User = require("../models/User");
       await User.findOneAndUpdate(
         { fcmToken },
-        { $set: { fcmToken: null, fcmTokenUpdatedAt: null } }
+        { $set: { fcmToken: null, fcmTokenUpdatedAt: null } },
       );
     } else {
       console.error("❌ Push gönderme hatası:", err.message);

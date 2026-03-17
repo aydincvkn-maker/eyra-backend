@@ -15,20 +15,75 @@ router.get("/salary-history", auth, withdrawalController.getSalaryHistory);
 router.get("/my-violations", auth, withdrawalController.getMyViolations);
 
 // ─── Admin endpointleri ──────────────────────────────────────────
-router.get("/admin/list", auth, requirePermission("finance:view"), withdrawalController.adminListWithdrawals);
-router.put("/admin/:id/approve", auth, requirePermission("finance:view"), withdrawalController.adminApproveWithdrawal);
-router.put("/admin/:id/reject", auth, requirePermission("finance:view"), withdrawalController.adminRejectWithdrawal);
-router.put("/admin/:id/mark-paid", auth, requirePermission("finance:view"), withdrawalController.adminMarkPaid);
+router.get(
+  "/admin/list",
+  auth,
+  requirePermission("finance:view"),
+  withdrawalController.adminListWithdrawals,
+);
+router.put(
+  "/admin/:id/approve",
+  auth,
+  requirePermission("finance:manage"),
+  withdrawalController.adminApproveWithdrawal,
+);
+router.put(
+  "/admin/:id/reject",
+  auth,
+  requirePermission("finance:manage"),
+  withdrawalController.adminRejectWithdrawal,
+);
+router.put(
+  "/admin/:id/mark-paid",
+  auth,
+  requirePermission("finance:manage"),
+  withdrawalController.adminMarkPaid,
+);
 
 // ─── Admin maaş yönetimi ────────────────────────────────────────
-router.post("/admin/salary/process", auth, requirePermission("finance:view"), withdrawalController.adminProcessSalaries);
-router.get("/admin/salary/list", auth, requirePermission("finance:view"), withdrawalController.adminListSalaries);
-router.get("/admin/weekly-report", auth, requirePermission("finance:view"), withdrawalController.adminWeeklyReport);
+router.post(
+  "/admin/salary/process",
+  auth,
+  requirePermission("finance:manage"),
+  withdrawalController.adminProcessSalaries,
+);
+router.get(
+  "/admin/salary/list",
+  auth,
+  requirePermission("finance:view"),
+  withdrawalController.adminListSalaries,
+);
+router.get(
+  "/admin/weekly-report",
+  auth,
+  requirePermission("finance:view"),
+  withdrawalController.adminWeeklyReport,
+);
 
 // ─── Admin ihlal (violation) yönetimi ────────────────────────────
-router.post("/admin/violations/:userId", auth, requirePermission("finance:view"), withdrawalController.adminAddViolation);
-router.get("/admin/violations/:userId", auth, requirePermission("finance:view"), withdrawalController.adminGetViolations);
-router.put("/admin/violations/:userId/:violationId", auth, requirePermission("finance:view"), withdrawalController.adminUpdateViolation);
-router.delete("/admin/violations/:userId/:violationId", auth, requirePermission("finance:view"), withdrawalController.adminDeleteViolation);
+router.post(
+  "/admin/violations/:userId",
+  auth,
+  requirePermission("finance:manage"),
+  withdrawalController.adminAddViolation,
+);
+router.get(
+  "/admin/violations/:userId",
+  auth,
+  requirePermission("finance:view"),
+  withdrawalController.adminGetViolations,
+);
+router.put(
+  "/admin/violations/:userId/:violationId",
+  auth,
+  requirePermission("finance:manage"),
+  withdrawalController.adminUpdateViolation,
+);
+router.delete(
+  "/admin/violations/:userId/:violationId",
+  auth,
+  requirePermission("finance:manage"),
+  withdrawalController.adminDeleteViolation,
+);
 
 module.exports = router;
