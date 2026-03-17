@@ -267,55 +267,13 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
-// Health check (UptimeRobot / Render ping - no auth, no rate limit, no maintenance check)
-app.get("/health", (_req, res) =>
-  res.status(200).json({ ok: true, ts: Date.now() }),
-);
-app.get("/api/health", (_req, res) =>
-  res.status(200).json({ ok: true, ts: Date.now() }),
-);
-
-// Rate limiter
-app.use("/api", generalLimiter);
-
-// Maintenance mode
-app.use(maintenanceMiddleware);
-
-// ---- API Routes ----
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/live", liveRoutes);
-app.use("/api/gifts", giftRoutes);
-app.use("/api/chat", chatRoutes);
-app.use("/api/reports", reportRoutes);
-app.use("/api/stats", statsRoutes);
-app.use("/api/settings", settingsRoutes);
-app.use("/api/calls", callRoutes);
-app.use("/api/support", supportRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api/missions", missionRoutes);
-app.use("/api/spin", spinRoutes);
-app.use("/api/achievements", achievementRoutes);
-app.use("/api/verification", verificationRoutes);
-app.use("/api/transactions", transactionRoutes);
-app.use("/api/vip", vipRoutes);
-app.use("/api/payments", paymentRoutes);
-app.use("/api/withdrawals", withdrawalRoutes);
-
-// Debug/maintenance endpoints — PRODUCTION'DA TAMAMEN DEVRE DIŞI
-if (NODE_ENV !== "production") {
-  app.use("/api/debug", authMiddleware, adminMiddleware, debugRoutes);
-}
-
-// ---- Health check ----
-app.get("/api/health", async (req, res) => {
+const healthCheckHandler = async (_req, res) => {
   const metrics = presenceService.getMetrics
     ? presenceService.getMetrics()
     : null;
   const mongoose = require("mongoose");
   const { getRedisClient } = require("./config/redis");
 
-  // Real MongoDB check
   const mongoState = mongoose.connection.readyState;
   const mongoStatus =
     mongoState === 1
@@ -324,7 +282,6 @@ app.get("/api/health", async (req, res) => {
         ? "connecting"
         : "disconnected";
 
-  // Real Redis check
   let redisStatus = "unknown";
   try {
     const redis = getRedisClient();
@@ -366,16 +323,45 @@ app.get("/api/health", async (req, res) => {
       connectedUsers: userSockets?.size ?? 0,
     },
   });
-});
+};
 
-app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    message: "EYRA Backend is running",
-    timestamp: new Date().toISOString(),
-    port: PORT,
-  });
-});
+// Health check (UptimeRobot / Render ping - no auth, no rate limit, no maintenance check)
+app.get("/health", (_req, res) =>
+  res.status(200).json({ ok: true, ts: Date.now() }),
+);
+app.get("/api/health", healthCheckHandler);
+
+// Rate limiter
+app.use("/api", generalLimiter);
+
+// Maintenance mode
+app.use(maintenanceMiddleware);
+
+// ---- API Routes ----
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/live", liveRoutes);
+app.use("/api/gifts", giftRoutes);
+app.use("/api/chat", chatRoutes);
+app.use("/api/reports", reportRoutes);
+app.use("/api/stats", statsRoutes);
+app.use("/api/settings", settingsRoutes);
+app.use("/api/calls", callRoutes);
+app.use("/api/support", supportRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/missions", missionRoutes);
+app.use("/api/spin", spinRoutes);
+app.use("/api/achievements", achievementRoutes);
+app.use("/api/verification", verificationRoutes);
+app.use("/api/transactions", transactionRoutes);
+app.use("/api/vip", vipRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/withdrawals", withdrawalRoutes);
+
+// Debug/maintenance endpoints — PRODUCTION'DA TAMAMEN DEVRE DIŞI
+if (NODE_ENV !== "production") {
+  app.use("/api/debug", authMiddleware, adminMiddleware, debugRoutes);
+}
 
 // =========================
 // CENTRALIZED ERROR HANDLER
