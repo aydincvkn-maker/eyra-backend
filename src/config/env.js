@@ -26,11 +26,15 @@ const required = (key, fallback) => {
   }
 
   if (NODE_ENV === "production") {
-    console.warn(`[ENV] ${key} tanımlı değil, fallback kullanılıyor: ${fallback}`);
+    console.warn(
+      `[ENV] ${key} tanımlı değil, fallback kullanılıyor: ${fallback}`,
+    );
     return fallback;
   }
 
-  console.warn(`[ENV] ${key} tanımlı değil, fallback kullanılıyor: ${fallback}`);
+  console.warn(
+    `[ENV] ${key} tanımlı değil, fallback kullanılıyor: ${fallback}`,
+  );
   return fallback;
 };
 
@@ -47,7 +51,9 @@ module.exports = {
     }
 
     const devFallback = "dev_only_change_this_secret";
-    console.warn("[ENV] JWT_SECRET tanımlı değil, development fallback kullanılıyor");
+    console.warn(
+      "[ENV] JWT_SECRET tanımlı değil, development fallback kullanılıyor",
+    );
     return devFallback;
   })(),
   CLIENT_ORIGIN: required("CLIENT_ORIGIN", "http://localhost:3000"),
@@ -63,29 +69,46 @@ module.exports = {
     const val = process.env.PAYMENT_PROVIDER;
     if (val && val.trim()) return val.trim();
     if (NODE_ENV === "production") {
-      throw new Error("[ENV] PAYMENT_PROVIDER production'da tanımlı olmalı! 'mock' kullanılamaz.");
+      throw new Error(
+        "[ENV] PAYMENT_PROVIDER production'da tanımlı olmalı! 'mock' kullanılamaz.",
+      );
     }
-    console.warn('[ENV] PAYMENT_PROVIDER tanımlı değil, development fallback: mock');
+    console.warn(
+      "[ENV] PAYMENT_PROVIDER tanımlı değil, development fallback: mock",
+    );
     return "mock";
   })(),
   PAYMENT_WEBHOOK_SECRET: (() => {
     const val = process.env.PAYMENT_WEBHOOK_SECRET;
     if (!isEmpty(val)) return val;
     if (NODE_ENV === "production") {
-      throw new Error("[ENV] PAYMENT_WEBHOOK_SECRET production'da tanımlı olmalı!");
+      throw new Error(
+        "[ENV] PAYMENT_WEBHOOK_SECRET production'da tanımlı olmalı!",
+      );
     }
-    console.warn("[ENV] PAYMENT_WEBHOOK_SECRET tanımlı değil, dev fallback kullanılıyor");
+    console.warn(
+      "[ENV] PAYMENT_WEBHOOK_SECRET tanımlı değil, dev fallback kullanılıyor",
+    );
     return "dev_payment_webhook_secret";
   })(),
-  PAYMENT_SUCCESS_URL: required("PAYMENT_SUCCESS_URL", "eyra://payment/success"),
+  PAYMENT_SUCCESS_URL: required(
+    "PAYMENT_SUCCESS_URL",
+    "eyra://payment/success",
+  ),
   PAYMENT_CANCEL_URL: required("PAYMENT_CANCEL_URL", "eyra://payment/cancel"),
 
   STRIPE_SECRET_KEY: required("STRIPE_SECRET_KEY", ""),
   STRIPE_WEBHOOK_SECRET: required("STRIPE_WEBHOOK_SECRET", ""),
 
   // RevenueCat
-  REVENUECAT_API_KEY: required("REVENUECAT_API_KEY", ""),
-  REVENUECAT_API_BASE_URL: required("REVENUECAT_API_BASE_URL", "https://api.revenuecat.com/v1"),
+  REVENUECAT_API_KEY: (() => {
+    const val = process.env.REVENUECAT_API_KEY;
+    return isEmpty(val) ? "" : val;
+  })(),
+  REVENUECAT_API_BASE_URL: required(
+    "REVENUECAT_API_BASE_URL",
+    "https://api.revenuecat.com/v1",
+  ),
 
   // Backend URL (CDN, webhook vb. için)
   BACKEND_URL: required("BACKEND_URL", "http://localhost:5000"),
