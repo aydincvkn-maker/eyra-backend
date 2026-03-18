@@ -42,6 +42,13 @@ async function auth(req, res, next) {
       return sendError(res, 401, "Kullanıcı bulunamadı");
     }
 
+    // 3.5 tokenVersion kontrolü — şifre değişince/logout'ta eski tokenlar geçersiz
+    if (typeof user.tokenVersion === 'number' && typeof decoded.tokenVersion === 'number') {
+      if (decoded.tokenVersion < user.tokenVersion) {
+        return sendError(res, 401, "Token geçersiz (şifre değiştirilmiş)");
+      }
+    }
+
     if (user.isBanned || user.isActive === false || user.isFrozen === true) {
       return sendError(res, 403, "Hesap erişimi kısıtlı");
     }
