@@ -80,6 +80,7 @@ const transactionRoutes = require("./routes/transactionRoutes");
 const vipRoutes = require("./routes/vipRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const withdrawalRoutes = require("./routes/withdrawalRoutes");
+const translateRoutes = require("./routes/translateRoutes");
 const { generalLimiter } = require("./middleware/rateLimit");
 const maintenanceMiddleware = require("./middleware/maintenanceMiddleware");
 
@@ -357,6 +358,7 @@ app.use("/api/transactions", transactionRoutes);
 app.use("/api/vip", vipRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/withdrawals", withdrawalRoutes);
+app.use("/api/translate", translateRoutes);
 
 // Debug/maintenance endpoints — PRODUCTION'DA TAMAMEN DEVRE DIŞI
 if (NODE_ENV !== "production") {
