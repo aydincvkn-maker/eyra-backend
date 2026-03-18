@@ -173,9 +173,19 @@ class PresenceService extends EventEmitter {
     }
     
     // ✅ Cleanup old lastSeen cache entries (older than 24 hours)
+    // Also enforce a hard cap to prevent unbounded growth
     const cacheMaxAge = 24 * 60 * 60 * 1000;
+    const MAX_LAST_SEEN_CACHE = 10_000;
     for (const [uid, ts] of this._lastSeenCache.entries()) {
       if (now - ts > cacheMaxAge) {
+        this._lastSeenCache.delete(uid);
+      }
+    }
+    // If still over limit after TTL eviction, drop oldest entries
+    if (this._lastSeenCache.size > MAX_LAST_SEEN_CACHE) {
+      const entries = [...this._lastSeenCache.entries()].sort((a, b) => a[1] - b[1]);
+      const toRemove = entries.slice(0, entries.length - MAX_LAST_SEEN_CACHE);
+      for (const [uid] of toRemove) {
         this._lastSeenCache.delete(uid);
       }
     }
