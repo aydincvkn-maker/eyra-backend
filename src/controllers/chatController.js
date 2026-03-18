@@ -10,9 +10,10 @@ const fs = require("fs");
 exports.getRoomMessages = async (req, res) => {
   try {
     const { roomId } = req.params;
+    const limit = Math.min(200, Math.max(1, Math.floor(Number(req.query.limit || 200))));
     const messages = await Message.find({ roomId })
       .sort({ createdAt: 1 })
-      .limit(200);
+      .limit(limit);
     res.json(messages);
   } catch (err) {
     console.error("getRoomMessages error:", err);
