@@ -77,6 +77,8 @@ const sanitizeText = (text) => {
  */
 exports.getConversation = async (userId, otherUserId, page = 0, limit = 50) => {
   try {
+    limit = Math.min(100, Math.max(1, Math.floor(Number(limit) || 50)));
+    page = Math.max(0, Math.floor(Number(page) || 0));
     const roomId = getChatRoomId(userId, otherUserId);
     
     const messages = await Message.find({

@@ -42,8 +42,8 @@ exports.getConversation = async (req, res) => {
   try {
     const userId = String(req.user?.id || "");
     const otherUserId = String(req.params.userId || "").trim();
-    const page = Number(req.query.page || 0);
-    const limit = Number(req.query.limit || 50);
+    const page = Math.max(0, Math.floor(Number(req.query.page || 0)));
+    const limit = Math.min(100, Math.max(1, Math.floor(Number(req.query.limit || 50))));
 
     if (!otherUserId) {
       return sendError(res, 400, "Eksik userId");
