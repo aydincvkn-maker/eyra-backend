@@ -5,12 +5,10 @@ const paymentController = require("../controllers/paymentController");
 const {
   validateCreatePaymentIntent,
   validateIapPurchase,
-  sanitizeMongoQuery,
 } = require("../middleware/validate");
 const { paymentLimiter } = require("../middleware/rateLimit");
 
 const router = express.Router();
-router.use(sanitizeMongoQuery);
 
 router.get("/catalog", paymentController.getCatalog);
 router.post(

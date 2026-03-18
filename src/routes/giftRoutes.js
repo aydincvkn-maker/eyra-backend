@@ -10,8 +10,7 @@ const { giftLimiter } = require("../middleware/rateLimit");
 // Tüm hediyeleri getir (kategori filtresi opsiyonel)
 router.get("/", giftController.getGifts);
 
-const { validateSendGift, sanitizeMongoQuery } = require("../middleware/validate");
-router.use(sanitizeMongoQuery);
+const { validateSendGift } = require("../middleware/validate");
 
 // ============ USER ENDPOINTS ============
 // Hediye gönder (rate limited)

@@ -3,10 +3,7 @@ const router = express.Router();
 const authController = require("../controllers/authController");
 const authMiddleware = require("../middleware/auth");
 const { authLimiter } = require("../middleware/rateLimit");
-const { validateLogin, validateRegister, sanitizeMongoQuery } = require("../middleware/validate");
-
-// Apply NoSQL injection protection to all auth routes
-router.use(sanitizeMongoQuery);
+const { validateLogin, validateRegister } = require("../middleware/validate");
 
 // Login
 router.post("/login", authLimiter, validateLogin, authController.login);

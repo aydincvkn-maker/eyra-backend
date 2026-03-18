@@ -78,9 +78,7 @@ router.get("/room/:roomId", auth, chatController.getRoomMessages);
 // Private chat (used by Flutter ChatApiService)
 const {
   validateSendMessage,
-  sanitizeMongoQuery,
 } = require("../middleware/validate");
-router.use(sanitizeMongoQuery);
 
 router.get("/users", auth, chatController.getChatUsers);
 router.get("/conversation/:userId", auth, chatController.getConversation);
