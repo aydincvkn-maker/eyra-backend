@@ -43,7 +43,7 @@ function createAuthMiddleware() {
   return async (socket, next) => {
     try {
       const token = extractSocketToken(socket);
-      console.log(`🔐 Socket auth: token=${token ? '✅' : '❌'}`);
+      logger.info(`Socket auth: token=${token ? 'present' : 'missing'}`);
 
       // Optional dev fallback: allow providing userId without JWT ONLY in development
       // ⛔ Insecure mode SADECE development'ta ve açıkça etkinleştirildiğinde
@@ -53,9 +53,9 @@ function createAuthMiddleware() {
       if (!token && ALLOW_INSECURE) {
         const rawUserId = socket.handshake?.auth?.userId || socket.handshake?.query?.userId || socket.handshake?.query?.uid;
         const userId = String(rawUserId || '').trim();
-        console.log(`🔐 Socket auth (insecure mode - DEV ONLY): userId=${userId}`);
+        logger.warn(`Socket auth (insecure mode - DEV ONLY): userId=${userId}`);
         if (!userId) {
-          console.log(`❌ Socket auth failed: Missing token and userId`);
+          logger.warn('Socket auth failed: Missing token and userId');
           return next(new Error('Missing token'));
         }
 
@@ -63,33 +63,33 @@ function createAuthMiddleware() {
         const now = Date.now();
         const lastConnect = userConnectionTimestamps.get(userId);
         if (lastConnect && (now - lastConnect) < CONNECTION_RATE_LIMIT_MS) {
-          console.log(`⚠️ Rate limited: ${userId} (${now - lastConnect}ms since last connect)`);
+          logger.warn(`Rate limited: ${userId} (${now - lastConnect}ms since last connect)`);
           return next(new Error('Rate limited'));
         }
         userConnectionTimestamps.set(userId, now);
 
         const user = await User.findById(userId).select('_id gender isBanned isActive').lean();
         if (!user || user.isBanned || user.isActive === false) {
-          console.log(`❌ Socket auth failed: User not found or banned`);
+          logger.warn('Socket auth failed: User not found or banned');
           return next(new Error('Unauthorized'));
         }
 
         socket.data.userId = String(user._id);
         socket.data.gender = user.gender || 'other';
         socket.data.authMode = 'insecure_userId';
-        console.log(`✅ Socket auth success (insecure): userId=${user._id}`);
+        logger.info(`Socket auth success (insecure): userId=${user._id}`);
         return next();
       }
 
       if (!token) {
-        console.log(`❌ Socket auth failed: No token provided`);
+        logger.info('Socket auth failed: No token provided');
         return next(new Error('Missing token'));
       }
 
       const decoded = jwt.verify(token, JWT_SECRET);
       const userId = String(decoded?.id || '').trim();
       if (!userId) {
-        console.log(`❌ Socket auth failed: Invalid token (no userId)`);
+        logger.warn('Socket auth failed: Invalid token (no userId)');
         return next(new Error('Invalid token'));
       }
 
@@ -97,24 +97,24 @@ function createAuthMiddleware() {
       const now = Date.now();
       const lastConnect = userConnectionTimestamps.get(userId);
       if (lastConnect && (now - lastConnect) < CONNECTION_RATE_LIMIT_MS) {
-        console.log(`⚠️ Rate limited: ${userId} (${now - lastConnect}ms since last connect)`);
+        logger.warn(`Rate limited: ${userId} (${now - lastConnect}ms since last connect)`);
         return next(new Error('Rate limited'));
       }
       userConnectionTimestamps.set(userId, now);
 
       const user = await User.findById(userId).select('_id gender isBanned isActive').lean();
       if (!user || user.isBanned || user.isActive === false) {
-        console.log(`❌ Socket auth failed: User not found or banned (userId=${userId})`);
+        logger.warn(`Socket auth failed: User not found or banned (userId=${userId})`);
         return next(new Error('Unauthorized'));
       }
 
       socket.data.userId = String(user._id);
       socket.data.gender = user.gender || 'other';
       socket.data.authMode = 'jwt';
-      console.log(`✅ Socket auth success: userId=${user._id}, gender=${user.gender}`);
+      logger.info(`Socket auth success: userId=${user._id}`);
       return next();
     } catch (e) {
-      console.log(`❌ Socket auth exception: ${e.message}`);
+      logger.error(`Socket auth exception: ${e.message}`);
       return next(new Error('Unauthorized'));
     }
   };
