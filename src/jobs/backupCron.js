@@ -109,18 +109,20 @@ async function runBackup() {
   for (const colName of COLLECTIONS_TO_BACKUP) {
     try {
       const db = mongoose.connection.db;
-      if (!db) throw new Error("DB bağlantısı yok");
+      if (!db) throw new Error("DB baglantisi yok (readyState=" + mongoose.connection.readyState + ")");
 
-      // Koleksiyonun var olup olmadığını kontrol et
-      const collections = await db.listCollections({ name: colName }).toArray();
-      if (collections.length === 0) {
-        result.collections[colName] = { count: 0, status: "skipped" };
+      // Dogrudan koleksiyona eris, countDocuments ile kontrol et
+      const collection = db.collection(colName);
+      const count = await collection.countDocuments();
+
+      if (count === 0) {
+        result.collections[colName] = { count: 0, status: "empty" };
         continue;
       }
 
-      const { count, docs } = await dumpCollection(colName);
-      result.collections[colName] = { count, status: "ok" };
-      result.totalDocuments += count;
+      const docs = await collection.find({}).sort({ _id: 1 }).toArray();
+      result.collections[colName] = { count: docs.length, status: "ok" };
+      result.totalDocuments += docs.length;
 
       // Firebase Realtime DB'ye yaz
       const ref = admin.database().ref(`backups/${dateKey}/${colName}`);
