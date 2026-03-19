@@ -80,6 +80,30 @@ function createBackupId(now = new Date()) {
   return now.toISOString().replace(/[:.]/g, "-");
 }
 
+function parseBackupTimestamp(rawTimestamp, fallbackKey = "") {
+  if (typeof rawTimestamp === "string") {
+    const direct = Date.parse(rawTimestamp);
+    if (Number.isFinite(direct)) {
+      return direct;
+    }
+
+    const legacy = rawTimestamp.replace(
+      /^(\d{4}-\d{2}-\d{2}T\d{2})-(\d{2})-(\d{2})-(\d{3}Z)$/,
+      "$1:$2:$3.$4"
+    );
+    const legacyParsed = Date.parse(legacy);
+    if (Number.isFinite(legacyParsed)) {
+      return legacyParsed;
+    }
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fallbackKey)) {
+    return Date.parse(`${fallbackKey}T00:00:00.000Z`);
+  }
+
+  return Number.NaN;
+}
+
 function buildMetaPayload(result, extra = {}) {
   return {
     backupId: result.backupId,
@@ -259,9 +283,8 @@ async function cleanOldBackups() {
 
     const cutoffMs = Date.now() - MAX_BACKUP_DAYS * 24 * 60 * 60 * 1000;
     const keysToDelete = Object.entries(data)
-      .filter(([, meta]) => {
-        const rawTimestamp = meta?.timestamp;
-        const parsed = rawTimestamp ? Date.parse(rawTimestamp) : Number.NaN;
+      .filter(([key, meta]) => {
+        const parsed = parseBackupTimestamp(meta?.timestamp, key);
         return Number.isFinite(parsed) && parsed < cutoffMs;
       })
       .map(([key]) => key);
@@ -294,8 +317,8 @@ async function listBackups() {
         ...(meta || {}),
       }))
       .sort((left, right) => {
-        const leftTs = Date.parse(left.timestamp || "");
-        const rightTs = Date.parse(right.timestamp || "");
+        const leftTs = parseBackupTimestamp(left.timestamp, String(left.id));
+        const rightTs = parseBackupTimestamp(right.timestamp, String(right.id));
         if (Number.isFinite(leftTs) && Number.isFinite(rightTs)) {
           return rightTs - leftTs;
         }
