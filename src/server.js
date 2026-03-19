@@ -53,6 +53,7 @@ const connectionHandler = require("./socket/connectionHandler");
 const presenceSync = require("./jobs/presenceSync");
 const cleanupJobs = require("./jobs/cleanup");
 const salaryCron = require("./jobs/salaryCron");
+const backupCron = require("./jobs/backupCron");
 
 // ---- Firebase Admin (push notifications only) ----
 const { initFirebaseAdmin } = require("./config/firebaseAdmin");
@@ -180,6 +181,9 @@ const cleanupTimers = cleanupJobs.startAll(io, closeActiveLiveStreamsForHost);
 
 // ---- Salary cron (Her Pazartesi 00:05 UTC) ----
 salaryCron.start();
+
+// ---- Backup cron (Her gün 03:00 UTC) ----
+backupCron.start();
 
 // ---- Firebase Admin SDK (push bildirimleri için) ----
 initFirebaseAdmin();
@@ -529,6 +533,9 @@ const gracefulShutdown = async (signal) => {
 
     // 5b. Stop salary cron
     salaryCron.stop();
+
+    // 5c. Stop backup cron
+    backupCron.stop();
 
     // 6. Remove event listeners
     presenceService.off("changed", onPresenceChanged);
