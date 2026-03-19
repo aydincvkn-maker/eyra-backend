@@ -51,18 +51,19 @@ router.get("/backups", auth, admin, superAdminOnly, async (req, res) => {
 router.post("/backup/restore", auth, admin, superAdminOnly, async (req, res) => {
   try {
     const { backupId, dateKey, collections } = req.body;
-    const targetBackup = backupId || dateKey;
+    const targetBackup = String(backupId || dateKey || "").trim();
+    const restoreCollections = Array.isArray(collections) ? collections : null;
     if (!targetBackup || typeof targetBackup !== "string") {
       return sendError(res, 400, "Geçerli bir backup kimliği gerekli");
     }
 
     logger.warn(
       `⚠️ RESTORE başlatıldı — backup: ${targetBackup}, koleksiyonlar: ${
-        collections ? collections.join(", ") : "TÜMÜ"
+        restoreCollections ? restoreCollections.join(", ") : "TÜMÜ"
       }, kullanıcı: ${req.user.username}`
     );
 
-    const result = await backupCron.restoreBackup(targetBackup, collections || null);
+    const result = await backupCron.restoreBackup(targetBackup, restoreCollections);
     const statusCode = result.errors.length === 0 ? 200 : 207;
 
     return sendSuccess(res, {
