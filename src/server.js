@@ -81,6 +81,7 @@ const vipRoutes = require("./routes/vipRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const withdrawalRoutes = require("./routes/withdrawalRoutes");
 const translateRoutes = require("./routes/translateRoutes");
+const adminChatRoutes = require("./routes/adminChatRoutes");
 const { generalLimiter } = require("./middleware/rateLimit");
 const maintenanceMiddleware = require("./middleware/maintenanceMiddleware");
 
