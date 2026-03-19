@@ -1,6 +1,7 @@
 // src/routes/adminChatRoutes.js
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 const auth = require("../middleware/auth");
 const admin = require("../middleware/admin");
 const AdminMessage = require("../models/AdminMessage");
@@ -16,15 +17,24 @@ router.get("/messages", async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
     const skip = (page - 1) * limit;
+    const requestedRecipientId = String(req.query.recipientId || "").trim();
+    const myId = String(req.user.id);
 
-    // Genel chat mesajları (recipientId = null) veya bana gelen özel mesajlar
-    const filter = {
-      $or: [
-        { recipientId: null },
-        { recipientId: req.user.id },
-        { senderId: req.user.id },
-      ],
-    };
+    let filter;
+    if (requestedRecipientId) {
+      if (!mongoose.Types.ObjectId.isValid(requestedRecipientId)) {
+        return sendError(res, 400, "Geçersiz alıcı kimliği");
+      }
+
+      filter = {
+        $or: [
+          { senderId: myId, recipientId: requestedRecipientId },
+          { senderId: requestedRecipientId, recipientId: myId },
+        ],
+      };
+    } else {
+      filter = { recipientId: null };
+    }
 
     const [messages, total] = await Promise.all([
       AdminMessage.find(filter)
@@ -52,7 +62,11 @@ router.post("/messages", async (req, res) => {
       return sendError(res, 400, "Mesaj 1-2000 karakter arası olmalı");
     }
 
-    const recipientId = req.body.recipientId || null;
+    const rawRecipientId = String(req.body.recipientId || "").trim();
+    const recipientId = rawRecipientId || null;
+    if (recipientId && !mongoose.Types.ObjectId.isValid(recipientId)) {
+      return sendError(res, 400, "Geçersiz alıcı kimliği");
+    }
 
     const message = await AdminMessage.create({
       senderId: req.user.id,
@@ -62,9 +76,7 @@ router.post("/messages", async (req, res) => {
       recipientId,
     });
 
-    // Socket ile tüm admin'lere yayınla
-    const adminNamespace = require("../socket/adminNamespace");
-    adminNamespace.emit("admin-chat:message", {
+    const payload = {
       _id: message._id,
       senderId: message.senderId,
       senderName: message.senderName,
@@ -72,7 +84,15 @@ router.post("/messages", async (req, res) => {
       content: message.content,
       recipientId: message.recipientId,
       createdAt: message.createdAt,
-    });
+    };
+
+    const adminNamespace = require("../socket/adminNamespace");
+    if (recipientId) {
+      adminNamespace.emitToAdminUser(recipientId, "admin-chat:message", payload);
+      adminNamespace.emitToAdminUser(req.user.id, "admin-chat:message", payload);
+    } else {
+      adminNamespace.emit("admin-chat:message", payload);
+    }
 
     sendSuccess(res, { message }, 201);
   } catch (err) {
@@ -96,7 +116,12 @@ router.delete("/messages/:id", async (req, res) => {
     await AdminMessage.findByIdAndDelete(req.params.id);
 
     const adminNamespace = require("../socket/adminNamespace");
-    adminNamespace.emit("admin-chat:deleted", { messageId: req.params.id });
+    if (msg.recipientId) {
+      adminNamespace.emitToAdminUser(msg.senderId, "admin-chat:deleted", { messageId: req.params.id });
+      adminNamespace.emitToAdminUser(msg.recipientId, "admin-chat:deleted", { messageId: req.params.id });
+    } else {
+      adminNamespace.emit("admin-chat:deleted", { messageId: req.params.id });
+    }
 
     sendSuccess(res, { deleted: true });
   } catch (err) {

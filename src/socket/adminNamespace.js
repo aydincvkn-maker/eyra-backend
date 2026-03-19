@@ -175,4 +175,4 @@ function getNsp() {
   return adminNsp;
 }
 
-module.exports = { setup, emit, getNsp };
+module.exports = { setup, emit, emitToAdminUser, getNsp };
