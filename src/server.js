@@ -360,6 +360,7 @@ app.use("/api/vip", vipRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/withdrawals", withdrawalRoutes);
 app.use("/api/translate", translateRoutes);
+app.use("/api/admin-chat", adminChatRoutes);
 
 // Debug/maintenance endpoints — PRODUCTION'DA TAMAMEN DEVRE DIŞI
 if (NODE_ENV !== "production") {

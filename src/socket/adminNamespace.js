@@ -44,6 +44,15 @@ function setup(io) {
   adminNsp.on("connection", (socket) => {
     console.log(`🛡️  Admin socket connected: ${socket.data.username} (${socket.data.role})`);
 
+    // Admin chat: yazıyor göstergesi
+    socket.on("admin-chat:typing", () => {
+      socket.broadcast.emit("admin-chat:typing", {
+        userId: socket.data.userId,
+        username: socket.data.username,
+        _ts: Date.now(),
+      });
+    });
+
     socket.on("disconnect", () => {
       console.log(`🛡️  Admin socket disconnected: ${socket.data.username}`);
     });
