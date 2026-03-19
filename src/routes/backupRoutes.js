@@ -63,19 +63,15 @@ router.post("/backup/restore", auth, admin, superAdminOnly, async (req, res) => 
     );
 
     const result = await backupCron.restoreBackup(targetBackup, collections || null);
-    if (result.errors.length > 0) {
-      return sendError(
-        res,
-        409,
-        `Restore kısmi tamamlandı. Koruma yedeği: ${result.safetyBackupId}`,
-        { result }
-      );
-    }
+    const statusCode = result.errors.length === 0 ? 200 : 207;
 
     return sendSuccess(res, {
-      message: `${result.restoredFrom} backup'ı geri yüklendi`,
+      message:
+        result.errors.length === 0
+          ? `${result.restoredFrom} backup'ı geri yüklendi`
+          : `Restore kısmi tamamlandı. Koruma yedeği: ${result.safetyBackupId}`,
       result,
-    });
+    }, statusCode);
   } catch (err) {
     logger.error("Restore hatası:", err.message);
     return sendError(res, 500, "Restore sırasında hata oluştu: " + err.message);
