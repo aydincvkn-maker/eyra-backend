@@ -109,7 +109,8 @@ async function runBackup() {
 
   // Debug: Mongoose baglanti durumu
   const readyState = mongoose.connection.readyState;
-  const dbName = mongoose.connection.db?.databaseName || "N/A";
+  let dbName = "N/A";
+  try { dbName = getDb().databaseName; } catch { /* */ }
   logger.info(`  DB durum: readyState=${readyState}, dbName=${dbName}`);
 
   if (readyState !== 1) {
@@ -127,8 +128,7 @@ async function runBackup() {
 
   for (const colName of COLLECTIONS_TO_BACKUP) {
     try {
-      const db = mongoose.connection.db;
-      if (!db) throw new Error("DB baglantisi yok (readyState=" + mongoose.connection.readyState + ")");
+      const db = getDb();
 
       // Dogrudan koleksiyona eris, countDocuments ile kontrol et
       const collection = db.collection(colName);
