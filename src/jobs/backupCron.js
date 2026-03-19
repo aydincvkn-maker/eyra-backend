@@ -5,6 +5,7 @@
 // - Firebase Realtime Database'e yazar (kalıcı, uzak depolama)
 // - Son 7 günlük backup tutar, eskilerini siler
 // - Manuel tetikleme: /api/admin/backup endpoint'i ile
+// - Hafif indeks node'u (backup_index) üzerinden listeleme/temizlik
 // ═══════════════════════════════════════════════════════════════
 const cron = require("node-cron");
 const mongoose = require("mongoose");
@@ -32,36 +33,52 @@ const COLLECTIONS_TO_BACKUP = [
 
 const MAX_BACKUP_DAYS = 7;
 
+// 24-hex ObjectId regex (referans alanlarını tespit etmek için)
+const OBJECTID_RE = /^[a-f\d]{24}$/i;
+
 let cronJob = null;
 
 /**
  * Tek bir koleksiyonun tüm dokümanlarını çeker
+ * _id sıralı cursor kullanır — skip/limit'siz güvenilir okuma
  */
 async function dumpCollection(collectionName) {
   const db = mongoose.connection.db;
   if (!db) throw new Error("MongoDB bağlantısı yok");
 
   const collection = db.collection(collectionName);
-  const count = await collection.countDocuments();
-
-  if (count === 0) return { count: 0, docs: [] };
-
-  // Büyük koleksiyonlarda batch halinde çek (memory overflow önlemi)
-  const BATCH_SIZE = 500;
-  const docs = [];
-  let skip = 0;
-
-  while (skip < count) {
-    const batch = await collection
-      .find({})
-      .skip(skip)
-      .limit(BATCH_SIZE)
-      .toArray();
-    docs.push(...batch);
-    skip += BATCH_SIZE;
-  }
-
+  const docs = await collection.find({}).sort({ _id: 1 }).toArray();
   return { count: docs.length, docs };
+}
+
+/**
+ * Dokümanı JSON-safe hale getirir (ObjectId, Date → string)
+ */
+function serializeDoc(doc) {
+  return JSON.parse(JSON.stringify(doc));
+}
+
+/**
+ * Restore sırasında string ObjectId'leri tekrar ObjectId'ye çevirir (recursive)
+ */
+function restoreObjectIds(obj) {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === "string" && OBJECTID_RE.test(obj)) {
+    try {
+      return new mongoose.Types.ObjectId(obj);
+    } catch {
+      return obj;
+    }
+  }
+  if (Array.isArray(obj)) return obj.map(restoreObjectIds);
+  if (typeof obj === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(obj)) {
+      out[k] = restoreObjectIds(v);
+    }
+    return out;
+  }
+  return obj;
 }
 
 /**
@@ -100,25 +117,21 @@ async function runBackup() {
       result.totalDocuments += count;
 
       // Firebase Realtime DB'ye yaz
+      const ref = admin.database().ref(`backups/${dateKey}/${colName}`);
+
+      // Önce eski veriyi temizle (aynı gün tekrar çalışırsa stale data kalmasın)
+      await ref.set(null);
+
       if (count > 0) {
-        const ref = admin.database().ref(`backups/${dateKey}/${colName}`);
-        // Büyük veri için chunk'lar halinde yaz
-        if (count > 200) {
-          const chunkSize = 200;
-          for (let i = 0; i < docs.length; i += chunkSize) {
-            const chunk = docs.slice(i, i + chunkSize);
-            const chunkData = {};
-            chunk.forEach((doc, idx) => {
-              chunkData[`${i + idx}`] = JSON.parse(JSON.stringify(doc));
-            });
-            await ref.update(chunkData);
-          }
-        } else {
-          const data = {};
-          docs.forEach((doc, idx) => {
-            data[`${idx}`] = JSON.parse(JSON.stringify(doc));
+        // Chunk'lar halinde yaz (Firebase tek yazma limiti ~16 MB)
+        const chunkSize = 200;
+        for (let i = 0; i < docs.length; i += chunkSize) {
+          const chunk = docs.slice(i, i + chunkSize);
+          const chunkData = {};
+          chunk.forEach((doc, idx) => {
+            chunkData[`${i + idx}`] = serializeDoc(doc);
           });
-          await ref.set(data);
+          await ref.update(chunkData);
         }
       }
 
@@ -130,17 +143,21 @@ async function runBackup() {
     }
   }
 
-  // Metadata yaz
+  // Süre hesapla
   result.durationMs = Date.now() - startTime;
-  const metaRef = admin.database().ref(`backups/${dateKey}/_meta`);
-  await metaRef.set({
+
+  const metaPayload = {
     timestamp,
     totalDocuments: result.totalDocuments,
     collectionsCount: Object.keys(result.collections).length,
     errors: result.errors.length,
     durationMs: result.durationMs,
     status: result.errors.length === 0 ? "success" : "partial",
-  });
+  };
+
+  // Metadata'yı hem backup verisi altına hem de hafif indeks node'una yaz
+  await admin.database().ref(`backups/${dateKey}/_meta`).set(metaPayload);
+  await admin.database().ref(`backup_index/${dateKey}`).set(metaPayload);
 
   // Eski backupları temizle
   await cleanOldBackups();
@@ -154,11 +171,12 @@ async function runBackup() {
 
 /**
  * MAX_BACKUP_DAYS'den eski backupları siler
+ * Hafif backup_index node'u üzerinden çalışır (tüm veriyi çekmez)
  */
 async function cleanOldBackups() {
   try {
-    const ref = admin.database().ref("backups");
-    const snapshot = await ref.once("value");
+    const indexRef = admin.database().ref("backup_index");
+    const snapshot = await indexRef.once("value");
     const data = snapshot.val();
     if (!data) return;
 
@@ -166,12 +184,12 @@ async function cleanOldBackups() {
     cutoff.setDate(cutoff.getDate() - MAX_BACKUP_DAYS);
     const cutoffStr = cutoff.toISOString().slice(0, 10);
 
-    const keysToDelete = Object.keys(data).filter(
-      (key) => key < cutoffStr && key !== "_meta"
-    );
+    const keysToDelete = Object.keys(data).filter((key) => key < cutoffStr);
 
     for (const key of keysToDelete) {
-      await ref.child(key).remove();
+      // Hem asıl backup verisini hem de index kaydını sil
+      await admin.database().ref(`backups/${key}`).remove();
+      await admin.database().ref(`backup_index/${key}`).remove();
       logger.info(`🗑️ Eski backup silindi: ${key}`);
     }
   } catch (err) {
@@ -181,25 +199,22 @@ async function cleanOldBackups() {
 
 /**
  * Backup listesini getir (tarihler + metadata)
+ * Hafif backup_index node'u kullanır — tüm veriyi çekmez
  */
 async function listBackups() {
   try {
-    const ref = admin.database().ref("backups");
-    const snapshot = await ref.once("value");
+    const indexRef = admin.database().ref("backup_index");
+    const snapshot = await indexRef.once("value");
     const data = snapshot.val();
     if (!data) return [];
 
     return Object.keys(data)
-      .filter((k) => k !== "_meta")
       .sort()
       .reverse()
-      .map((dateKey) => {
-        const meta = data[dateKey]?._meta || {};
-        return {
-          date: dateKey,
-          ...meta,
-        };
-      });
+      .map((dateKey) => ({
+        date: dateKey,
+        ...(data[dateKey] || {}),
+      }));
   } catch (err) {
     logger.error("Backup listeleme hatası:", err.message);
     return [];
@@ -223,6 +238,7 @@ async function getBackupData(dateKey) {
 /**
  * Belirli bir günün backupından veritabanını geri yükle
  * ⚠️ DİKKAT: Mevcut verilerin üzerine yazar!
+ * Tüm string ObjectId referanslarını (userId, senderId vb.) recursive olarak geri çevirir
  */
 async function restoreBackup(dateKey, collectionsToRestore = null) {
   const backupData = await getBackupData(dateKey);
@@ -232,7 +248,11 @@ async function restoreBackup(dateKey, collectionsToRestore = null) {
   if (!db) throw new Error("MongoDB bağlantısı yok");
 
   const results = {};
-  const targetCollections = collectionsToRestore || COLLECTIONS_TO_BACKUP;
+  // Sadece bilinen koleksiyonları kabul et (güvenlik)
+  const allowed = new Set(COLLECTIONS_TO_BACKUP);
+  const targetCollections = (collectionsToRestore || COLLECTIONS_TO_BACKUP).filter(
+    (c) => allowed.has(c)
+  );
 
   for (const colName of targetCollections) {
     const colData = backupData[colName];
@@ -250,23 +270,12 @@ async function restoreBackup(dateKey, collectionsToRestore = null) {
 
       const collection = db.collection(colName);
 
-      // _id alanlarını ObjectId'ye geri çevir
-      const cleanDocs = docs.map((doc) => {
-        const clean = { ...doc };
-        if (clean._id && typeof clean._id === "string") {
-          try {
-            clean._id = new mongoose.Types.ObjectId(clean._id);
-          } catch {
-            // Geçersiz ObjectId ise olduğu gibi bırak
-          }
-        }
-        return clean;
-      });
+      // Tüm ObjectId alanlarını recursive olarak geri çevir
+      const cleanDocs = docs.map((doc) => restoreObjectIds(doc));
 
       // Mevcut koleksiyonu temizle ve yeni verileri ekle
       await collection.deleteMany({});
       if (cleanDocs.length > 0) {
-        // Batch insert (1000'lik gruplar halinde)
         const batchSize = 1000;
         for (let i = 0; i < cleanDocs.length; i += batchSize) {
           const batch = cleanDocs.slice(i, i + batchSize);
