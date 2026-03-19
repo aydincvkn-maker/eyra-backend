@@ -21,8 +21,8 @@ router.get("/messages", async (req, res) => {
     const filter = {
       $or: [
         { recipientId: null },
-        { recipientId: req.user._id },
-        { senderId: req.user._id },
+        { recipientId: req.user.id },
+        { senderId: req.user.id },
       ],
     };
 
@@ -55,7 +55,7 @@ router.post("/messages", async (req, res) => {
     const recipientId = req.body.recipientId || null;
 
     const message = await AdminMessage.create({
-      senderId: req.user._id,
+      senderId: req.user.id,
       senderName: req.user.username || req.user.name || "Admin",
       senderRole: req.user.role,
       content,
@@ -87,7 +87,7 @@ router.delete("/messages/:id", async (req, res) => {
     if (!msg) return sendError(res, 404, "Mesaj bulunamadı");
 
     // Sadece kendi mesajını silebilir (super_admin hariç)
-    const isSelf = String(msg.senderId) === String(req.user._id);
+    const isSelf = String(msg.senderId) === String(req.user.id);
     const isSuperAdmin = req.user.role === "super_admin";
     if (!isSelf && !isSuperAdmin) {
       return sendError(res, 403, "Sadece kendi mesajınızı silebilirsiniz");
