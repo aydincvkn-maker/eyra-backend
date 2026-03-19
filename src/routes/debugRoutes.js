@@ -7,6 +7,8 @@ const User = require("../models/User");
 const { normalizeGender } = require("../utils/gender");
 const { PORT, NODE_ENV } = require("../config/env");
 const presenceService = require("../services/presenceService");
+const authMiddleware = require("../middleware/auth");
+const adminMiddleware = require("../middleware/admin");
 
 // Production'da debug route'ları devre dışı bırak (health check hariç)
 const blockInProduction = (req, res, next) => {
@@ -15,6 +17,11 @@ const blockInProduction = (req, res, next) => {
   }
   next();
 };
+
+// Tüm debug route'ları admin auth gerektirir (development dahil)
+router.use(blockInProduction);
+router.use(authMiddleware);
+router.use(adminMiddleware);
 
 // ✅ DEBUG ENDPOINTS
 router.get("/test", (req, res) => {
