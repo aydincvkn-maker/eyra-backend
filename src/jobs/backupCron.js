@@ -45,13 +45,23 @@ const OBJECTID_RE = /^[a-f\d]{24}$/i;
 let cronJob = null;
 
 /**
+ * Mongoose connection uzerinden native MongoDB Db nesnesini guvenlice al
+ * Mongoose 9'da connection.db bazen undefined donebilir — getClient() fallback
+ */
+function getDb() {
+  if (mongoose.connection.db) return mongoose.connection.db;
+  // Fallback: native client uzerinden DB'ye eris
+  const client = mongoose.connection.getClient();
+  if (client) return client.db();
+  throw new Error("MongoDB baglantisi yok (readyState=" + mongoose.connection.readyState + ")");
+}
+
+/**
  * Tek bir koleksiyonun tüm dokümanlarını çeker
  * _id sıralı cursor kullanır — skip/limit'siz güvenilir okuma
  */
 async function dumpCollection(collectionName) {
-  const db = mongoose.connection.db;
-  if (!db) throw new Error("MongoDB bağlantısı yok");
-
+  const db = getDb();
   const collection = db.collection(collectionName);
   const docs = await collection.find({}).sort({ _id: 1 }).toArray();
   return { count: docs.length, docs };
