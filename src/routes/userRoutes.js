@@ -135,6 +135,14 @@ router.get(
   userController.getAdminUsers,
 );
 
+// ADMIN: Elle kullanıcı oluştur
+router.post(
+  "/admin/create",
+  auth,
+  requirePermission("users:edit"),
+  userController.adminCreateUser,
+);
+
 // ADMIN: Panel admin kullanıcılarını listele (admin, super_admin, moderator)
 router.get(
   "/panel-admins",
