@@ -67,10 +67,12 @@ function initFirebaseAdmin() {
 
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
+      databaseURL: process.env.FIREBASE_DATABASE_URL || undefined,
     });
 
     initialized = true;
-    console.log("🔔 Firebase Admin SDK başlatıldı (push notifications)");
+    const rtdb = process.env.FIREBASE_DATABASE_URL ? "+ Realtime DB" : "(no RTD)";
+    console.log(`🔔 Firebase Admin SDK baslatildi (push notifications ${rtdb})`);
   } catch (err) {
     console.error("❌ Firebase Admin SDK başlatma hatası:", err.message);
   }
