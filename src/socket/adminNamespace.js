@@ -8,6 +8,39 @@ const { JWT_SECRET } = require("../config/env");
 const User = require("../models/User");
 
 let adminNsp = null;
+const adminUserSockets = new Map();
+
+function addAdminSocket(userId, socketId) {
+  const key = String(userId || "").trim();
+  if (!key) return;
+  const existing = adminUserSockets.get(key) || new Set();
+  existing.add(socketId);
+  adminUserSockets.set(key, existing);
+}
+
+function removeAdminSocket(userId, socketId) {
+  const key = String(userId || "").trim();
+  if (!key) return;
+  const existing = adminUserSockets.get(key);
+  if (!existing) return;
+  existing.delete(socketId);
+  if (existing.size === 0) {
+    adminUserSockets.delete(key);
+  }
+}
+
+function emitToAdminUser(userId, event, payload) {
+  const key = String(userId || "").trim();
+  if (!adminNsp || !key) return false;
+
+  const socketIds = adminUserSockets.get(key);
+  if (!socketIds || socketIds.size === 0) return false;
+
+  socketIds.forEach((socketId) => {
+    adminNsp.to(socketId).emit(event, { ...payload, _ts: Date.now() });
+  });
+  return true;
+}
 
 /** Initialise the /admin namespace on the given io instance. */
 function setup(io) {
@@ -43,6 +76,7 @@ function setup(io) {
   // ── Connection handler ──
   adminNsp.on("connection", (socket) => {
     console.log(`🛡️  Admin socket connected: ${socket.data.username} (${socket.data.role})`);
+    addAdminSocket(socket.data.userId, socket.id);
 
     // Admin chat: yazıyor göstergesi
     socket.on("admin-chat:typing", () => {
@@ -53,7 +87,69 @@ function setup(io) {
       });
     });
 
+    socket.on("admin-call:initiate", ({ targetUserId, callId, offer }) => {
+      const targetId = String(targetUserId || "").trim();
+      if (!targetId || targetId === socket.data.userId || !callId || !offer) return;
+
+      const delivered = emitToAdminUser(targetId, "admin-call:incoming", {
+        callId,
+        callerId: socket.data.userId,
+        callerName: socket.data.username,
+        offer,
+      });
+
+      if (!delivered) {
+        socket.emit("admin-call:unavailable", {
+          callId,
+          targetUserId: targetId,
+          _ts: Date.now(),
+        });
+      }
+    });
+
+    socket.on("admin-call:answer", ({ targetUserId, callId, answer }) => {
+      const targetId = String(targetUserId || "").trim();
+      if (!targetId || !callId || !answer) return;
+      emitToAdminUser(targetId, "admin-call:answered", {
+        callId,
+        answer,
+        responderId: socket.data.userId,
+        responderName: socket.data.username,
+      });
+    });
+
+    socket.on("admin-call:ice-candidate", ({ targetUserId, callId, candidate }) => {
+      const targetId = String(targetUserId || "").trim();
+      if (!targetId || !callId || !candidate) return;
+      emitToAdminUser(targetId, "admin-call:ice-candidate", {
+        callId,
+        candidate,
+        senderId: socket.data.userId,
+      });
+    });
+
+    socket.on("admin-call:reject", ({ targetUserId, callId }) => {
+      const targetId = String(targetUserId || "").trim();
+      if (!targetId || !callId) return;
+      emitToAdminUser(targetId, "admin-call:rejected", {
+        callId,
+        responderId: socket.data.userId,
+        responderName: socket.data.username,
+      });
+    });
+
+    socket.on("admin-call:end", ({ targetUserId, callId, reason }) => {
+      const targetId = String(targetUserId || "").trim();
+      if (!targetId || !callId) return;
+      emitToAdminUser(targetId, "admin-call:ended", {
+        callId,
+        reason: reason || "ended",
+        senderId: socket.data.userId,
+      });
+    });
+
     socket.on("disconnect", () => {
+      removeAdminSocket(socket.data.userId, socket.id);
       console.log(`🛡️  Admin socket disconnected: ${socket.data.username}`);
     });
   });
