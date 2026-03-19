@@ -38,6 +38,8 @@ const COLLECTIONS_TO_BACKUP = [
 ];
 
 const MAX_BACKUP_DAYS = 7;
+const BACKUPS_ROOT = "backups";
+const BACKUP_INDEX_ROOT = "backup_index";
 
 // 24-hex ObjectId regex (referans alanlarını tespit etmek için)
 const OBJECTID_RE = /^[a-f\d]{24}$/i;
@@ -74,6 +76,43 @@ function serializeDoc(doc) {
   return JSON.parse(JSON.stringify(doc));
 }
 
+function createBackupId(now = new Date()) {
+  return now.toISOString().replace(/[:.]/g, "-");
+}
+
+function buildMetaPayload(result, extra = {}) {
+  return {
+    backupId: result.backupId,
+    date: result.date,
+    timestamp: result.timestamp,
+    totalDocuments: result.totalDocuments,
+    collectionsCount: Object.keys(result.collections).length,
+    errors: result.errors.length,
+    durationMs: result.durationMs,
+    status: result.errors.length === 0 ? "success" : "partial",
+    trigger: extra.trigger || "manual",
+    reason: extra.reason || null,
+  };
+}
+
+async function resolveBackupId(backupKey) {
+  if (!backupKey) return null;
+
+  const directRef = admin.database().ref(`${BACKUP_INDEX_ROOT}/${backupKey}`);
+  const directSnapshot = await directRef.once("value");
+  if (directSnapshot.exists()) {
+    return backupKey;
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(backupKey)) {
+    return null;
+  }
+
+  const backups = await listBackups();
+  const latestMatch = backups.find((backup) => backup.date === backupKey);
+  return latestMatch?.id || null;
+}
+
 /**
  * Restore sırasında string ObjectId'leri tekrar ObjectId'ye çevirir (recursive)
  */
@@ -100,12 +139,14 @@ function restoreObjectIds(obj) {
 /**
  * Tüm koleksiyonları yedekle → Firebase Realtime DB'ye yaz
  */
-async function runBackup() {
+async function runBackup(options = {}) {
   const startTime = Date.now();
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const dateKey = new Date().toISOString().slice(0, 10); // 2026-03-20
+  const now = options.now instanceof Date ? options.now : new Date();
+  const timestamp = now.toISOString();
+  const backupId = createBackupId(now);
+  const dateKey = timestamp.slice(0, 10);
 
-  logger.info(`🔄 Backup başlıyor: ${timestamp}`);
+  logger.info(`🔄 Backup başlıyor: ${backupId}`);
 
   // Debug: Mongoose baglanti durumu
   const readyState = mongoose.connection.readyState;
@@ -118,6 +159,7 @@ async function runBackup() {
   }
 
   const result = {
+    backupId,
     timestamp,
     date: dateKey,
     collections: {},
@@ -129,28 +171,23 @@ async function runBackup() {
   for (const colName of COLLECTIONS_TO_BACKUP) {
     try {
       const db = getDb();
-
-      // Dogrudan koleksiyona eris, countDocuments ile kontrol et
       const collection = db.collection(colName);
-      const count = await collection.countDocuments();
+      const docs = await collection.find({}).sort({ _id: 1 }).toArray();
+      const count = docs.length;
+
+      const ref = admin.database().ref(`${BACKUPS_ROOT}/${backupId}/${colName}`);
+      await ref.set(null);
 
       if (count === 0) {
+        await ref.set({});
         result.collections[colName] = { count: 0, status: "empty" };
         continue;
       }
 
-      const docs = await collection.find({}).sort({ _id: 1 }).toArray();
       result.collections[colName] = { count: docs.length, status: "ok" };
       result.totalDocuments += docs.length;
 
-      // Firebase Realtime DB'ye yaz
-      const ref = admin.database().ref(`backups/${dateKey}/${colName}`);
-
-      // Önce eski veriyi temizle (aynı gün tekrar çalışırsa stale data kalmasın)
-      await ref.set(null);
-
       if (count > 0) {
-        // Chunk'lar halinde yaz (Firebase tek yazma limiti ~16 MB)
         const chunkSize = 200;
         for (let i = 0; i < docs.length; i += chunkSize) {
           const chunk = docs.slice(i, i + chunkSize);
@@ -173,27 +210,21 @@ async function runBackup() {
   // Süre hesapla
   result.durationMs = Date.now() - startTime;
 
-  const metaPayload = {
-    timestamp,
-    totalDocuments: result.totalDocuments,
-    collectionsCount: Object.keys(result.collections).length,
-    errors: result.errors.length,
-    durationMs: result.durationMs,
-    status: result.errors.length === 0 ? "success" : "partial",
-  };
+  const metaPayload = buildMetaPayload(result, options);
 
-  // Metadata'yı hem backup verisi altına hem de hafif indeks node'una yaz
-  await admin.database().ref(`backups/${dateKey}/_meta`).set(metaPayload);
-  await admin.database().ref(`backup_index/${dateKey}`).set(metaPayload);
+  await admin.database().ref(`${BACKUPS_ROOT}/${backupId}/_meta`).set(metaPayload);
+  await admin.database().ref(`${BACKUP_INDEX_ROOT}/${backupId}`).set(metaPayload);
 
-  // Eski backupları temizle
   await cleanOldBackups();
 
   logger.info(
     `✅ Backup tamamlandı: ${result.totalDocuments} doküman, ${result.durationMs}ms, ${result.errors.length} hata`
   );
 
-  return result;
+  return {
+    ...result,
+    status: metaPayload.status,
+  };
 }
 
 /**
@@ -202,21 +233,23 @@ async function runBackup() {
  */
 async function cleanOldBackups() {
   try {
-    const indexRef = admin.database().ref("backup_index");
+    const indexRef = admin.database().ref(BACKUP_INDEX_ROOT);
     const snapshot = await indexRef.once("value");
     const data = snapshot.val();
     if (!data) return;
 
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - MAX_BACKUP_DAYS);
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
-
-    const keysToDelete = Object.keys(data).filter((key) => key < cutoffStr);
+    const cutoffMs = Date.now() - MAX_BACKUP_DAYS * 24 * 60 * 60 * 1000;
+    const keysToDelete = Object.entries(data)
+      .filter(([, meta]) => {
+        const rawTimestamp = meta?.timestamp;
+        const parsed = rawTimestamp ? Date.parse(rawTimestamp) : Number.NaN;
+        return Number.isFinite(parsed) && parsed < cutoffMs;
+      })
+      .map(([key]) => key);
 
     for (const key of keysToDelete) {
-      // Hem asıl backup verisini hem de index kaydını sil
-      await admin.database().ref(`backups/${key}`).remove();
-      await admin.database().ref(`backup_index/${key}`).remove();
+      await admin.database().ref(`${BACKUPS_ROOT}/${key}`).remove();
+      await admin.database().ref(`${BACKUP_INDEX_ROOT}/${key}`).remove();
       logger.info(`🗑️ Eski backup silindi: ${key}`);
     }
   } catch (err) {
@@ -230,18 +263,25 @@ async function cleanOldBackups() {
  */
 async function listBackups() {
   try {
-    const indexRef = admin.database().ref("backup_index");
+    const indexRef = admin.database().ref(BACKUP_INDEX_ROOT);
     const snapshot = await indexRef.once("value");
     const data = snapshot.val();
     if (!data) return [];
 
-    return Object.keys(data)
-      .sort()
-      .reverse()
-      .map((dateKey) => ({
-        date: dateKey,
-        ...(data[dateKey] || {}),
-      }));
+    return Object.entries(data)
+      .map(([backupId, meta]) => ({
+        id: backupId,
+        date: meta?.date || String(backupId).slice(0, 10),
+        ...(meta || {}),
+      }))
+      .sort((left, right) => {
+        const leftTs = Date.parse(left.timestamp || "");
+        const rightTs = Date.parse(right.timestamp || "");
+        if (Number.isFinite(leftTs) && Number.isFinite(rightTs)) {
+          return rightTs - leftTs;
+        }
+        return String(right.id).localeCompare(String(left.id));
+      });
   } catch (err) {
     logger.error("Backup listeleme hatası:", err.message);
     return [];
@@ -251,11 +291,19 @@ async function listBackups() {
 /**
  * Belirli bir günün backupını Firebase'den çeker
  */
-async function getBackupData(dateKey) {
+async function getBackupData(backupKey) {
   try {
-    const ref = admin.database().ref(`backups/${dateKey}`);
+    const resolvedBackupId = await resolveBackupId(backupKey);
+    if (!resolvedBackupId) {
+      return null;
+    }
+
+    const ref = admin.database().ref(`${BACKUPS_ROOT}/${resolvedBackupId}`);
     const snapshot = await ref.once("value");
-    return snapshot.val();
+    return {
+      backupId: resolvedBackupId,
+      data: snapshot.val(),
+    };
   } catch (err) {
     logger.error("Backup getirme hatası:", err.message);
     return null;
@@ -267,14 +315,32 @@ async function getBackupData(dateKey) {
  * ⚠️ DİKKAT: Mevcut verilerin üzerine yazar!
  * Tüm string ObjectId referanslarını (userId, senderId vb.) recursive olarak geri çevirir
  */
-async function restoreBackup(dateKey, collectionsToRestore = null) {
-  const backupData = await getBackupData(dateKey);
-  if (!backupData) throw new Error(`${dateKey} tarihli backup bulunamadı`);
+async function restoreBackup(backupKey, collectionsToRestore = null) {
+  const backupSnapshot = await getBackupData(backupKey);
+  if (!backupSnapshot?.data) throw new Error(`${backupKey} anahtarlı backup bulunamadı`);
+
+  const { backupId, data: backupData } = backupSnapshot;
+
+  const safetyBackup = await runBackup({
+    trigger: "restore_guard",
+    reason: `pre_restore:${backupId}`,
+  });
+  if (safetyBackup.errors.length > 0) {
+    throw new Error(
+      `Restore iptal edildi. Koruma yedeği eksik alındı (${safetyBackup.backupId}).`
+    );
+  }
 
   const db = getDb();
 
-  const results = {};
-  // Sadece bilinen koleksiyonları kabul et (güvenlik)
+  const results = {
+    backupId,
+    restoredFrom: backupId,
+    safetyBackupId: safetyBackup.backupId,
+    collections: {},
+    errors: [],
+  };
+
   const allowed = new Set(COLLECTIONS_TO_BACKUP);
   const targetCollections = (collectionsToRestore || COLLECTIONS_TO_BACKUP).filter(
     (c) => allowed.has(c)
@@ -282,37 +348,49 @@ async function restoreBackup(dateKey, collectionsToRestore = null) {
 
   for (const colName of targetCollections) {
     const colData = backupData[colName];
-    if (!colData || colName === "_meta") {
-      results[colName] = { status: "skipped", count: 0 };
-      continue;
-    }
 
     try {
-      const docs = Object.values(colData);
-      if (docs.length === 0) {
-        results[colName] = { status: "empty", count: 0 };
+      const collection = db.collection(colName);
+
+      if (!colData || colName === "_meta") {
+        await collection.deleteMany({});
+        results.collections[colName] = { status: "restored", count: 0 };
+        logger.info(`  ✅ ${colName}: 0 doküman geri yüklendi`);
         continue;
       }
 
-      const collection = db.collection(colName);
-
-      // Tüm ObjectId alanlarını recursive olarak geri çevir
+      const docs = Object.values(colData);
       const cleanDocs = docs.map((doc) => restoreObjectIds(doc));
+      const backupIds = cleanDocs
+        .map((doc) => doc?._id)
+        .filter((value) => value !== undefined && value !== null);
 
-      // Mevcut koleksiyonu temizle ve yeni verileri ekle
-      await collection.deleteMany({});
       if (cleanDocs.length > 0) {
-        const batchSize = 1000;
+        const batchSize = 500;
         for (let i = 0; i < cleanDocs.length; i += batchSize) {
           const batch = cleanDocs.slice(i, i + batchSize);
-          await collection.insertMany(batch, { ordered: false });
+          const operations = batch.map((doc) => ({
+            replaceOne: {
+              filter: { _id: doc._id },
+              replacement: doc,
+              upsert: true,
+            },
+          }));
+          await collection.bulkWrite(operations, { ordered: false });
         }
       }
 
-      results[colName] = { status: "restored", count: cleanDocs.length };
+      if (backupIds.length > 0) {
+        await collection.deleteMany({ _id: { $nin: backupIds } });
+      } else {
+        await collection.deleteMany({});
+      }
+
+      results.collections[colName] = { status: "restored", count: cleanDocs.length };
       logger.info(`  ✅ ${colName}: ${cleanDocs.length} doküman geri yüklendi`);
     } catch (err) {
-      results[colName] = { status: "error", error: err.message };
+      results.collections[colName] = { status: "error", error: err.message };
+      results.errors.push({ collection: colName, error: err.message });
       logger.error(`  ❌ ${colName} restore hatası:`, err.message);
     }
   }
