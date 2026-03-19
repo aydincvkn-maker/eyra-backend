@@ -12,15 +12,15 @@ const mongoose = require("mongoose");
 const admin = require("firebase-admin");
 const { logger } = require("../utils/logger");
 
-// Yedeklenecek koleksiyonlar (kritik veriler)
+// Yedeklenecek koleksiyonlar (tum Mongoose modelleri)
 const COLLECTIONS_TO_BACKUP = [
   "users",
   "livestreams",
   "follows",
   "visitors",
   "callhistories",
-  "achievements",
   "missions",
+  "missionprogresses",
   "notifications",
   "transactions",
   "withdrawals",
@@ -28,7 +28,13 @@ const COLLECTIONS_TO_BACKUP = [
   "reports",
   "supporttickets",
   "gifts",
-  "violations",
+  "messages",
+  "payments",
+  "paymentevents",
+  "salarypayments",
+  "spinrewards",
+  "systemsettings",
+  "verifications",
 ];
 
 const MAX_BACKUP_DAYS = 7;
