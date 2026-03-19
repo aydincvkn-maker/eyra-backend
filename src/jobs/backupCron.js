@@ -95,6 +95,25 @@ function buildMetaPayload(result, extra = {}) {
   };
 }
 
+async function removeDocsMissingFromBackup(collection, backupIds) {
+  const backupIdSet = new Set(backupIds.map((value) => String(value)));
+  const staleIds = [];
+  const cursor = collection.find({}, { projection: { _id: 1 } });
+
+  while (await cursor.hasNext()) {
+    const doc = await cursor.next();
+    if (!doc?._id) continue;
+    if (!backupIdSet.has(String(doc._id))) {
+      staleIds.push(doc._id);
+    }
+  }
+
+  const batchSize = 1000;
+  for (let i = 0; i < staleIds.length; i += batchSize) {
+    await collection.deleteMany({ _id: { $in: staleIds.slice(i, i + batchSize) } });
+  }
+}
+
 async function resolveBackupId(backupKey) {
   if (!backupKey) return null;
 
@@ -381,7 +400,7 @@ async function restoreBackup(backupKey, collectionsToRestore = null) {
       }
 
       if (backupIds.length > 0) {
-        await collection.deleteMany({ _id: { $nin: backupIds } });
+        await removeDocsMissingFromBackup(collection, backupIds);
       } else {
         await collection.deleteMany({});
       }
@@ -403,7 +422,10 @@ function start() {
   if (cronJob) return;
   cronJob = cron.schedule("0 3 * * *", async () => {
     try {
-      await runBackup();
+      await runBackup({
+        trigger: "cron",
+        reason: "scheduled:03:00UTC",
+      });
     } catch (err) {
       logger.error("Cron backup hatası:", err.message);
     }
