@@ -97,6 +97,15 @@ async function runBackup() {
 
   logger.info(`🔄 Backup başlıyor: ${timestamp}`);
 
+  // Debug: Mongoose baglanti durumu
+  const readyState = mongoose.connection.readyState;
+  const dbName = mongoose.connection.db?.databaseName || "N/A";
+  logger.info(`  DB durum: readyState=${readyState}, dbName=${dbName}`);
+
+  if (readyState !== 1) {
+    throw new Error(`MongoDB bagli degil (readyState=${readyState}). Backup iptal.`);
+  }
+
   const result = {
     timestamp,
     date: dateKey,
