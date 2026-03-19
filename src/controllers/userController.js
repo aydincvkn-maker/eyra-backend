@@ -269,6 +269,68 @@ exports.getAdminUsers = async (req, res) => {
 };
 
 // ADMIN: Panel admin kullanÄ±cÄ±larÄ±nÄ± listele (admin, super_admin, moderator)
+// ADMIN: Elle kullanici olustur (panelden)
+exports.adminCreateUser = async (req, res) => {
+  try {
+    const { username, name, email, password, gender, country, coins } = req.body;
+
+    if (!username || !name || !email || !password) {
+      return sendError(res, 400, "username, name, email ve password zorunludur");
+    }
+
+    const trimmedUsername = String(username).trim();
+    const trimmedEmail = String(email).trim().toLowerCase();
+
+    if (trimmedUsername.length < 3 || trimmedUsername.length > 30) {
+      return sendError(res, 400, "Kullanici adi 3-30 karakter arasi olmali");
+    }
+    if (String(password).length < 6) {
+      return sendError(res, 400, "Sifre en az 6 karakter olmali");
+    }
+
+    const existing = await User.findOne({
+      $or: [{ username: trimmedUsername }, { email: trimmedEmail }],
+    }).lean();
+    if (existing) {
+      const field = existing.username === trimmedUsername ? "Kullanici adi" : "E-posta";
+      return sendError(res, 409, `${field} zaten kayitli`);
+    }
+
+    const user = await User.create({
+      username: trimmedUsername,
+      name: String(name).trim(),
+      email: trimmedEmail,
+      password: String(password),
+      gender: normalizeGender(gender) || "other",
+      country: country || "TR",
+      coins: Number(coins) >= 0 ? Number(coins) : 500,
+      isGuest: false,
+      isOnline: false,
+      lastSeen: new Date(),
+    });
+
+    logger.info(`Admin ${req.user.id} created user ${user._id} (${user.username})`);
+
+    res.status(201).json({
+      success: true,
+      user: {
+        _id: user._id,
+        username: user.username,
+        name: user.name,
+        email: user.email,
+        gender: user.gender,
+        country: user.country,
+        coins: user.coins,
+        level: user.level,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (err) {
+    logger.error("adminCreateUser error:", err);
+    sendError(res, 500, "Kullanici olusturulamadi");
+  }
+};
+
 exports.getPanelAdmins = async (req, res) => {
   try {
     const adminUsers = await User.find({
