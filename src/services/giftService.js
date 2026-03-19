@@ -171,6 +171,17 @@ exports.sendGift = async ({
     });
   }
 
+  // 10. Post-gift hooks: Transaction kaydet, mission ilerlet, achievement kontrol
+  //     Fire-and-forget — hediye gönderimini yavaşlatmaz
+  exports.postGiftHooks({
+    senderId,
+    recipientId: actualRecipientId,
+    giftId: gift._id,
+    giftValue: gift.valueCoins,
+    senderCoins: updatedSender.coins,
+    recipientCoins: updatedRecipient.coins,
+  }).catch((err) => console.error("postGiftHooks fire-and-forget error:", err));
+
   return {
     success: true,
     message,
