@@ -91,7 +91,7 @@ router.get("/presence", async (req, res) => {
 });
 
 // ✅ SADECE GOOGLE/APPLE İLE KAYITLI OLMAYAN TEST KULLANICILARI SİL
-router.delete("/delete-fake-users", blockInProduction, async (req, res) => {
+router.delete("/delete-fake-users", async (req, res) => {
   try {
     // Güvenli regex: sadece "test_", "fake_", "demo_" ile BAŞLAYAN kullanıcıları sil
     const result = await User.deleteMany({
@@ -121,7 +121,7 @@ router.delete("/delete-fake-users", blockInProduction, async (req, res) => {
 });
 
 // ✅ TÜM KULLANICILARI LİSTELE (Debugging için)
-router.get("/list-all-users", blockInProduction, async (req, res) => {
+router.get("/list-all-users", async (req, res) => {
   try {
     const users = await User.find().select("username email gender age isOnline isLive createdAt");
 
@@ -169,7 +169,7 @@ router.get("/check-online-status", async (req, res) => {
 });
 
 // ✅ TÜM KULLANICILARI OFFLINE YAP (Force reset)
-router.post("/reset-all-offline", blockInProduction, async (req, res) => {
+router.post("/reset-all-offline", async (req, res) => {
   try {
     const result = await User.updateMany(
       {},
@@ -194,7 +194,7 @@ router.post("/reset-all-offline", blockInProduction, async (req, res) => {
 });
 
 // ✅ KULLANICI CİNSİYETİNİ DEĞİŞTİR
-router.post("/update-user-gender", blockInProduction, async (req, res) => {
+router.post("/update-user-gender", async (req, res) => {
   try {
     const { email, gender } = req.body;
 
@@ -226,7 +226,7 @@ router.post("/update-user-gender", blockInProduction, async (req, res) => {
 });
 
 // ✅ GUEST KULLANICILARI SİL
-router.delete("/delete-guest-users", blockInProduction, async (req, res) => {
+router.delete("/delete-guest-users", async (req, res) => {
   try {
     const result = await User.deleteMany({
       email: { $regex: /@guest\.(com|local)/i },

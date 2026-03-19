@@ -128,13 +128,13 @@ const generalLimiter = createRateLimiter({
 });
 
 /**
- * Auth endpoints rate limiter (stricter)
- * 10 requests per minute
+ * Auth endpoints rate limiter (strict)
+ * 5 requests per 5 minutes — brute-force koruması
  */
 const authLimiter = createRateLimiter({
-  windowMs: 60 * 1000,
-  max: 10,
-  message: "Çok fazla giriş denemesi. Lütfen 1 dakika bekleyin.",
+  windowMs: 5 * 60 * 1000,
+  max: 5,
+  message: "Çok fazla giriş denemesi. Lütfen 5 dakika bekleyin.",
   keyPrefix: "auth"
 });
 
