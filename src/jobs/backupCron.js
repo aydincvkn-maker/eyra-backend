@@ -271,8 +271,7 @@ async function restoreBackup(dateKey, collectionsToRestore = null) {
   const backupData = await getBackupData(dateKey);
   if (!backupData) throw new Error(`${dateKey} tarihli backup bulunamadı`);
 
-  const db = mongoose.connection.db;
-  if (!db) throw new Error("MongoDB bağlantısı yok");
+  const db = getDb();
 
   const results = {};
   // Sadece bilinen koleksiyonları kabul et (güvenlik)
