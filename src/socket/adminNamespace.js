@@ -10,6 +10,12 @@ const User = require("../models/User");
 let adminNsp = null;
 const adminUserSockets = new Map();
 
+function getConnectedAdminIds() {
+  return Array.from(adminUserSockets.entries())
+    .filter(([, socketIds]) => socketIds && socketIds.size > 0)
+    .map(([userId]) => userId);
+}
+
 function addAdminSocket(userId, socketId) {
   const key = String(userId || "").trim();
   if (!key) return;
@@ -40,6 +46,33 @@ function emitToAdminUser(userId, event, payload) {
     adminNsp.to(socketId).emit(event, { ...payload, _ts: Date.now() });
   });
   return true;
+}
+
+function emitAdminPresenceSnapshot(socket) {
+  if (!socket) return;
+  socket.emit("admin-presence:snapshot", {
+    onlineAdminIds: getConnectedAdminIds(),
+    _ts: Date.now(),
+  });
+}
+
+function broadcastAdminPresenceUpdate(userId, isOnline, excludedSocketId = null) {
+  if (!adminNsp) return;
+
+  const payload = {
+    userId: String(userId || "").trim(),
+    isOnline: Boolean(isOnline),
+    _ts: Date.now(),
+  };
+
+  if (!payload.userId) return;
+
+  if (excludedSocketId) {
+    adminNsp.except(excludedSocketId).emit("admin-presence:update", payload);
+    return;
+  }
+
+  adminNsp.emit("admin-presence:update", payload);
 }
 
 /** Initialise the /admin namespace on the given io instance. */
@@ -76,7 +109,12 @@ function setup(io) {
   // ── Connection handler ──
   adminNsp.on("connection", (socket) => {
     console.log(`🛡️  Admin socket connected: ${socket.data.username} (${socket.data.role})`);
+    const existingSocketCount = adminUserSockets.get(socket.data.userId)?.size || 0;
     addAdminSocket(socket.data.userId, socket.id);
+    emitAdminPresenceSnapshot(socket);
+    if (existingSocketCount === 0) {
+      broadcastAdminPresenceUpdate(socket.data.userId, true, socket.id);
+    }
 
     // Admin chat: yazıyor göstergesi
     socket.on("admin-chat:typing", (data = {}) => {
@@ -161,7 +199,11 @@ function setup(io) {
     });
 
     socket.on("disconnect", () => {
+      const socketCountBeforeDisconnect = adminUserSockets.get(socket.data.userId)?.size || 0;
       removeAdminSocket(socket.data.userId, socket.id);
+      if (socketCountBeforeDisconnect === 1) {
+        broadcastAdminPresenceUpdate(socket.data.userId, false);
+      }
       console.log(`🛡️  Admin socket disconnected: ${socket.data.username}`);
     });
   });
