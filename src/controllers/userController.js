@@ -342,31 +342,22 @@ exports.getPanelAdmins = async (req, res) => {
 
     const userIds = adminUsers.map((u) => String(u._id));
     const presenceMap = await presenceService.getMultiplePresence(userIds);
-
-    // Panel'i aktif kullanan admin (isteÄŸi gÃ¶nderen) online sayÄ±lÄ±r
-    const requestingUserId = req.user?.id ? String(req.user.id) : null;
+    const hasAdminNamespace = typeof adminSocket.getNsp === "function" && Boolean(adminSocket.getNsp());
+    const onlineAdminIds = hasAdminNamespace && typeof adminSocket.getConnectedAdminIds === "function"
+      ? new Set((await adminSocket.getConnectedAdminIds()).map((id) => String(id)))
+      : null;
 
     const formattedAdmins = adminUsers.map((user) => {
       const uid = String(user._id);
-      // Ä°steÄŸi gÃ¶nderen admin paneli aktif kullanÄ±yor â†’ online
-      if (requestingUserId && uid === requestingUserId) {
-        return {
-          _id: user._id,
-          username: user.username,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          isOwner: user.isOwner || false,
-          isPanelRestricted: user.isPanelRestricted || false,
-          isOnline: true,
-        };
-      }
       const presenceData = presenceMap[uid] || {
         online: false,
         status: "offline",
       };
       const presenceStatus = normalizePresenceStatus(presenceData);
-      const isOnline = presenceStatus !== "offline";
+      const isOnline = onlineAdminIds
+        ? onlineAdminIds.has(uid)
+        : presenceStatus !== "offline";
+
       return {
         _id: user._id,
         username: user.username,

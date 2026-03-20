@@ -232,4 +232,10 @@ function getNsp() {
   return adminNsp;
 }
 
-module.exports = { setup, emit, emitToAdminUser, getNsp };
+module.exports = {
+  setup,
+  emit,
+  emitToAdminUser,
+  getNsp,
+  getConnectedAdminIds,
+};
