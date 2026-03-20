@@ -79,12 +79,24 @@ function setup(io) {
     addAdminSocket(socket.data.userId, socket.id);
 
     // Admin chat: yazıyor göstergesi
-    socket.on("admin-chat:typing", () => {
-      socket.broadcast.emit("admin-chat:typing", {
+    socket.on("admin-chat:typing", (data = {}) => {
+      const rawRecipientId = String(data.recipientId || "").trim();
+      const threadType = rawRecipientId ? "direct" : "group";
+      const payload = {
         userId: socket.data.userId,
         username: socket.data.username,
+        threadType,
+        recipientId: rawRecipientId || null,
         _ts: Date.now(),
-      });
+      };
+
+      if (threadType === "direct") {
+        if (!rawRecipientId || rawRecipientId === socket.data.userId) return;
+        emitToAdminUser(rawRecipientId, "admin-chat:typing", payload);
+        return;
+      }
+
+      socket.broadcast.emit("admin-chat:typing", payload);
     });
 
     socket.on("admin-call:initiate", ({ targetUserId, callId, offer }) => {

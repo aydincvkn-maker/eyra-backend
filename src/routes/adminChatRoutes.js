@@ -7,6 +7,45 @@ const admin = require("../middleware/admin");
 const AdminMessage = require("../models/AdminMessage");
 const { sendSuccess, sendError } = require("../utils/response");
 
+function buildDirectThreadFilter(myId, recipientId) {
+  return {
+    $or: [
+      {
+        threadType: "direct",
+        senderId: myId,
+        recipientId,
+      },
+      {
+        threadType: "direct",
+        senderId: recipientId,
+        recipientId: myId,
+      },
+      {
+        threadType: { $exists: false },
+        senderId: myId,
+        recipientId,
+      },
+      {
+        threadType: { $exists: false },
+        senderId: recipientId,
+        recipientId: myId,
+      },
+    ],
+  };
+}
+
+function buildGroupThreadFilter() {
+  return {
+    $or: [
+      { threadType: "group" },
+      {
+        threadType: { $exists: false },
+        recipientId: null,
+      },
+    ],
+  };
+}
+
 // Tüm route'lar admin auth gerektirir
 router.use(auth);
 router.use(admin);
@@ -26,14 +65,9 @@ router.get("/messages", async (req, res) => {
         return sendError(res, 400, "Geçersiz alıcı kimliği");
       }
 
-      filter = {
-        $or: [
-          { senderId: myId, recipientId: requestedRecipientId },
-          { senderId: requestedRecipientId, recipientId: myId },
-        ],
-      };
+      filter = buildDirectThreadFilter(myId, requestedRecipientId);
     } else {
-      filter = { recipientId: null };
+      filter = buildGroupThreadFilter();
     }
 
     const [messages, total] = await Promise.all([
@@ -73,6 +107,7 @@ router.post("/messages", async (req, res) => {
       senderName: req.user.username || req.user.name || "Admin",
       senderRole: req.user.role,
       content,
+      threadType: recipientId ? "direct" : "group",
       recipientId,
     });
 
@@ -82,6 +117,7 @@ router.post("/messages", async (req, res) => {
       senderName: message.senderName,
       senderRole: message.senderRole,
       content: message.content,
+      threadType: message.threadType,
       recipientId: message.recipientId,
       createdAt: message.createdAt,
     };
@@ -116,7 +152,9 @@ router.delete("/messages/:id", async (req, res) => {
     await AdminMessage.findByIdAndDelete(req.params.id);
 
     const adminNamespace = require("../socket/adminNamespace");
-    if (msg.recipientId) {
+    const isDirectMessage = msg.threadType === "direct" || Boolean(msg.recipientId);
+
+    if (isDirectMessage) {
       adminNamespace.emitToAdminUser(msg.senderId, "admin-chat:deleted", { messageId: req.params.id });
       adminNamespace.emitToAdminUser(msg.recipientId, "admin-chat:deleted", { messageId: req.params.id });
     } else {

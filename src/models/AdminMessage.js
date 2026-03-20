@@ -7,6 +7,13 @@ const adminMessageSchema = new mongoose.Schema(
     senderName: { type: String, required: true },
     senderRole: { type: String, required: true },
     content: { type: String, required: true, maxlength: 2000 },
+    threadType: {
+      type: String,
+      enum: ["group", "direct"],
+      default: function () {
+        return this.recipientId ? "direct" : "group";
+      },
+    },
     // Boş = genel grup chat, dolu = özel mesaj
     recipientId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
   },
@@ -14,6 +21,6 @@ const adminMessageSchema = new mongoose.Schema(
 );
 
 adminMessageSchema.index({ createdAt: -1 });
-adminMessageSchema.index({ recipientId: 1, createdAt: -1 });
+adminMessageSchema.index({ threadType: 1, recipientId: 1, createdAt: -1 });
 
 module.exports = mongoose.model("AdminMessage", adminMessageSchema);
