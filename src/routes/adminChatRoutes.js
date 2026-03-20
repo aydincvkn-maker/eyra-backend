@@ -46,6 +46,23 @@ function buildGroupThreadFilter() {
   };
 }
 
+function emitThreadCleared(adminNamespace, threadType, actorId, recipientId = null) {
+  const payload = {
+    threadType,
+    actorId: String(actorId),
+    recipientId: recipientId ? String(recipientId) : null,
+    participantIds: recipientId ? [String(actorId), String(recipientId)] : [],
+  };
+
+  if (threadType === "direct" && recipientId) {
+    adminNamespace.emitToAdminUser(actorId, "admin-chat:cleared", payload);
+    adminNamespace.emitToAdminUser(recipientId, "admin-chat:cleared", payload);
+    return;
+  }
+
+  adminNamespace.emit("admin-chat:cleared", payload);
+}
+
 // Tüm route'lar admin auth gerektirir
 router.use(auth);
 router.use(admin);
@@ -162,6 +179,47 @@ router.delete("/messages/:id", async (req, res) => {
     }
 
     sendSuccess(res, { deleted: true });
+  } catch (err) {
+    sendError(res, 500, err.message);
+  }
+});
+
+// DELETE /api/admin-chat/messages — Aktif thread'deki tüm mesajları sil
+router.delete("/messages", async (req, res) => {
+  try {
+    const requestedRecipientId = String(req.query.recipientId || "").trim();
+    const myId = String(req.user.id);
+
+    let filter;
+    let threadType;
+
+    if (requestedRecipientId) {
+      if (!mongoose.Types.ObjectId.isValid(requestedRecipientId)) {
+        return sendError(res, 400, "Geçersiz alıcı kimliği");
+      }
+
+      filter = buildDirectThreadFilter(myId, requestedRecipientId);
+      threadType = "direct";
+    } else {
+      filter = buildGroupThreadFilter();
+      threadType = "group";
+    }
+
+    const result = await AdminMessage.deleteMany(filter);
+    const adminNamespace = require("../socket/adminNamespace");
+
+    emitThreadCleared(
+      adminNamespace,
+      threadType,
+      myId,
+      requestedRecipientId || null,
+    );
+
+    sendSuccess(res, {
+      deleted: true,
+      deletedCount: result.deletedCount || 0,
+      threadType,
+    });
   } catch (err) {
     sendError(res, 500, err.message);
   }
