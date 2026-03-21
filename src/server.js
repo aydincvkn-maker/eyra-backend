@@ -84,6 +84,7 @@ const withdrawalRoutes = require("./routes/withdrawalRoutes");
 const translateRoutes = require("./routes/translateRoutes");
 const adminChatRoutes = require("./routes/adminChatRoutes");
 const backupRoutes = require("./routes/backupRoutes");
+const postRoutes = require("./routes/postRoutes");
 const { generalLimiter } = require("./middleware/rateLimit");
 const maintenanceMiddleware = require("./middleware/maintenanceMiddleware");
 
@@ -366,6 +367,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/withdrawals", withdrawalRoutes);
 app.use("/api/translate", translateRoutes);
 app.use("/api/admin-chat", adminChatRoutes);
+app.use("/api/posts", postRoutes);
 app.use("/api/admin", backupRoutes);
 
 // Debug/maintenance endpoints — PRODUCTION'DA TAMAMEN DEVRE DIŞI
