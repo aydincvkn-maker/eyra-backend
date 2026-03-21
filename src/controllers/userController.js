@@ -908,6 +908,7 @@ exports.getMyProfile = async (req, res) => {
         username: user.username,
         name: user.name,
         email: user.email,
+        preferredLanguage: user.preferredLanguage || "tr",
         profileImage: user.profileImage || "",
         gender: user.gender || "other",
         age: user.age || 0,
@@ -945,7 +946,7 @@ exports.getMyProfile = async (req, res) => {
 exports.updateMyProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { name, username, gender, age, location, country, bio } = req.body;
+    const { name, username, gender, age, location, country, bio, preferredLanguage } = req.body;
 
     // Username benzersizlik kontrolÃ¼
     if (username) {
@@ -969,6 +970,9 @@ exports.updateMyProfile = async (req, res) => {
     if (location) updateData.location = location;
     if (country) updateData.country = country;
     if (bio !== undefined) updateData.bio = bio;
+    if (typeof preferredLanguage === "string" && preferredLanguage.trim()) {
+      updateData.preferredLanguage = preferredLanguage.trim().toLowerCase();
+    }
 
     const user = await User.findByIdAndUpdate(
       userId,
@@ -992,6 +996,7 @@ exports.updateMyProfile = async (req, res) => {
         username: user.username,
         name: user.name,
         email: user.email,
+        preferredLanguage: user.preferredLanguage || "tr",
         profileImage: user.profileImage || "",
         gender: user.gender,
         age: user.age,

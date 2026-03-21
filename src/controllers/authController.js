@@ -51,6 +51,7 @@ const buildUserPayload = (user) => ({
   username: user.username,
   name: user.name,
   email: user.email,
+  preferredLanguage: user.preferredLanguage || "tr",
   gender: user.gender,
   age: user.age,
   location: user.location,
