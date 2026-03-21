@@ -6,7 +6,17 @@ const adminMessageSchema = new mongoose.Schema(
     senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     senderName: { type: String, required: true },
     senderRole: { type: String, required: true },
-    content: { type: String, required: true, maxlength: 2000 },
+    content: { type: String, default: "", maxlength: 2000 },
+    attachment: {
+      url: { type: String },
+      type: {
+        type: String,
+        enum: ["image", "video", "audio", "file"],
+      },
+      fileName: { type: String },
+      fileSize: { type: Number },
+      mimeType: { type: String },
+    },
     threadType: {
       type: String,
       enum: ["group", "direct"],

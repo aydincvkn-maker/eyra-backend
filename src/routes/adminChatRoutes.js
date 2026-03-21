@@ -1,11 +1,127 @@
 // src/routes/adminChatRoutes.js
 const express = require("express");
 const router = express.Router();
+const fs = require("fs");
 const mongoose = require("mongoose");
+const multer = require("multer");
+const path = require("path");
 const auth = require("../middleware/auth");
 const admin = require("../middleware/admin");
 const AdminMessage = require("../models/AdminMessage");
 const { sendSuccess, sendError } = require("../utils/response");
+
+const allowedAdminChatMimeTypes = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "video/mp4",
+  "video/quicktime",
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/ogg",
+  "audio/wav",
+  "audio/aac",
+  "audio/x-m4a",
+  "audio/m4a",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+  "application/zip",
+  "application/x-rar-compressed",
+  "application/vnd.rar",
+]);
+
+const allowedAdminChatExtensions = new Set([
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".gif",
+  ".webp",
+  ".mp4",
+  ".mov",
+  ".mp3",
+  ".mp4a",
+  ".m4a",
+  ".ogg",
+  ".wav",
+  ".aac",
+  ".pdf",
+  ".doc",
+  ".docx",
+  ".txt",
+  ".zip",
+  ".rar",
+]);
+
+const attachmentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const mimeType = String(file.mimetype || "").toLowerCase();
+    const extension = path.extname(file.originalname || "").toLowerCase();
+    if (
+      allowedAdminChatMimeTypes.has(mimeType)
+      || allowedAdminChatExtensions.has(extension)
+    ) {
+      return cb(null, true);
+    }
+
+    return cb(new Error("Bu dosya türü desteklenmiyor"), false);
+  },
+});
+
+function inferAttachmentType(mimeType) {
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+  return "file";
+}
+
+function normalizeAttachment(rawAttachment) {
+  if (!rawAttachment) return null;
+
+  const attachment = typeof rawAttachment === "string"
+    ? JSON.parse(rawAttachment)
+    : rawAttachment;
+
+  const url = String(attachment.url || "").trim();
+  const type = String(attachment.type || "file").trim();
+  const fileName = String(attachment.fileName || "Ek dosya").trim();
+  const mimeType = String(attachment.mimeType || "application/octet-stream").trim();
+  const fileSize = Number(attachment.fileSize || 0);
+
+  if (!url || !url.startsWith("/uploads/admin-chat/")) {
+    throw new Error("Geçersiz ek dosya yolu");
+  }
+
+  if (!["image", "video", "audio", "file"].includes(type)) {
+    throw new Error("Geçersiz ek dosya türü");
+  }
+
+  return {
+    url,
+    type,
+    fileName: fileName || "Ek dosya",
+    fileSize: Number.isFinite(fileSize) ? fileSize : 0,
+    mimeType: mimeType || "application/octet-stream",
+  };
+}
+
+function buildMessagePayload(message) {
+  return {
+    _id: message._id,
+    senderId: message.senderId,
+    senderName: message.senderName,
+    senderRole: message.senderRole,
+    content: message.content,
+    attachment: message.attachment || null,
+    threadType: message.threadType,
+    recipientId: message.recipientId,
+    createdAt: message.createdAt,
+  };
+}
 
 function buildDirectThreadFilter(myId, recipientId) {
   return {
@@ -67,6 +183,43 @@ function emitThreadCleared(adminNamespace, threadType, actorId, recipientId = nu
 router.use(auth);
 router.use(admin);
 
+// POST /api/admin-chat/upload — Dosya/resim yükle
+router.post("/upload", attachmentUpload.single("media"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return sendError(res, 400, "Dosya yüklenmedi");
+    }
+
+    const file = req.file;
+    const extension = path.extname(file.originalname || "").toLowerCase();
+    const mimeType = String(file.mimetype || "application/octet-stream").toLowerCase();
+    const attachmentType = inferAttachmentType(mimeType);
+    const folder = attachmentType === "file" ? "files" : `${attachmentType}s`;
+    const timestamp = Date.now();
+    const fileName = `admin_${String(req.user.id)}_${timestamp}${extension}`;
+    const uploadDir = path.join(__dirname, `../../uploads/admin-chat/${folder}`);
+
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const filePath = path.join(uploadDir, fileName);
+    fs.writeFileSync(filePath, file.buffer);
+
+    return sendSuccess(res, {
+      attachment: {
+        url: `/uploads/admin-chat/${folder}/${fileName}`,
+        type: attachmentType,
+        fileName: file.originalname,
+        fileSize: file.size,
+        mimeType,
+      },
+    }, 201);
+  } catch (err) {
+    return sendError(res, 500, err.message || "Dosya yüklenemedi");
+  }
+});
+
 // GET /api/admin-chat/messages — Son mesajları getir (sayfalama destekli)
 router.get("/messages", async (req, res) => {
   try {
@@ -109,8 +262,14 @@ router.get("/messages", async (req, res) => {
 router.post("/messages", async (req, res) => {
   try {
     const content = String(req.body.content || "").trim();
-    if (!content || content.length > 2000) {
+    const attachment = normalizeAttachment(req.body.attachment);
+
+    if (content.length > 2000) {
       return sendError(res, 400, "Mesaj 1-2000 karakter arası olmalı");
+    }
+
+    if (!content && !attachment) {
+      return sendError(res, 400, "Mesaj veya ek dosya göndermelisiniz");
     }
 
     const rawRecipientId = String(req.body.recipientId || "").trim();
@@ -124,20 +283,12 @@ router.post("/messages", async (req, res) => {
       senderName: req.user.username || req.user.name || "Admin",
       senderRole: req.user.role,
       content,
+      attachment,
       threadType: recipientId ? "direct" : "group",
       recipientId,
     });
 
-    const payload = {
-      _id: message._id,
-      senderId: message.senderId,
-      senderName: message.senderName,
-      senderRole: message.senderRole,
-      content: message.content,
-      threadType: message.threadType,
-      recipientId: message.recipientId,
-      createdAt: message.createdAt,
-    };
+    const payload = buildMessagePayload(message);
 
     const adminNamespace = require("../socket/adminNamespace");
     if (recipientId) {
