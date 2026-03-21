@@ -7,7 +7,7 @@ const router = express.Router();
 const auth = require("../middleware/auth");
 const translationService = require("../services/translationService");
 
-const MAX_BATCH_ITEMS = 200;
+const MAX_BATCH_ITEMS = 1000;
 const MAX_TEXT_LENGTH = 5000;
 
 function sanitizeLanguage(lang) {
