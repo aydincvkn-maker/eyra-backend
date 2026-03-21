@@ -168,6 +168,22 @@ exports.sendMessage = async (fromUserId, toUserId, data) => {
     
     // Create consistent roomId
     const roomId = getChatRoomId(fromUserId, toUserId);
+    const clientTempId = String(data.clientTempId || '').trim();
+
+    if (clientTempId) {
+      const existingMessage = await Message.findOne({
+        roomId,
+        from: fromUserId,
+        to: toUserId,
+        isDeleted: false,
+        'metadata.clientTempId': clientTempId,
+      });
+
+      if (existingMessage) {
+        await existingMessage.populate('from', 'username name profileImage');
+        return existingMessage;
+      }
+    }
     
     // Determine message type
     let messageType = 'text';
@@ -184,6 +200,7 @@ exports.sendMessage = async (fromUserId, toUserId, data) => {
       type: messageType,
       content: text,
       metadata: {
+        clientTempId,
         replyToId: data.replyToId,
         mediaUrl: data.mediaUrl,
         mediaType: data.mediaType,

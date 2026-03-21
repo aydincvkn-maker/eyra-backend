@@ -35,6 +35,7 @@ function register(socket, io) {
       console.log(`📩 Calling chatService.sendMessage...`);
       const message = await chatService.sendMessage(fromUserId, data.to, {
         text: data.text,
+        clientTempId: data.tempId,
         replyToId: data.replyToId,
         mediaUrl: data.mediaUrl,
         mediaType: data.mediaType,

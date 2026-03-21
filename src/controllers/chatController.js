@@ -97,6 +97,7 @@ exports.sendMessage = async (req, res) => {
 
     const message = await chatService.sendMessage(fromUserId, toUserId, {
       text: req.body?.text,
+      clientTempId: req.body?.tempId,
       replyToId: req.body?.replyToId,
       mediaUrl: req.body?.mediaUrl,
       mediaType: req.body?.mediaType,
