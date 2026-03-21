@@ -9,17 +9,13 @@
 				"-e",
 				"require('./src/services/paymentProviders/stripeProvider'); require('./src/services/paymentService'); require('./src/controllers/paymentController'); require('./src/routes/paymentRoutes'); console.log('payments-backend-ok')"
 			],
-			"isBackground": false
-		},
-		{
-			"label": "backend-payments-sanity",
-			"type": "shell",
-			"command": "node",
-			"args": [
-				"-e",
-				"require('./src/services/paymentProviders/stripeProvider'); require('./src/services/paymentService'); require('./src/controllers/paymentController'); require('./src/routes/paymentRoutes'); console.log('payments-backend-ok')"
-			],
-			"isBackground": false
+			"isBackground": false,
+			"presentation": {
+				"reveal": "never",
+				"panel": "shared",
+				"clear": true,
+				"close": true
+			}
 		},
 		{
 			"label": "test-multer-routes",
@@ -28,7 +24,13 @@
 			"args": [
 				"-e",
 				"try { require('./src/routes/chatRoutes'); require('./src/routes/userRoutes'); require('./src/routes/verificationRoutes'); console.log('ALL-OK'); } catch(e) { console.error('FAIL:', e.message); process.exit(1); }"
-			]
+			],
+			"presentation": {
+				"reveal": "never",
+				"panel": "shared",
+				"clear": true,
+				"close": true
+			}
 		},
 		{
 			"label": "test-multer",
@@ -37,7 +39,13 @@
 			"args": [
 				"-e",
 				"require(\"./src/routes/chatRoutes\"); require(\"./src/routes/userRoutes\"); require(\"./src/routes/verificationRoutes\"); console.log(\"ALL-OK\")"
-			]
+			],
+			"presentation": {
+				"reveal": "never",
+				"panel": "shared",
+				"clear": true,
+				"close": true
+			}
 		},
 		{
 			"label": "backend-chat-static-sanity",
@@ -47,7 +55,13 @@
 				"-e",
 				"require('./src/server'); setTimeout(() => process.exit(0), 1000)"
 			],
-			"isBackground": false
+			"isBackground": false,
+			"presentation": {
+				"reveal": "never",
+				"panel": "shared",
+				"clear": true,
+				"close": true
+			}
 		}
 	]
 }
