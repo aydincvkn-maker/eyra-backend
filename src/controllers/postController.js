@@ -3,6 +3,7 @@ const Post = require("../models/Post");
 const User = require("../models/User");
 const path = require("path");
 const fs = require("fs");
+const fsp = require("fs/promises");
 
 // =============================================
 // POST FEED - Keşfet akışı
@@ -111,12 +112,10 @@ exports.createPost = async (req, res) => {
       const filename = `post_${userId}_${Date.now()}${ext}`;
       const uploadDir = path.join(__dirname, "../../uploads/posts");
 
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
+      await fsp.mkdir(uploadDir, { recursive: true });
 
       const filePath = path.join(uploadDir, filename);
-      fs.writeFileSync(filePath, req.file.buffer);
+      await fsp.writeFile(filePath, req.file.buffer);
 
       imageUrl = `/uploads/posts/${filename}`;
       type = text && text.trim() ? "photo_note" : "photo";
@@ -218,8 +217,10 @@ exports.deletePost = async (req, res) => {
     // Fotoğraf varsa sil
     if (post.imageUrl) {
       const filePath = path.join(__dirname, "../..", post.imageUrl);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      try {
+        await fsp.unlink(filePath);
+      } catch (_) {
+        // Dosya zaten silinmiş olabilir
       }
     }
 
