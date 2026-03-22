@@ -96,22 +96,15 @@ exports.getSpinStatus = async (req, res) => {
 exports.spin = async (req, res) => {
   try {
     const userId = req.user.id;
-    const user = await User.findById(userId).select("coins spinLastUsedAt isVip vipTier");
+    const user = await User.findById(userId).select("coins spinLastUsedAt isVip vipTier vipExpiresAt");
 
     if (!user) {
       return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
-    // ✅ Count today's spins and check limit
     const now = new Date();
     const todayStart = new Date(now);
     todayStart.setUTCHours(0, 0, 0, 0);
-
-    const todaySpinCount = await Transaction.countDocuments({
-      user: userId,
-      type: "spin_reward",
-      createdAt: { $gte: todayStart }
-    });
 
     const settings = await SystemSettings.findOne().lean();
     let dailyLimit = settings?.dailySpinLimit || 1;
@@ -125,19 +118,38 @@ exports.spin = async (req, res) => {
       dailyLimit = vipLimits[user.vipTier] || settings?.vipDailySpinLimit || 2;
     }
 
-    if (todaySpinCount >= dailyLimit) {
+    // Atomik spin kilidi: Önce placeholder Transaction oluştur, sonra sayıyı kontrol et
+    const spinTx = await Transaction.create({
+      user: userId,
+      type: "spin_reward",
+      amount: 0,
+      status: "pending",
+      description: "Çark çevriliyor...",
+    });
+
+    // Bugünkü spin sayısını kontrol et (az önce oluşturduğumuz dahil)
+    const todaySpinCount = await Transaction.countDocuments({
+      user: userId,
+      type: "spin_reward",
+      createdAt: { $gte: todayStart },
+    });
+
+    if (todaySpinCount > dailyLimit) {
+      // Limiti aştık — oluşturduğumuz placeholder'ı sil
+      await Transaction.findByIdAndDelete(spinTx._id);
       return res.status(429).json({
         success: false,
         message: "Bugünkü çark hakkınız doldu",
         nextSpinAt: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000),
         dailyLimit,
-        todaySpinCount,
+        todaySpinCount: todaySpinCount - 1,
       });
     }
 
     // Aktif ödülleri getir
     const rewards = await SpinReward.find({ isActive: true }).sort({ order: 1 });
     if (rewards.length === 0) {
+      await Transaction.findByIdAndDelete(spinTx._id);
       return res.status(500).json({ success: false, message: "Çark ödülleri ayarlanmamış" });
     }
 
@@ -190,16 +202,19 @@ exports.spin = async (req, res) => {
       }
     }
 
-    // Transaction kaydet
-    if (selectedReward.type === "coins" && selectedReward.value > 0) {
-      await Transaction.create({
-        user: userId,
-        type: "spin_reward",
-        amount: selectedReward.value,
+    // Placeholder Transaction'ı gerçek verilerle güncelle
+    await Transaction.findByIdAndUpdate(spinTx._id, {
+      $set: {
+        amount: selectedReward.value || 0,
         balanceAfter: updatedUser?.coins || 0,
+        status: "completed",
         description: `Çark ödülü: ${selectedReward.label}`,
-      });
-    }
+        metadata: {
+          rewardType: selectedReward.type,
+          rewardLabel: selectedReward.label,
+        },
+      },
+    });
 
     res.json({
       success: true,
