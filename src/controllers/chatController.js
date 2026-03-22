@@ -102,6 +102,7 @@ exports.sendMessage = async (req, res) => {
       replyToId: req.body?.replyToId,
       mediaUrl: req.body?.mediaUrl,
       mediaType: req.body?.mediaType,
+      durationSec: req.body?.durationSec,
     });
 
     return res.status(201).json({ message });
