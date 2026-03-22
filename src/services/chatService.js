@@ -204,6 +204,7 @@ exports.sendMessage = async (fromUserId, toUserId, data) => {
         replyToId: data.replyToId,
         mediaUrl: data.mediaUrl,
         mediaType: data.mediaType,
+        durationSec: data.durationSec || undefined,
         isForwarded: data.isForwarded || false,
       }
     });
