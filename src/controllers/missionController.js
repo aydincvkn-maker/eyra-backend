@@ -186,21 +186,35 @@ exports.claimReward = async (req, res) => {
     }
 
     const period = getPeriodForMission(mission.type);
-    const progress = await MissionProgress.findOne({
-      user: userId,
-      mission: missionId,
-      periodStart: period.start,
-    });
 
-    if (!progress) {
-      return res.status(400).json({ success: false, message: "Görev ilerlemeniz yok" });
-    }
+    // Atomik claim: isCompleted=true VE isRewardClaimed=false olan kaydı bul ve tek seferde güncelle
+    const claimed = await MissionProgress.findOneAndUpdate(
+      {
+        user: userId,
+        mission: missionId,
+        periodStart: period.start,
+        isCompleted: true,
+        isRewardClaimed: false,
+      },
+      {
+        $set: { isRewardClaimed: true, rewardClaimedAt: new Date() },
+      },
+      { new: true }
+    );
 
-    if (!progress.isCompleted) {
-      return res.status(400).json({ success: false, message: "Görev henüz tamamlanmadı" });
-    }
-
-    if (progress.isRewardClaimed) {
+    if (!claimed) {
+      // Neden başarısız olduğunu belirle
+      const progress = await MissionProgress.findOne({
+        user: userId,
+        mission: missionId,
+        periodStart: period.start,
+      });
+      if (!progress) {
+        return res.status(400).json({ success: false, message: "Görev ilerlemeniz yok" });
+      }
+      if (!progress.isCompleted) {
+        return res.status(400).json({ success: false, message: "Görev henüz tamamlanmadı" });
+      }
       return res.status(400).json({ success: false, message: "Ödül zaten alındı" });
     }
 
@@ -228,11 +242,6 @@ exports.claimReward = async (req, res) => {
         await User.findByIdAndUpdate(userId, { $set: { level: newLevel } });
       }
     }
-
-    // İlerleme güncelle
-    await MissionProgress.findByIdAndUpdate(progress._id, {
-      $set: { isRewardClaimed: true, rewardClaimedAt: new Date() },
-    });
 
     // Transaction kaydet
     if (mission.rewardCoins > 0) {
