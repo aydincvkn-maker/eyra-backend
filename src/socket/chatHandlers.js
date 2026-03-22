@@ -39,6 +39,7 @@ function register(socket, io) {
         replyToId: data.replyToId,
         mediaUrl: data.mediaUrl,
         mediaType: data.mediaType,
+        durationSec: data.durationSec,
       });
 
       console.log(`📩 Message saved with id: ${message._id}`);
