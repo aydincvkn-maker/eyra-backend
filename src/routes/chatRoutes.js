@@ -114,8 +114,8 @@ router.delete(
 // Forward
 router.post("/message/:messageId/forward", auth, chatController.forwardMessage);
 
-// Recent voice messages for Explore screen (optionally auth for future filtering)
-router.get("/voice-messages/recent", chatController.getRecentVoiceMessages);
+// Recent voice messages for Explore screen
+router.get("/voice-messages/recent", auth, chatController.getRecentVoiceMessages);
 
 // Admin: Send message to a user (admin panel → host)
 router.post(
