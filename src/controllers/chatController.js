@@ -430,3 +430,40 @@ exports.forwardMessage = async (req, res) => {
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
+
+// =========================
+// RECENT VOICE MESSAGES (for Explore screen)
+// =========================
+
+exports.getRecentVoiceMessages = async (req, res) => {
+  try {
+    const limit = Math.min(20, Math.max(1, Math.floor(Number(req.query.limit || 10))));
+
+    const messages = await Message.find({
+      type: "audio",
+      isDeleted: false,
+    })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate("from", "username name profileImage")
+      .lean();
+
+    const result = messages.map((msg) => ({
+      id: msg._id,
+      from: {
+        id: msg.from?._id,
+        name: msg.from?.name || msg.from?.username || "User",
+        profileImage: msg.from?.profileImage || "",
+      },
+      mediaUrl: msg.metadata?.mediaUrl || "",
+      content: msg.content || "",
+      durationSec: msg.metadata?.durationSec || 0,
+      createdAt: msg.createdAt,
+    }));
+
+    res.json({ success: true, voiceMessages: result });
+  } catch (err) {
+    console.error("getRecentVoiceMessages error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
