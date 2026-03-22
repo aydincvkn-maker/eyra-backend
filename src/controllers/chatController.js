@@ -1,5 +1,6 @@
 // src/controllers/chatController.js
 const Message = require("../models/Message");
+const User = require("../models/User");
 const chatService = require("../services/chatService");
 const { getChatRoomId } = require("../utils/chatUtils");
 const { sendError } = require("../utils/response");
