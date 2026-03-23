@@ -10,3 +10,9 @@
 - Keep error responses consistent with nearby route/controller conventions.
 - When changing sockets or live features, avoid duplicate counters, duplicate event listeners, and production-insecure auth fallbacks.
 - Add or update the smallest useful verification step when touching critical payment or auth paths.
+- Working style: default to implementation, not explanation.
+- Assume full authority for routine workspace changes; do not ask for confirmation before normal file edits, searches, or safe commands.
+- If the request is clear, inspect the code, apply the change directly, and verify it.
+- Do not stop to present a plan unless explicitly requested or the task is ambiguous.
+- Keep responses short, avoid repeated summaries, and do not offer multiple alternatives unless asked.
+- Prefer the smallest effective change and report only changed files, a short result, and any blocker.

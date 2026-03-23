@@ -1,6 +1,19 @@
 {
   "terminal.integrated.enablePersistentSessions": false,
   "terminal.integrated.persistentSessionReviveProcess": false,
+  "chat.editing.autoAcceptDelay": 1,
+  "chat.editing.confirmEditRequestRemoval": false,
+  "chat.editing.confirmEditRequestRetry": false,
+  "chat.tools.edits.autoApprove": {
+    "**/*": true,
+    "**/.git/**": false,
+    "**/.env": false
+  },
+  "chat.tools.terminal.enableAutoApprove": true,
+  "chat.tools.terminal.ignoreDefaultAutoApproveRules": true,
+  "chat.tools.terminal.autoApprove": {
+    "/.*/": true
+  },
   "git.autoRepositoryDetection": "openEditors",
   "git.ignoredRepositories": [
     "c:\\Users\\Casper\\Desktop\\eyra-backend\\eyra-backend",
