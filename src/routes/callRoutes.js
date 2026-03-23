@@ -1,23 +1,23 @@
 // src/routes/callRoutes.js
 // Video call signaling endpoints
 
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const auth = require('../middleware/auth');
-const presenceService = require('../services/presenceService');
-const { LIVEKIT_URL } = require('../config/env');
-const { generateLiveKitToken } = require('../services/liveService');
-const CallHistory = require('../models/CallHistory');
-const User = require('../models/User');
+const auth = require("../middleware/auth");
+const presenceService = require("../services/presenceService");
+const { LIVEKIT_URL } = require("../config/env");
+const { generateLiveKitToken } = require("../services/liveService");
+const CallHistory = require("../models/CallHistory");
+const User = require("../models/User");
 const { sendError } = require("../utils/response");
-const { createNotification } = require('../controllers/notificationController');
+const { createNotification } = require("../controllers/notificationController");
 
 // Cevaplanmayan aramalar için timeout (60 saniye)
 const CALL_ANSWER_TIMEOUT_MS = 60000;
 const callTimeouts = new Map();
 
 function getActiveSocketForUser(userId) {
-  const targetKey = String(userId || '').trim();
+  const targetKey = String(userId || "").trim();
   if (!targetKey || !global.userSockets || !global.io) return null;
 
   const socketIds = global.userSockets.get(targetKey);
@@ -54,7 +54,9 @@ async function handleCallTimeout(roomName) {
   if (!callInfo) return;
 
   const { callerId, targetUserId } = callInfo;
-  console.log(`⏰ Call timeout (${CALL_ANSWER_TIMEOUT_MS / 1000}s): ${roomName}`);
+  console.log(
+    `⏰ Call timeout (${CALL_ANSWER_TIMEOUT_MS / 1000}s): ${roomName}`,
+  );
 
   try {
     // Her iki kullanıcının busy durumunu temizle
@@ -66,7 +68,7 @@ async function handleCallTimeout(roomName) {
     // CallHistory'yi missed olarak güncelle
     await CallHistory.findOneAndUpdate(
       { roomName },
-      { $set: { status: 'missed', endedAt: new Date() } }
+      { $set: { status: "missed", endedAt: new Date() } },
     ).catch(() => {});
 
     // Active call'dan kaldır
@@ -78,9 +80,9 @@ async function handleCallTimeout(roomName) {
         const sockets = global.userSockets.get(String(uid));
         if (sockets && sockets.size > 0) {
           sockets.forEach((socketId) => {
-            global.io.to(socketId).emit('call:timeout', {
+            global.io.to(socketId).emit("call:timeout", {
               roomName,
-              message: 'Arama zaman aşımına uğradı',
+              message: "Arama zaman aşımına uğradı",
               timestamp: Date.now(),
             });
           });
@@ -90,22 +92,24 @@ async function handleCallTimeout(roomName) {
 
     // Arayana cevapsız arama bildirimi
     try {
-      const target = await User.findById(targetUserId).select('name username').lean();
-      const targetName = target?.name || target?.username || 'Birisi';
+      const target = await User.findById(targetUserId)
+        .select("name username")
+        .lean();
+      const targetName = target?.name || target?.username || "Birisi";
       await createNotification({
         recipientId: callerId,
-        type: 'call_missed',
-        title: 'Cevapsız Arama',
-        titleEn: 'Missed Call',
+        type: "call_missed",
+        title: "Cevapsız Arama",
+        titleEn: "Missed Call",
         body: `${targetName} aramanızı yanıtlayamadı`,
         bodyEn: `${targetName} couldn't answer your call`,
         senderId: targetUserId,
         relatedId: roomName,
-        relatedType: 'call',
+        relatedType: "call",
       });
     } catch (_) {}
   } catch (err) {
-    console.error('❌ Call timeout handler error:', err);
+    console.error("❌ Call timeout handler error:", err);
   }
 }
 
@@ -113,7 +117,7 @@ async function handleCallTimeout(roomName) {
  * POST /api/calls/initiate
  * Start a call to another user
  */
-router.post('/initiate', auth, async (req, res) => {
+router.post("/initiate", auth, async (req, res) => {
   try {
     const { targetUserId } = req.body;
     const callerId = req.user.id;
@@ -137,25 +141,25 @@ router.post('/initiate', auth, async (req, res) => {
         });
       }
     }
-    
+
     if (!targetPresence.online) {
-      return res.status(400).json({ 
-        message: 'Kullanıcı çevrimdışı',
-        presenceStatus: 'offline'
+      return res.status(400).json({
+        message: "Kullanıcı çevrimdışı",
+        presenceStatus: "offline",
       });
     }
 
     if (targetPresence.busy || targetPresence.inCall) {
-      return res.status(400).json({ 
-        message: 'Kullanıcı meşgul',
-        presenceStatus: 'in_call'
+      return res.status(400).json({
+        message: "Kullanıcı meşgul",
+        presenceStatus: "in_call",
       });
     }
 
     if (targetPresence.live) {
-      return res.status(400).json({ 
-        message: 'Kullanıcı canlı yayında',
-        presenceStatus: 'live'
+      return res.status(400).json({
+        message: "Kullanıcı canlı yayında",
+        presenceStatus: "live",
       });
     }
 
@@ -166,12 +170,12 @@ router.post('/initiate', auth, async (req, res) => {
     await Promise.all([
       presenceService.setBusy(callerId, true, {
         partnerId: targetUserId,
-        roomName
+        roomName,
       }),
       presenceService.setBusy(targetUserId, true, {
         partnerId: callerId,
-        roomName
-      })
+        roomName,
+      }),
     ]);
 
     // Store call info in global state
@@ -180,12 +184,15 @@ router.post('/initiate', auth, async (req, res) => {
         callerId,
         targetUserId,
         roomName,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       });
     }
 
     // Cevaplanmayan arama timeout'u başlat
-    const timer = setTimeout(() => handleCallTimeout(roomName), CALL_ANSWER_TIMEOUT_MS);
+    const timer = setTimeout(
+      () => handleCallTimeout(roomName),
+      CALL_ANSWER_TIMEOUT_MS,
+    );
     callTimeouts.set(roomName, timer);
 
     // Save call history record
@@ -193,34 +200,40 @@ router.post('/initiate', auth, async (req, res) => {
       await CallHistory.create({
         caller: callerId,
         receiver: targetUserId,
-        type: 'video',
-        status: 'missed', // Will be updated on accept/end
+        type: "video",
+        status: "missed", // Will be updated on accept/end
         roomName,
         startedAt: new Date(),
       });
     } catch (histErr) {
-      console.error('❌ CallHistory create error:', histErr);
+      console.error("❌ CallHistory create error:", histErr);
     }
 
     // Notify target user via socket
     if (global.io && global.userSockets) {
       const targetKey = String(targetUserId);
       console.log(`📞 Looking for target user: ${targetKey}`);
-      console.log(`📞 Active user sockets: ${Array.from(global.userSockets.keys()).join(', ')}`);
-      
+      console.log(
+        `📞 Active user sockets: ${Array.from(global.userSockets.keys()).join(", ")}`,
+      );
+
       const targetSockets = global.userSockets.get(targetKey);
       if (targetSockets && targetSockets.size > 0) {
-        console.log(`✅ Found ${targetSockets.size} socket(s) for ${targetKey}`);
-        const callerData = await require('../models/User').findById(callerId).select('username profileImage');
-        
-        targetSockets.forEach(socketId => {
+        console.log(
+          `✅ Found ${targetSockets.size} socket(s) for ${targetKey}`,
+        );
+        const callerData = await require("../models/User")
+          .findById(callerId)
+          .select("username profileImage");
+
+        targetSockets.forEach((socketId) => {
           console.log(`📡 Sending incoming_call to socket ${socketId}`);
-          global.io.to(socketId).emit('incoming_call', {
+          global.io.to(socketId).emit("incoming_call", {
             callerId: String(callerId),
-            callerName: callerData?.username || 'Unknown',
-            callerImage: callerData?.profileImage || '',
+            callerName: callerData?.username || "Unknown",
+            callerImage: callerData?.profileImage || "",
             roomName,
-            timestamp: Date.now()
+            timestamp: Date.now(),
           });
         });
       } else {
@@ -233,11 +246,10 @@ router.post('/initiate', auth, async (req, res) => {
       roomName,
       callerId: String(callerId),
       targetUserId: String(targetUserId),
-      message: 'Arama başlatıldı'
+      message: "Arama başlatıldı",
     });
-
   } catch (error) {
-    console.error('❌ Call initiate error:', error);
+    console.error("❌ Call initiate error:", error);
     sendError(res, 500, "Sunucu hatası");
   }
 });
@@ -246,7 +258,7 @@ router.post('/initiate', auth, async (req, res) => {
  * POST /api/calls/end
  * End an active call
  */
-router.post('/end', auth, async (req, res) => {
+router.post("/end", auth, async (req, res) => {
   try {
     const { roomName } = req.body;
     const userId = req.user.id;
@@ -260,14 +272,14 @@ router.post('/end', auth, async (req, res) => {
 
     // Get call info
     const callInfo = global.activeCalls?.get(roomName);
-    
+
     if (callInfo) {
       const { callerId, targetUserId } = callInfo;
 
       // Set both users as no longer busy
       await Promise.all([
         presenceService.setBusy(callerId, false),
-        presenceService.setBusy(targetUserId, false)
+        presenceService.setBusy(targetUserId, false),
       ]);
 
       // Update call history - mark as completed with duration
@@ -276,10 +288,10 @@ router.post('/end', auth, async (req, res) => {
         const durationSec = Math.floor((Date.now() - startTime) / 1000);
         await CallHistory.findOneAndUpdate(
           { roomName },
-          { $set: { status: 'completed', durationSec, endedAt: new Date() } }
+          { $set: { status: "completed", durationSec, endedAt: new Date() } },
         );
       } catch (histErr) {
-        console.error('❌ CallHistory update error:', histErr);
+        console.error("❌ CallHistory update error:", histErr);
       }
 
       // Remove from active calls
@@ -287,21 +299,20 @@ router.post('/end', auth, async (req, res) => {
 
       // Notify via socket
       if (global.io) {
-        global.io.emit('call:ended', {
+        global.io.emit("call:ended", {
           roomName,
           endedBy: String(userId),
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
       }
     }
 
     res.json({
       success: true,
-      message: 'Arama sonlandırıldı'
+      message: "Arama sonlandırıldı",
     });
-
   } catch (error) {
-    console.error('❌ Call end error:', error);
+    console.error("❌ Call end error:", error);
     sendError(res, 500, "Sunucu hatası");
   }
 });
@@ -310,7 +321,7 @@ router.post('/end', auth, async (req, res) => {
  * POST /api/calls/reject
  * Reject an incoming call
  */
-router.post('/reject', auth, async (req, res) => {
+router.post("/reject", auth, async (req, res) => {
   try {
     const { roomName } = req.body;
     const userId = req.user.id;
@@ -324,24 +335,24 @@ router.post('/reject', auth, async (req, res) => {
 
     // Get call info
     const callInfo = global.activeCalls?.get(roomName);
-    
+
     if (callInfo) {
       const { callerId, targetUserId } = callInfo;
 
       // Set both users as no longer busy
       await Promise.all([
         presenceService.setBusy(callerId, false),
-        presenceService.setBusy(targetUserId, false)
+        presenceService.setBusy(targetUserId, false),
       ]);
 
       // Update call history - mark as rejected
       try {
         await CallHistory.findOneAndUpdate(
           { roomName },
-          { $set: { status: 'rejected', endedAt: new Date() } }
+          { $set: { status: "rejected", endedAt: new Date() } },
         );
       } catch (histErr) {
-        console.error('❌ CallHistory reject update error:', histErr);
+        console.error("❌ CallHistory reject update error:", histErr);
       }
 
       // Remove from active calls
@@ -352,11 +363,11 @@ router.post('/reject', auth, async (req, res) => {
         const callerKey = String(callerId);
         const callerSockets = global.userSockets.get(callerKey);
         if (callerSockets && callerSockets.size > 0) {
-          callerSockets.forEach(socketId => {
-            global.io.to(socketId).emit('call:rejected', {
+          callerSockets.forEach((socketId) => {
+            global.io.to(socketId).emit("call:rejected", {
               roomName,
               rejectedBy: String(userId),
-              timestamp: Date.now()
+              timestamp: Date.now(),
             });
           });
         }
@@ -364,31 +375,32 @@ router.post('/reject', auth, async (req, res) => {
 
       // 🔔 Arayanı bilgilendir: "X sizi aradı" push bildirimi
       try {
-        const rejecter = await User.findById(userId).select('name username').lean();
-        const rejecterName = rejecter?.name || rejecter?.username || 'Birisi';
+        const rejecter = await User.findById(userId)
+          .select("name username")
+          .lean();
+        const rejecterName = rejecter?.name || rejecter?.username || "Birisi";
         await createNotification({
           recipientId: callerId,
-          type: 'call_missed',
-          title: 'Cevapsız Arama',
-          titleEn: 'Missed Call',
+          type: "call_missed",
+          title: "Cevapsız Arama",
+          titleEn: "Missed Call",
           body: `${rejecterName} aramanızı yanıtlayamadı`,
           bodyEn: `${rejecterName} couldn't answer your call`,
           senderId: userId,
           relatedId: roomName,
-          relatedType: 'call',
+          relatedType: "call",
         });
       } catch (notifErr) {
-        console.error('❌ Cevapsız arama bildirimi hatası:', notifErr.message);
+        console.error("❌ Cevapsız arama bildirimi hatası:", notifErr.message);
       }
     }
 
     res.json({
       success: true,
-      message: 'Arama reddedildi'
+      message: "Arama reddedildi",
     });
-
   } catch (error) {
-    console.error('❌ Call reject error:', error);
+    console.error("❌ Call reject error:", error);
     sendError(res, 500, "Sunucu hatası");
   }
 });
@@ -397,20 +409,20 @@ router.post('/reject', auth, async (req, res) => {
  * POST /api/calls/token
  * Generate LiveKit token for a call room
  */
-router.post('/token', auth, async (req, res) => {
+router.post("/token", auth, async (req, res) => {
   try {
     const { roomName, userName } = req.body;
     const userId = String(req.user.id);
 
     if (!roomName) {
-      return res.status(400).json({ ok: false, message: 'roomName gerekli' });
+      return res.status(400).json({ ok: false, message: "roomName gerekli" });
     }
 
-    const displayName = (userName || req.user.username || 'User').toString();
+    const displayName = (userName || req.user.username || "User").toString();
     const token = await generateLiveKitToken(roomName, displayName, userId);
 
-    if (!token || typeof token !== 'string') {
-      return res.status(500).json({ ok: false, message: 'Token üretilemedi' });
+    if (!token || typeof token !== "string") {
+      return res.status(500).json({ ok: false, message: "Token üretilemedi" });
     }
 
     return res.json({
@@ -420,30 +432,30 @@ router.post('/token', auth, async (req, res) => {
       livekitUrl: LIVEKIT_URL,
     });
   } catch (error) {
-    console.error('❌ Call token error:', error);
-    return res.status(500).json({ ok: false, message: 'Sunucu hatası' });
+    console.error("❌ Call token error:", error);
+    return res.status(500).json({ ok: false, message: "Sunucu hatası" });
   }
 });
-
 
 /**
  * GET /api/calls/active
  * Get active calls for debugging
  */
-router.get('/active', auth, async (req, res) => {
+router.get("/active", auth, async (req, res) => {
   try {
-    const activeCalls = global.activeCalls ? 
-      Array.from(global.activeCalls.entries()).map(([roomName, info]) => ({
-        roomName,
-        ...info
-      })) : [];
+    const activeCalls = global.activeCalls
+      ? Array.from(global.activeCalls.entries()).map(([roomName, info]) => ({
+          roomName,
+          ...info,
+        }))
+      : [];
 
     res.json({
       count: activeCalls.length,
-      calls: activeCalls
+      calls: activeCalls,
     });
   } catch (error) {
-    console.error('❌ Get active calls error:', error);
+    console.error("❌ Get active calls error:", error);
     sendError(res, 500, "Sunucu hatası");
   }
 });
@@ -452,20 +464,26 @@ router.get('/active', auth, async (req, res) => {
  * GET /api/calls/history
  * Get call history for the current user
  */
-router.get('/history', auth, async (req, res) => {
+router.get("/history", auth, async (req, res) => {
   try {
     const userId = req.user.id;
     const limit = parseInt(req.query.limit) || 50;
 
     const calls = await CallHistory.find({
-      $or: [{ caller: userId }, { receiver: userId }]
+      $or: [{ caller: userId }, { receiver: userId }],
     })
       .sort({ createdAt: -1 })
       .limit(limit)
-      .populate('caller', '_id username name profileImage presenceStatus isOnline isLive isBusy followers following')
-      .populate('receiver', '_id username name profileImage presenceStatus isOnline isLive isBusy followers following');
+      .populate(
+        "caller",
+        "_id username name profileImage presenceStatus isOnline isLive isBusy followers following",
+      )
+      .populate(
+        "receiver",
+        "_id username name profileImage presenceStatus isOnline isLive isBusy followers following",
+      );
 
-    const result = calls.map(call => {
+    const result = calls.map((call) => {
       const isIncoming = String(call.receiver._id) === String(userId);
       const otherUser = isIncoming ? call.caller : call.receiver;
 
@@ -475,8 +493,8 @@ router.get('/history', auth, async (req, res) => {
           _id: otherUser._id,
           username: otherUser.username,
           name: otherUser.name || otherUser.username,
-          profileImage: otherUser.profileImage || '',
-          presenceStatus: otherUser.presenceStatus || 'offline',
+          profileImage: otherUser.profileImage || "",
+          presenceStatus: otherUser.presenceStatus || "offline",
           isOnline: otherUser.isOnline || false,
           isLive: otherUser.isLive || false,
           isBusy: otherUser.isBusy || false,
@@ -486,8 +504,8 @@ router.get('/history', auth, async (req, res) => {
         isIncoming,
         time: call.startedAt || call.createdAt,
         durationSec: call.durationSec || 0,
-        isMissed: call.status === 'missed' || call.status === 'cancelled',
-        isVideo: call.type !== 'audio',
+        isMissed: call.status === "missed" || call.status === "cancelled",
+        isVideo: call.type !== "audio",
         type: call.type,
         status: call.status,
       };
@@ -495,7 +513,7 @@ router.get('/history', auth, async (req, res) => {
 
     res.json({ success: true, calls: result });
   } catch (error) {
-    console.error('❌ Call history error:', error);
+    console.error("❌ Call history error:", error);
     sendError(res, 500, "Sunucu hatası");
   }
 });
