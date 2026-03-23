@@ -16,6 +16,23 @@ const { createNotification } = require('../controllers/notificationController');
 const CALL_ANSWER_TIMEOUT_MS = 60000;
 const callTimeouts = new Map();
 
+function getActiveSocketForUser(userId) {
+  const targetKey = String(userId || '').trim();
+  if (!targetKey || !global.userSockets || !global.io) return null;
+
+  const socketIds = global.userSockets.get(targetKey);
+  if (!socketIds || socketIds.size === 0) return null;
+
+  for (const socketId of socketIds) {
+    const socket = global.io.sockets?.sockets?.get(socketId);
+    if (socket?.connected) {
+      return socket;
+    }
+  }
+
+  return null;
+}
+
 /**
  * Belirli bir arama için timeout'u temizle
  */
@@ -110,7 +127,16 @@ router.post('/initiate', auth, async (req, res) => {
     }
 
     // Check if target user is available (socket-driven, in-memory)
-    const targetPresence = await presenceService.getPresence(targetUserId);
+    let targetPresence = await presenceService.getPresence(targetUserId);
+    if (!targetPresence.online) {
+      const activeSocket = getActiveSocketForUser(targetUserId);
+      if (activeSocket) {
+        targetPresence = await presenceService.setOnline(targetUserId, {
+          socketId: activeSocket.id,
+          gender: activeSocket.data?.gender,
+        });
+      }
+    }
     
     if (!targetPresence.online) {
       return res.status(400).json({ 
