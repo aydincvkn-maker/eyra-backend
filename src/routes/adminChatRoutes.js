@@ -164,6 +164,17 @@ function buildGroupThreadFilter() {
   };
 }
 
+function buildVisibleMessagesFilter(filter, viewerId) {
+  return {
+    $and: [
+      filter,
+      {
+        deletedFor: { $nin: [viewerId] },
+      },
+    ],
+  };
+}
+
 function emitThreadCleared(adminNamespace, threadType, actorId, recipientId = null) {
   const payload = {
     threadType,
@@ -172,13 +183,7 @@ function emitThreadCleared(adminNamespace, threadType, actorId, recipientId = nu
     participantIds: recipientId ? [String(actorId), String(recipientId)] : [],
   };
 
-  if (threadType === "direct" && recipientId) {
-    adminNamespace.emitToAdminUser(actorId, "admin-chat:cleared", payload);
-    adminNamespace.emitToAdminUser(recipientId, "admin-chat:cleared", payload);
-    return;
-  }
-
-  adminNamespace.emit("admin-chat:cleared", payload);
+  adminNamespace.emitToAdminUser(actorId, "admin-chat:cleared", payload);
 }
 
 // Tüm route'lar admin auth gerektirir
@@ -237,9 +242,9 @@ router.get("/messages", async (req, res) => {
         return sendError(res, 400, "Geçersiz alıcı kimliği");
       }
 
-      filter = buildDirectThreadFilter(myId, requestedRecipientId);
+      filter = buildVisibleMessagesFilter(buildDirectThreadFilter(myId, requestedRecipientId), myId);
     } else {
-      filter = buildGroupThreadFilter();
+      filter = buildVisibleMessagesFilter(buildGroupThreadFilter(), myId);
     }
 
     const [messages, total] = await Promise.all([
@@ -319,19 +324,33 @@ router.delete("/messages/:id", async (req, res) => {
       return sendError(res, 403, "Sadece kendi mesajınızı silebilirsiniz");
     }
 
-    await AdminMessage.findByIdAndDelete(req.params.id);
-
     const adminNamespace = require("../socket/adminNamespace");
     const isDirectMessage = msg.threadType === "direct" || Boolean(msg.recipientId);
 
-    if (isDirectMessage) {
-      adminNamespace.emitToAdminUser(msg.senderId, "admin-chat:deleted", { messageId: req.params.id });
-      adminNamespace.emitToAdminUser(msg.recipientId, "admin-chat:deleted", { messageId: req.params.id });
-    } else {
-      adminNamespace.emit("admin-chat:deleted", { messageId: req.params.id });
+    if (isSuperAdmin && !isSelf) {
+      await AdminMessage.findByIdAndDelete(req.params.id);
+
+      if (isDirectMessage) {
+        adminNamespace.emitToAdminUser(msg.senderId, "admin-chat:deleted", { messageId: req.params.id });
+        adminNamespace.emitToAdminUser(msg.recipientId, "admin-chat:deleted", { messageId: req.params.id });
+      } else {
+        adminNamespace.emit("admin-chat:deleted", { messageId: req.params.id });
+      }
+
+      return sendSuccess(res, { deleted: true, scope: "global" });
     }
 
-    sendSuccess(res, { deleted: true });
+    await AdminMessage.findByIdAndUpdate(req.params.id, {
+      $addToSet: { deletedFor: req.user.id },
+    });
+
+    adminNamespace.emitToAdminUser(req.user.id, "admin-chat:deleted", {
+      messageId: req.params.id,
+      actorId: String(req.user.id),
+      threadType: isDirectMessage ? "direct" : "group",
+    });
+
+    sendSuccess(res, { deleted: true, scope: "self" });
   } catch (err) {
     sendError(res, 500, err.message);
   }
@@ -351,14 +370,16 @@ router.delete("/messages", async (req, res) => {
         return sendError(res, 400, "Geçersiz alıcı kimliği");
       }
 
-      filter = buildDirectThreadFilter(myId, requestedRecipientId);
+      filter = buildVisibleMessagesFilter(buildDirectThreadFilter(myId, requestedRecipientId), myId);
       threadType = "direct";
     } else {
-      filter = buildGroupThreadFilter();
+      filter = buildVisibleMessagesFilter(buildGroupThreadFilter(), myId);
       threadType = "group";
     }
 
-    const result = await AdminMessage.deleteMany(filter);
+    const result = await AdminMessage.updateMany(filter, {
+      $addToSet: { deletedFor: req.user.id },
+    });
     const adminNamespace = require("../socket/adminNamespace");
 
     emitThreadCleared(
@@ -370,8 +391,9 @@ router.delete("/messages", async (req, res) => {
 
     sendSuccess(res, {
       deleted: true,
-      deletedCount: result.deletedCount || 0,
+      deletedCount: result.modifiedCount || 0,
       threadType,
+      scope: "self",
     });
   } catch (err) {
     sendError(res, 500, err.message);

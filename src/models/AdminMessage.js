@@ -26,11 +26,13 @@ const adminMessageSchema = new mongoose.Schema(
     },
     // Boş = genel grup chat, dolu = özel mesaj
     recipientId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    deletedFor: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   },
   { timestamps: true }
 );
 
 adminMessageSchema.index({ createdAt: -1 });
 adminMessageSchema.index({ threadType: 1, recipientId: 1, createdAt: -1 });
+adminMessageSchema.index({ deletedFor: 1, createdAt: -1 });
 
 module.exports = mongoose.model("AdminMessage", adminMessageSchema);
