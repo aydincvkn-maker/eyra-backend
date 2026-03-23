@@ -20,6 +20,10 @@ services:
       # ── Auth ──────────────────────────────────────────────
       - key: JWT_SECRET
         sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: APPLE_CLIENT_ID
+        sync: false
       - key: JWT_EXPIRES_IN
         value: 30d
 
