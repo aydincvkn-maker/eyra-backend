@@ -16,8 +16,14 @@ const resolveGender = (gender) => {
   // Ama kullan─▒c─▒ a├ğ─▒k├ğa "other" se├ğtiyse, bunu kabul et
   if (!normalized || normalized === "other") {
     // E─şer input "other" olarak a├ğ─▒k├ğa belirtilmi┼şse, kabul et
-    const rawGender = String(gender || "").trim().toLowerCase();
-    if (rawGender === "other" || rawGender === "di─şer" || rawGender === "diger") {
+    const rawGender = String(gender || "")
+      .trim()
+      .toLowerCase();
+    if (
+      rawGender === "other" ||
+      rawGender === "di─şer" ||
+      rawGender === "diger"
+    ) {
       return "other"; // Kullan─▒c─▒n─▒n tercihi
     }
     // Aksi halde varsay─▒lan
@@ -28,9 +34,15 @@ const resolveGender = (gender) => {
 
 const createToken = (user, expiresIn = JWT_EXPIRES_IN || "30d") =>
   jwt.sign(
-    { id: user._id, email: user.email, username: user.username, role: user.role || "user", tokenVersion: user.tokenVersion || 0 },
+    {
+      id: user._id,
+      email: user.email,
+      username: user.username,
+      role: user.role || "user",
+      tokenVersion: user.tokenVersion || 0,
+    },
     JWT_SECRET,
-    { expiresIn }
+    { expiresIn },
   );
 
 const getAuthCookieOptions = () => {
@@ -65,6 +77,8 @@ const buildUserPayload = (user) => ({
   gifts: user.gifts || 0,
   settings: user.settings || {},
   isGuest: user.isGuest,
+  isVerified: user.isVerified,
+  verificationStatus: user.verificationStatus || "none",
   isOnline: user.isOnline,
   lastSeen: user.lastSeen,
   lastOnlineAt: user.lastOnlineAt,
@@ -78,8 +92,12 @@ const buildUserPayload = (user) => ({
 const checkDailyLoginBonus = async (user) => {
   try {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+
     // Bug├╝n zaten bonus ald─▒ysa atla
     if (user.dailyLoginAt && user.dailyLoginAt >= todayStart) {
       return { granted: false, reason: "already_claimed" };
@@ -138,7 +156,9 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const normalizedEmail = String(email || "")
+      .trim()
+      .toLowerCase();
 
     if (!normalizedEmail || !password) {
       return res.status(400).json({
@@ -168,7 +188,10 @@ exports.login = async (req, res) => {
 
     // Ô£à Upgrade legacy plaintext passwords to bcrypt on successful login
     // This keeps existing users working while making the system secure going forward.
-    if (typeof user.isPasswordHashed === "function" && !user.isPasswordHashed()) {
+    if (
+      typeof user.isPasswordHashed === "function" &&
+      !user.isPasswordHashed()
+    ) {
       try {
         user.password = String(password);
         await user.save();
@@ -190,9 +213,12 @@ exports.login = async (req, res) => {
     // Login sadece lastSeen'i günceller + login history kaydeder
     try {
       const loginEntry = {
-        platform: String(req.headers['x-platform'] || req.headers['user-agent'] || '').slice(0, 200),
-        device: String(req.headers['x-device'] || '').slice(0, 200),
-        ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '',
+        platform: String(
+          req.headers["x-platform"] || req.headers["user-agent"] || "",
+        ).slice(0, 200),
+        device: String(req.headers["x-device"] || "").slice(0, 200),
+        ip:
+          req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || "",
         loginAt: new Date(),
       };
       await User.updateOne(
@@ -200,7 +226,7 @@ exports.login = async (req, res) => {
         {
           $set: { lastSeen: new Date() },
           $push: { loginHistory: { $each: [loginEntry], $slice: -50 } },
-        }
+        },
       );
     } catch (e) {
       console.warn("⚠️ Login: lastSeen/history update başarısız:", e.message);
@@ -232,9 +258,12 @@ exports.login = async (req, res) => {
 
 exports.register = async (req, res) => {
   try {
-    const { username, name, email, password, gender, age, location, country } = req.body;
+    const { username, name, email, password, gender, age, location, country } =
+      req.body;
 
-    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const normalizedEmail = String(email || "")
+      .trim()
+      .toLowerCase();
 
     if (!normalizedEmail || !password || !username || !name) {
       return res.status(400).json({
@@ -324,7 +353,7 @@ exports.guestLogin = async (req, res) => {
       country: country || "TR",
       coins: 0,
       isGuest: true,
-      isOnline: false,  // Socket ba─şlant─▒s─▒nda true yap─▒lacak
+      isOnline: false, // Socket ba─şlant─▒s─▒nda true yap─▒lacak
       lastSeen: new Date(),
       lastOnlineAt: new Date(),
       isBusy: false,
@@ -351,11 +380,15 @@ exports.guestLogin = async (req, res) => {
 // ­şöÆ DEPRECATED: Token do─şrulamas─▒ olmayan Google login g├╝venlik a├ğ─▒─ş─▒ olu┼şturur.
 // T├╝m istemciler /google-login-token endpoint'ini kullanmal─▒d─▒r.
 exports.googleLogin = async (req, res) => {
-  console.warn("ÔÜá´©Å DEPRECATED: /google-login ├ğa─şr─▒ld─▒ (token do─şrulamas─▒ yok). ─░stemci g├╝ncellenmeli.");
+  console.warn(
+    "ÔÜá´©Å DEPRECATED: /google-login ├ğa─şr─▒ld─▒ (token do─şrulamas─▒ yok). ─░stemci g├╝ncellenmeli.",
+  );
   return res.status(403).json({
     success: false,
-    message: "Bu giri┼ş y├Ântemi art─▒k desteklenmiyor. L├╝tfen uygulamay─▒ g├╝ncelleyin.",
-    error: "Bu giri┼ş y├Ântemi art─▒k desteklenmiyor. L├╝tfen uygulamay─▒ g├╝ncelleyin.",
+    message:
+      "Bu giri┼ş y├Ântemi art─▒k desteklenmiyor. L├╝tfen uygulamay─▒ g├╝ncelleyin.",
+    error:
+      "Bu giri┼ş y├Ântemi art─▒k desteklenmiyor. L├╝tfen uygulamay─▒ g├╝ncelleyin.",
     code: "GOOGLE_LOGIN_DEPRECATED",
   });
 };
@@ -364,7 +397,9 @@ exports.googleLoginWithToken = async (req, res) => {
   try {
     const { idToken, email, name, photoUrl, gender } = req.body;
 
-    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const normalizedEmail = String(email || "")
+      .trim()
+      .toLowerCase();
 
     if (!idToken || !normalizedEmail) {
       return res.status(400).json({
@@ -376,11 +411,15 @@ exports.googleLoginWithToken = async (req, res) => {
 
     // ­şöÆ GOOGLE_CLIENT_ID kontrol ÔÇö ayarlanmam─▒┼şsa token do─şrulama imkans─▒z
     if (!process.env.GOOGLE_CLIENT_ID) {
-      console.error("ÔØî GOOGLE_CLIENT_ID tan─▒ml─▒ de─şil ÔÇö Google login kullan─▒lamaz");
+      console.error(
+        "ÔØî GOOGLE_CLIENT_ID tan─▒ml─▒ de─şil ÔÇö Google login kullan─▒lamaz",
+      );
       return res.status(500).json({
         success: false,
-        message: "Sunucu yap─▒land─▒rma hatas─▒. L├╝tfen y├Âneticiyle ileti┼şime ge├ğin.",
-        error: "Sunucu yap─▒land─▒rma hatas─▒. L├╝tfen y├Âneticiyle ileti┼şime ge├ğin.",
+        message:
+          "Sunucu yap─▒land─▒rma hatas─▒. L├╝tfen y├Âneticiyle ileti┼şime ge├ğin.",
+        error:
+          "Sunucu yap─▒land─▒rma hatas─▒. L├╝tfen y├Âneticiyle ileti┼şime ge├ğin.",
       });
     }
 
@@ -399,7 +438,9 @@ exports.googleLoginWithToken = async (req, res) => {
       // ­şöÆ Token'daki email ile g├Ânderilen email e┼şle┼şmeli
       const tokenEmail = (payload?.email || "").trim().toLowerCase();
       if (tokenEmail && tokenEmail !== normalizedEmail) {
-        console.warn(`ÔÜá´©Å Google token email uyu┼şmazl─▒─ş─▒: token=${tokenEmail}, istek=${normalizedEmail}`);
+        console.warn(
+          `ÔÜá´©Å Google token email uyu┼şmazl─▒─ş─▒: token=${tokenEmail}, istek=${normalizedEmail}`,
+        );
         return res.status(401).json({
           success: false,
           message: "Google hesap bilgileri uyu┼şmuyor",
@@ -413,7 +454,10 @@ exports.googleLoginWithToken = async (req, res) => {
       payloadPhoto = payload?.picture || null;
     } catch (verifyErr) {
       // ­şöÆ Token do─şrulama ba┼şar─▒s─▒zsa G─░R─░┼Ş REDDED─░L─░R ÔÇö fallback yok
-      console.error("ÔØî Google token do─şrulama ba┼şar─▒s─▒z:", verifyErr.message || verifyErr);
+      console.error(
+        "ÔØî Google token do─şrulama ba┼şar─▒s─▒z:",
+        verifyErr.message || verifyErr,
+      );
       return res.status(401).json({
         success: false,
         message: "Google token do─şrulanamad─▒. L├╝tfen tekrar deneyin.",
@@ -439,7 +483,7 @@ exports.googleLoginWithToken = async (req, res) => {
         profileImage: photoUrl || payloadPhoto || "",
         coins: 500,
         isGuest: false,
-        isOnline: false,  // Socket ba─şlant─▒s─▒nda true yap─▒lacak
+        isOnline: false, // Socket ba─şlant─▒s─▒nda true yap─▒lacak
         lastSeen: new Date(),
         lastOnlineAt: new Date(),
         isBusy: false,
@@ -494,7 +538,14 @@ exports.googleLoginWithToken = async (req, res) => {
 
 exports.appleLogin = async (req, res) => {
   try {
-    const { identityToken, authorizationCode, email, familyName, givenName, gender } = req.body;
+    const {
+      identityToken,
+      authorizationCode,
+      email,
+      familyName,
+      givenName,
+      gender,
+    } = req.body;
 
     if (!identityToken) {
       return res.status(400).json({
@@ -514,10 +565,16 @@ exports.appleLogin = async (req, res) => {
       });
 
       appleId = appleIdToken?.sub || null;
-      appleEmail = (appleIdToken?.email ? String(appleIdToken.email).trim().toLowerCase() : null) || appleEmail;
+      appleEmail =
+        (appleIdToken?.email
+          ? String(appleIdToken.email).trim().toLowerCase()
+          : null) || appleEmail;
     } catch (verifyErr) {
       // 🛡️ Token doğrulama başarısızsa GİRİŞ REDDEDİLİR — fallback yok
-      console.error("❌ Apple token doğrulama başarısız:", verifyErr.message || verifyErr);
+      console.error(
+        "❌ Apple token doğrulama başarısız:",
+        verifyErr.message || verifyErr,
+      );
       return res.status(401).json({
         success: false,
         message: "Apple token doğrulanamadı. Lütfen tekrar deneyin.",
@@ -542,7 +599,10 @@ exports.appleLogin = async (req, res) => {
       isNewUser = true;
       const baseUsername = appleEmail.split("@")[0];
       const username = `${baseUsername}${Math.floor(Math.random() * 1000)}`;
-      const displayName = givenName && familyName ? `${givenName} ${familyName}` : givenName || familyName || "Apple User";
+      const displayName =
+        givenName && familyName
+          ? `${givenName} ${familyName}`
+          : givenName || familyName || "Apple User";
 
       user = await User.create({
         username,
@@ -552,7 +612,7 @@ exports.appleLogin = async (req, res) => {
         gender: normalizedGender,
         coins: 500,
         isGuest: false,
-        isOnline: false,  // Socket ba─şlant─▒s─▒nda true yap─▒lacak
+        isOnline: false, // Socket ba─şlant─▒s─▒nda true yap─▒lacak
         lastSeen: new Date(),
         lastOnlineAt: new Date(),
         isBusy: false,
@@ -615,8 +675,8 @@ exports.logout = async (req, res) => {
             isLive: false,
             lastOfflineAt: new Date(),
             lastSeen: new Date(),
-          }
-        }
+          },
+        },
       );
     } catch (e) {
       console.warn("ÔÜá´©Å Logout: isOnline update ba┼şar─▒s─▒z:", e.message);
@@ -626,14 +686,14 @@ exports.logout = async (req, res) => {
     // Ô£à CORRECT ORDER: First mark offline in presence, then disconnect socket
     // This prevents race condition where socket disconnect triggers presence offline
     // with different socketId
-    
+
     // 1. Get socket info before disconnecting
     const socketSet = global.userSockets?.get(String(userId));
     const socketIds = socketSet ? Array.from(socketSet) : [];
-    
+
     // 2. Mark user offline in presence service FIRST
     try {
-      const meta = { reason: 'logout' };
+      const meta = { reason: "logout" };
       // Include socketId for validation
       if (socketIds.length > 0 && socketIds[0]) {
         meta.socketId = socketIds[0];
@@ -642,7 +702,7 @@ exports.logout = async (req, res) => {
     } catch (e) {
       console.warn(`ÔÜá´©Å Logout presence update failed: ${e.message}`);
     }
-    
+
     // 3. Disconnect sockets
     if (socketIds.length && global.io?.sockets?.sockets) {
       for (const socketId of socketIds) {
@@ -650,7 +710,7 @@ exports.logout = async (req, res) => {
         if (socketInstance) socketInstance.disconnect(true);
       }
     }
-    
+
     // 4. Clean up userSockets map
     if (global.userSockets) {
       global.userSockets.delete(String(userId));
@@ -703,7 +763,7 @@ exports.refreshToken = async (req, res) => {
   try {
     // req.user is already populated by auth middleware
     const user = await User.findById(req.user.id).select("-password");
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -745,21 +805,35 @@ exports.changePassword = async (req, res) => {
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({ success: false, message: "Mevcut şifre ve yeni şifre gerekli" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Mevcut şifre ve yeni şifre gerekli",
+        });
     }
 
     if (String(newPassword).length < 6) {
-      return res.status(400).json({ success: false, message: "Yeni şifre en az 6 karakter olmalı" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Yeni şifre en az 6 karakter olmalı",
+        });
     }
 
     const user = await User.findById(req.user.id);
     if (!user) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     const isMatch = await user.comparePassword(currentPassword);
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: "Mevcut şifre hatalı" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Mevcut şifre hatalı" });
     }
 
     user.password = String(newPassword);
@@ -783,36 +857,50 @@ exports.changePassword = async (req, res) => {
 exports.forgotPassword = async (req, res) => {
   try {
     const { email, newPassword, firebaseIdToken } = req.body;
-    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const normalizedEmail = String(email || "")
+      .trim()
+      .toLowerCase();
 
     if (!normalizedEmail || !newPassword) {
-      return res.status(400).json({ success: false, error: "Email ve yeni şifre gerekli" });
+      return res
+        .status(400)
+        .json({ success: false, error: "Email ve yeni şifre gerekli" });
     }
 
     if (String(newPassword).length < 6) {
-      return res.status(400).json({ success: false, error: "Şifre en az 6 karakter olmalı" });
+      return res
+        .status(400)
+        .json({ success: false, error: "Şifre en az 6 karakter olmalı" });
     }
 
     // 🛡️ Firebase idToken doğrulaması — token yoksa veya geçersizse reddet
     if (!firebaseIdToken) {
-      return res.status(401).json({ success: false, error: "Kimlik doğrulama gerekli" });
+      return res
+        .status(401)
+        .json({ success: false, error: "Kimlik doğrulama gerekli" });
     }
 
     try {
       const admin = require("firebase-admin");
       // firebase-admin başlatılmamışsa atlayıp eski davranışa fallback yap
       if (!admin.apps.length) {
-        console.warn("⚠️ firebase-admin not initialized, skipping token verification for forgot-password");
+        console.warn(
+          "⚠️ firebase-admin not initialized, skipping token verification for forgot-password",
+        );
       } else {
         const decoded = await admin.auth().verifyIdToken(firebaseIdToken);
         const tokenEmail = (decoded.email || "").trim().toLowerCase();
         if (tokenEmail !== normalizedEmail) {
-          return res.status(401).json({ success: false, error: "Email eşleşmiyor" });
+          return res
+            .status(401)
+            .json({ success: false, error: "Email eşleşmiyor" });
         }
       }
     } catch (verifyErr) {
       console.error("❌ Firebase token doğrulama hatası:", verifyErr.message);
-      return res.status(401).json({ success: false, error: "Kimlik doğrulama başarısız" });
+      return res
+        .status(401)
+        .json({ success: false, error: "Kimlik doğrulama başarısız" });
     }
 
     const user = await User.findOne({ email: normalizedEmail });
@@ -836,10 +924,13 @@ exports.forgotPassword = async (req, res) => {
 // Firebase Phone Auth ile doğrulanmış telefon girişi
 exports.phoneLogin = async (req, res) => {
   try {
-    const { firebaseIdToken, phoneNumber, name, gender, age, country } = req.body;
+    const { firebaseIdToken, phoneNumber, name, gender, age, country } =
+      req.body;
 
     if (!firebaseIdToken) {
-      return res.status(400).json({ success: false, error: "Firebase token gerekli" });
+      return res
+        .status(400)
+        .json({ success: false, error: "Firebase token gerekli" });
     }
 
     // 🛡️ Firebase token doğrula
@@ -849,18 +940,27 @@ exports.phoneLogin = async (req, res) => {
     try {
       const admin = require("firebase-admin");
       if (!admin.apps.length) {
-        return res.status(500).json({ success: false, error: "Sunucu yapılandırma hatası" });
+        return res
+          .status(500)
+          .json({ success: false, error: "Sunucu yapılandırma hatası" });
       }
       const decoded = await admin.auth().verifyIdToken(firebaseIdToken);
       firebaseUid = decoded.uid;
       verifiedPhone = decoded.phone_number || phoneNumber || "";
     } catch (verifyErr) {
-      console.error("❌ Phone login token doğrulama hatası:", verifyErr.message);
-      return res.status(401).json({ success: false, error: "Token doğrulanamadı" });
+      console.error(
+        "❌ Phone login token doğrulama hatası:",
+        verifyErr.message,
+      );
+      return res
+        .status(401)
+        .json({ success: false, error: "Token doğrulanamadı" });
     }
 
     if (!verifiedPhone) {
-      return res.status(400).json({ success: false, error: "Telefon numarası doğrulanamadı" });
+      return res
+        .status(400)
+        .json({ success: false, error: "Telefon numarası doğrulanamadı" });
     }
 
     const normalizedGender = resolveGender(gender);
@@ -906,7 +1006,8 @@ exports.phoneLogin = async (req, res) => {
     }
 
     const token = createToken(user);
-    const needsProfileSetup = isNewUser || !user.gender || user.gender === "other";
+    const needsProfileSetup =
+      isNewUser || !user.gender || user.gender === "other";
 
     // Günlük giriş bonusu
     const dailyBonus = await checkDailyLoginBonus(user);
@@ -914,14 +1015,17 @@ exports.phoneLogin = async (req, res) => {
     // Login history
     try {
       const loginEntry = {
-        platform: String(req.headers['x-platform'] || req.headers['user-agent'] || '').slice(0, 200),
-        device: String(req.headers['x-device'] || '').slice(0, 200),
-        ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '',
+        platform: String(
+          req.headers["x-platform"] || req.headers["user-agent"] || "",
+        ).slice(0, 200),
+        device: String(req.headers["x-device"] || "").slice(0, 200),
+        ip:
+          req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || "",
         loginAt: new Date(),
       };
       await User.updateOne(
         { _id: user._id },
-        { $push: { loginHistory: { $each: [loginEntry], $slice: -50 } } }
+        { $push: { loginHistory: { $each: [loginEntry], $slice: -50 } } },
       );
     } catch (_) {}
 
