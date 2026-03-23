@@ -805,21 +805,17 @@ exports.changePassword = async (req, res) => {
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Mevcut şifre ve yeni şifre gerekli",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Mevcut şifre ve yeni şifre gerekli",
+      });
     }
 
     if (String(newPassword).length < 6) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Yeni şifre en az 6 karakter olmalı",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Yeni şifre en az 6 karakter olmalı",
+      });
     }
 
     const user = await User.findById(req.user.id);
@@ -913,7 +909,14 @@ exports.forgotPassword = async (req, res) => {
     user.tokenVersion = (user.tokenVersion || 0) + 1;
     await user.save();
 
-    res.json({ success: true, message: "Şifre güncellendi" });
+    const token = createToken(user);
+
+    res.json({
+      success: true,
+      message: "Şifre güncellendi",
+      token,
+      user: buildUserPayload(user),
+    });
   } catch (err) {
     console.error("Forgot password error:", err);
     res.status(500).json({ success: false, error: "Sunucu hatası" });
