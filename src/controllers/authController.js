@@ -659,7 +659,9 @@ exports.appleLogin = async (req, res) => {
       }
 
       if (!appleIdToken) {
-        throw lastVerifyError || new Error("No valid Apple audience configured");
+        throw (
+          lastVerifyError || new Error("No valid Apple audience configured")
+        );
       }
 
       appleId = appleIdToken?.sub || null;
