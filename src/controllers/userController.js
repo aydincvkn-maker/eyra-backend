@@ -100,6 +100,7 @@ const formatUser = (user, presenceData = {}) => {
     isBusy,
     isOnline,
     lastSeen,
+    authProvider: user.authProvider || "email",
     createdAt: user.createdAt,
   };
 };
