@@ -8,10 +8,12 @@ const [emailArg, usernameArg, nameArg, passwordArg] = process.argv.slice(2);
 const email = String(emailArg || process.env.OWNER_EMAIL || "")
   .trim()
   .toLowerCase();
-const usernameInput = String(usernameArg || process.env.OWNER_USERNAME || "")
-  .trim();
-const displayName = String(nameArg || process.env.OWNER_NAME || "Patron")
-  .trim();
+const usernameInput = String(
+  usernameArg || process.env.OWNER_USERNAME || "",
+).trim();
+const displayName = String(
+  nameArg || process.env.OWNER_NAME || "Patron",
+).trim();
 const password = String(passwordArg || process.env.OWNER_PASSWORD || "").trim();
 
 const ensureUniqueUsername = async (baseUsername, currentUserId = null) => {
@@ -64,7 +66,9 @@ const ensureUniqueUsername = async (baseUsername, currentUserId = null) => {
         isPanelRestricted: false,
         isOwner: true,
       });
-      console.log(`✅ Owner hesabı oluşturuldu: ${user.email} (${user.username})`);
+      console.log(
+        `✅ Owner hesabı oluşturuldu: ${user.email} (${user.username})`,
+      );
     } else {
       user.username = username;
       user.name = displayName;
@@ -78,7 +82,9 @@ const ensureUniqueUsername = async (baseUsername, currentUserId = null) => {
       user.isPanelRestricted = false;
       user.isOwner = true;
       await user.save();
-      console.log(`✅ Owner hesabı güncellendi: ${user.email} (${user.username})`);
+      console.log(
+        `✅ Owner hesabı güncellendi: ${user.email} (${user.username})`,
+      );
     }
 
     await User.updateMany(
