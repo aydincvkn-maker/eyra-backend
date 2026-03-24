@@ -11,6 +11,18 @@ const Transaction = require("../models/Transaction");
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const PANEL_ROLES = ["admin", "super_admin", "moderator"];
 
+const getAppleAudiences = () => {
+  const values = [
+    process.env.APPLE_WEB_CLIENT_ID,
+    process.env.APPLE_CLIENT_ID,
+    "com.eyra.app",
+  ]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+
+  return [...new Set(values)];
+};
+
 const isPanelUser = (user) => {
   if (user?.accountScope === "panel") return true;
   const role = String(user?.role || "").toLowerCase();
@@ -631,10 +643,24 @@ exports.appleLogin = async (req, res) => {
     let appleEmail = email ? String(email).trim().toLowerCase() : null;
 
     try {
-      const appleIdToken = await appleSignin.verifyIdToken(identityToken, {
-        audience: process.env.APPLE_CLIENT_ID || "com.eyra.app",
-        ignoreExpiration: false,
-      });
+      let appleIdToken = null;
+      let lastVerifyError = null;
+
+      for (const audience of getAppleAudiences()) {
+        try {
+          appleIdToken = await appleSignin.verifyIdToken(identityToken, {
+            audience,
+            ignoreExpiration: false,
+          });
+          break;
+        } catch (verifyErr) {
+          lastVerifyError = verifyErr;
+        }
+      }
+
+      if (!appleIdToken) {
+        throw lastVerifyError || new Error("No valid Apple audience configured");
+      }
 
       appleId = appleIdToken?.sub || null;
       appleEmail =
