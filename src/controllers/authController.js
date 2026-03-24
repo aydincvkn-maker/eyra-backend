@@ -118,10 +118,7 @@ const handleEmailPasswordLogin = async (
     });
   }
 
-  if (
-    typeof user.isPasswordHashed === "function" &&
-    !user.isPasswordHashed()
-  ) {
+  if (typeof user.isPasswordHashed === "function" && !user.isPasswordHashed()) {
     try {
       user.password = String(password);
       await user.save();

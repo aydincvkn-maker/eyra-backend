@@ -3,12 +3,12 @@
  * Ortağı super_admin yapma scripti
  * Kullanım: node scripts/make-partner-super-admin.js
  */
-require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
-const connectDB = require('../src/config/db');
-const User = require('../src/models/User');
+require("dotenv").config({ path: require("path").join(__dirname, "../.env") });
+const connectDB = require("../src/config/db");
+const User = require("../src/models/User");
 
-const TARGET_EMAIL = 'mamasahatowadilya@gmail.com';
-const TARGET_PASSWORD = '110405';
+const TARGET_EMAIL = "mamasahatowadilya@gmail.com";
+const TARGET_PASSWORD = "110405";
 
 (async () => {
   try {
@@ -17,9 +17,11 @@ const TARGET_PASSWORD = '110405';
     let user = await User.findOne({ email: TARGET_EMAIL });
 
     if (user) {
-      console.log(`📋 Mevcut kullanıcı bulundu: ${user.email}, role: ${user.role}`);
-      user.role = 'super_admin';
-      user.accountScope = 'panel';
+      console.log(
+        `📋 Mevcut kullanıcı bulundu: ${user.email}, role: ${user.role}`,
+      );
+      user.role = "super_admin";
+      user.accountScope = "panel";
       user.isActive = true;
       user.isBanned = false;
       user.isFrozen = false;
@@ -29,16 +31,16 @@ const TARGET_PASSWORD = '110405';
     } else {
       console.log(`📋 Kullanıcı bulunamadı, yeni super_admin oluşturuluyor...`);
       user = await User.create({
-        username: 'mamasaha_admin',
-        name: 'Partner Admin',
+        username: "mamasaha_admin",
+        name: "Partner Admin",
         email: TARGET_EMAIL,
         password: TARGET_PASSWORD,
-        role: 'super_admin',
-        accountScope: 'panel',
-        gender: 'other',
+        role: "super_admin",
+        accountScope: "panel",
+        gender: "other",
         age: 25,
-        location: 'Türkiye',
-        country: 'TR',
+        location: "Türkiye",
+        country: "TR",
         coins: 0,
         isGuest: false,
         isOnline: false,
@@ -53,7 +55,7 @@ const TARGET_PASSWORD = '110405';
 
     process.exit(0);
   } catch (err) {
-    console.error('❌ Hata:', err.message);
+    console.error("❌ Hata:", err.message);
     process.exit(1);
   }
 })();
