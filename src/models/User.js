@@ -18,6 +18,13 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, trim: true, lowercase: true },
     password: { type: String, required: true },
 
+    // Giriş yöntemi
+    authProvider: {
+      type: String,
+      enum: ["email", "google", "apple", "phone", "guest"],
+      default: "email"
+    },
+
     role: {
       type: String,
       enum: ["super_admin", "moderator", "viewer", "admin"],
