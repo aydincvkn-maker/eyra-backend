@@ -9,6 +9,147 @@ const SystemSettings = require("../models/SystemSettings");
 const Transaction = require("../models/Transaction");
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const PANEL_ROLES = ["admin", "super_admin", "moderator"];
+
+const isPanelUser = (user) => {
+  const role = String(user?.role || "").toLowerCase();
+  return PANEL_ROLES.includes(role) || user?.isOwner === true;
+};
+
+const validateLoginScope = (user, { panelLogin = false } = {}) => {
+  if (panelLogin) {
+    if (!isPanelUser(user)) {
+      return "Bu hesap panel hesabı değil";
+    }
+    if (user?.isPanelRestricted === true) {
+      return "Panel erişiminiz kısıtlanmıştır";
+    }
+    return null;
+  }
+
+  if (isPanelUser(user)) {
+    return "Bu hesap sadece admin paneline giriş yapabilir";
+  }
+
+  return null;
+};
+
+const updateLoginTracking = async (req, user) => {
+  const loginEntry = {
+    platform: String(
+      req.headers["x-platform"] || req.headers["user-agent"] || "",
+    ).slice(0, 200),
+    device: String(req.headers["x-device"] || "").slice(0, 200),
+    ip: req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || "",
+    loginAt: new Date(),
+  };
+
+  await User.updateOne(
+    { _id: user._id },
+    {
+      $set: { lastSeen: new Date() },
+      $push: { loginHistory: { $each: [loginEntry], $slice: -50 } },
+    },
+  );
+};
+
+const sendLoginResponse = async (
+  req,
+  res,
+  user,
+  { grantDailyBonus = true } = {},
+) => {
+  try {
+    await updateLoginTracking(req, user);
+  } catch (e) {
+    console.warn("⚠️ Login: lastSeen/history update başarısız:", e.message);
+  }
+
+  const token = createToken(user);
+  res.cookie("auth_token", token, getAuthCookieOptions());
+
+  const dailyBonus = grantDailyBonus
+    ? await checkDailyLoginBonus(user)
+    : { granted: false };
+
+  res.json({
+    success: true,
+    token,
+    user: buildUserPayload(user),
+    dailyBonus: dailyBonus.granted ? dailyBonus : undefined,
+  });
+};
+
+const handleEmailPasswordLogin = async (
+  req,
+  res,
+  { panelLogin = false } = {},
+) => {
+  const { email, password } = req.body;
+
+  const normalizedEmail = String(email || "")
+    .trim()
+    .toLowerCase();
+
+  if (!normalizedEmail || !password) {
+    return res.status(400).json({
+      success: false,
+      message: "Email ve şifre gerekli",
+      error: "Email ve şifre gerekli",
+    });
+  }
+
+  const user = await User.findOne({ email: normalizedEmail });
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: "Email veya şifre hatalı",
+      error: "Email veya şifre hatalı",
+    });
+  }
+
+  const isMatch = await user.comparePassword(password);
+  if (!isMatch) {
+    return res.status(401).json({
+      success: false,
+      message: "Email veya şifre hatalı",
+      error: "Email veya şifre hatalı",
+    });
+  }
+
+  if (
+    typeof user.isPasswordHashed === "function" &&
+    !user.isPasswordHashed()
+  ) {
+    try {
+      user.password = String(password);
+      await user.save();
+    } catch (e) {
+      console.warn("Password upgrade failed:", e.message);
+    }
+  }
+
+  if (user.isBanned) {
+    return res.status(403).json({
+      success: false,
+      message: "Hesabınız askıya alınmış",
+      error: "Hesabınız askıya alınmış",
+    });
+  }
+
+  const scopeError = validateLoginScope(user, { panelLogin });
+  if (scopeError) {
+    return res.status(403).json({
+      success: false,
+      message: scopeError,
+      error: scopeError,
+    });
+  }
+
+  return sendLoginResponse(req, res, user, {
+    grantDailyBonus: !panelLogin,
+  });
+};
 
 const resolveGender = (gender) => {
   const normalized = normalizeGender(gender);
@@ -154,104 +295,26 @@ const checkDailyLoginBonus = async (user) => {
 
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    const normalizedEmail = String(email || "")
-      .trim()
-      .toLowerCase();
-
-    if (!normalizedEmail || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Email ve ┼şifre gerekli",
-        error: "Email ve ┼şifre gerekli",
-      });
-    }
-
-    const user = await User.findOne({ email: normalizedEmail });
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Email veya ┼şifre hatal─▒",
-        error: "Email veya ┼şifre hatal─▒",
-      });
-    }
-
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Email veya ┼şifre hatal─▒",
-        error: "Email veya ┼şifre hatal─▒",
-      });
-    }
-
-    // Ô£à Upgrade legacy plaintext passwords to bcrypt on successful login
-    // This keeps existing users working while making the system secure going forward.
-    if (
-      typeof user.isPasswordHashed === "function" &&
-      !user.isPasswordHashed()
-    ) {
-      try {
-        user.password = String(password);
-        await user.save();
-      } catch (e) {
-        // Non-fatal: don't block login if migration fails
-        console.warn("ÔÜá´©Å Password upgrade failed:", e.message);
-      }
-    }
-
-    if (user.isBanned) {
-      return res.status(403).json({
-        success: false,
-        message: "Hesab─▒n─▒z ask─▒ya al─▒nm─▒┼ş",
-        error: "Hesab─▒n─▒z ask─▒ya al─▒nm─▒┼ş",
-      });
-    }
-
-    // NOT: isOnline durumu socket ba─şlant─▒s─▒nda g├╝ncellenecek
-    // Login sadece lastSeen'i günceller + login history kaydeder
-    try {
-      const loginEntry = {
-        platform: String(
-          req.headers["x-platform"] || req.headers["user-agent"] || "",
-        ).slice(0, 200),
-        device: String(req.headers["x-device"] || "").slice(0, 200),
-        ip:
-          req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || "",
-        loginAt: new Date(),
-      };
-      await User.updateOne(
-        { _id: user._id },
-        {
-          $set: { lastSeen: new Date() },
-          $push: { loginHistory: { $each: [loginEntry], $slice: -50 } },
-        },
-      );
-    } catch (e) {
-      console.warn("⚠️ Login: lastSeen/history update başarısız:", e.message);
-      // Non-fatal: devam et
-    }
-
-    const token = createToken(user);
-
-    res.cookie("auth_token", token, getAuthCookieOptions());
-
-    // G├╝nl├╝k giri┼ş bonusu
-    const dailyBonus = await checkDailyLoginBonus(user);
-
-    res.json({
-      success: true,
-      token,
-      user: buildUserPayload(user),
-      dailyBonus: dailyBonus.granted ? dailyBonus : undefined,
-    });
+    return await handleEmailPasswordLogin(req, res, { panelLogin: false });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({
       success: false,
-      message: "Sunucu hatas─▒",
-      error: "Sunucu hatas─▒",
+      message: "Sunucu hatası",
+      error: "Sunucu hatası",
+    });
+  }
+};
+
+exports.panelLogin = async (req, res) => {
+  try {
+    return await handleEmailPasswordLogin(req, res, { panelLogin: true });
+  } catch (err) {
+    console.error("Panel login error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Sunucu hatası",
+      error: "Sunucu hatası",
     });
   }
 };
@@ -472,6 +535,14 @@ exports.googleLoginWithToken = async (req, res) => {
     let user = await User.findOne({ email: normalizedEmail });
     let isNewUser = false;
 
+    if (user && isPanelUser(user)) {
+      return res.status(403).json({
+        success: false,
+        message: "Bu hesap sadece admin paneline giriş yapabilir",
+        error: "Bu hesap sadece admin paneline giriş yapabilir",
+      });
+    }
+
     if (!user) {
       isNewUser = true;
       const username = `${normalizedEmail.split("@")[0]}${Math.floor(Math.random() * 1000)}`;
@@ -597,6 +668,14 @@ exports.appleLogin = async (req, res) => {
 
     let user = await User.findOne({ email: appleEmail });
     let isNewUser = false;
+
+    if (user && isPanelUser(user)) {
+      return res.status(403).json({
+        success: false,
+        message: "Bu hesap sadece admin paneline giriş yapabilir",
+        error: "Bu hesap sadece admin paneline giriş yapabilir",
+      });
+    }
 
     if (!user) {
       isNewUser = true;
@@ -980,6 +1059,13 @@ exports.phoneLogin = async (req, res) => {
       // firebaseUid tabanlı email ile de dene (eski kayıtlar)
       const legacyEmail = `user_${firebaseUid.substring(0, 8)}@phone.com`;
       user = await User.findOne({ email: legacyEmail });
+    }
+
+    if (user && isPanelUser(user)) {
+      return res.status(403).json({
+        success: false,
+        error: "Bu hesap sadece admin paneline giriş yapabilir",
+      });
     }
 
     if (!user) {
