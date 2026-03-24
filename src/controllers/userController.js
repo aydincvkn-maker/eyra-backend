@@ -18,6 +18,7 @@ const { checkFollowerAchievements } = require("./achievementController");
 const { createNotification } = require("./notificationController");
 const { logger } = require("../utils/logger");
 const adminSocket = require("../socket/adminNamespace");
+const PANEL_ROLES = ["admin", "super_admin", "moderator"];
 
 let _followIndexesSynced = false;
 const ensureFollowIndexes = async (force = false) => {
@@ -52,6 +53,16 @@ const normalizePresenceStatus = (presenceData = {}) => {
   }
 
   return "offline";
+};
+
+const buildAppUserQuery = (extra = {}) => ({
+  role: { $nin: PANEL_ROLES },
+  ...extra,
+});
+
+const isPanelUser = (user) => {
+  const role = String(user?.role || "").toLowerCase();
+  return PANEL_ROLES.includes(role) || user?.isOwner === true;
 };
 
 // =============================================
@@ -123,10 +134,10 @@ exports.getUsers = async (req, res) => {
     logger.debug("getUsers", { currentUserId, searchQuery });
 
     // âœ… Query: banned olmayan, kendisi hariÃ§
-    const query = {
+    const query = buildAppUserQuery({
       isBanned: { $ne: true },
       isActive: { $ne: false },
-    };
+    });
 
     // âœ… Kendisini hariÃ§ tut (ObjectId olarak)
     if (currentUserId) {
@@ -585,10 +596,10 @@ exports.getFemaleUsers = async (req, res) => {
     const currentUserId = req.user?.id ? String(req.user.id) : null;
 
     // Cinsiyet görünürlük filtresi: erkek sadece kadınları, kadın herkesi görür
-    const baseQuery = {
+    const baseQuery = buildAppUserQuery({
       isBanned: { $ne: true },
       isActive: { $ne: false },
-    };
+    });
 
     if (currentUserId) {
       const currentUser = await User.findById(currentUserId).select("gender");
@@ -1254,6 +1265,19 @@ exports.deleteAccount = async (req, res) => {
     const userId = req.user.id;
 
     const user = await User.findById(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
+    }
+
+    if (isPanelUser(user)) {
+      return res.status(403).json({
+        success: false,
+        message: "Panel admin hesapları uygulamadan silinemez",
+      });
+    }
+
     if (user?.profileImage) {
       const filePath = path.join(__dirname, "../..", user.profileImage);
       if (fs.existsSync(filePath)) {
@@ -1290,7 +1314,7 @@ exports.getUserById = async (req, res) => {
       );
     }
 
-    if (!user) {
+    if (!user || isPanelUser(user)) {
       return res
         .status(404)
         .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
@@ -1709,11 +1733,11 @@ exports.getVipUsers = async (req, res) => {
     const currentUserId = req.user?.id ? String(req.user.id) : null;
 
     // VIP = level >= 5 olan kullanÄ±cÄ±lar
-    const query = {
+    const query = buildAppUserQuery({
       isBanned: { $ne: true },
       isActive: { $ne: false },
       level: { $gte: 5 },
-    };
+    });
 
     if (currentUserId) {
       query._id = { $ne: new mongoose.Types.ObjectId(currentUserId) };
