@@ -992,6 +992,7 @@ exports.phoneLogin = async (req, res) => {
         name: name || verifiedPhone,
         email: `phone_${timestamp}@phone.eyra`,
         password: firebaseUid,
+        authProvider: "phone",
         phone: verifiedPhone,
         gender: normalizedGender,
         age: Number.isFinite(age) && age >= 18 ? age : 20,
