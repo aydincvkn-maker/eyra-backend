@@ -212,19 +212,37 @@ exports.getAdminUsers = async (req, res) => {
       : null;
     const page = Math.max(parseInt(req.query.page || "1"), 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit || "50"), 1), 200);
+    const genderFilter = req.query.gender || null;
+    const providerFilter = req.query.authProvider || null;
 
-    // Panel admin rollerini (admin, super_admin, moderator) bu listeden hariÃ§ tut
+    // Panel admin rollerini (admin, super_admin, moderator) bu listeden hariç tut
     const query = {
       role: { $nin: ["admin", "super_admin", "moderator"] },
     };
 
     if (searchQuery) {
       const escapedQuery = escapeRegex(searchQuery);
-      query.$or = [
+      const orConditions = [
         { username: { $regex: escapedQuery, $options: "i" } },
         { name: { $regex: escapedQuery, $options: "i" } },
         { email: { $regex: escapedQuery, $options: "i" } },
       ];
+      // ObjectId ile de arama yap
+      if (/^[0-9a-fA-F]{24}$/.test(searchQuery)) {
+        const mongoose = require("mongoose");
+        orConditions.push({ _id: new mongoose.Types.ObjectId(searchQuery) });
+      }
+      query.$or = orConditions;
+    }
+
+    // Cinsiyet filtresi
+    if (genderFilter && ["male", "female", "other"].includes(genderFilter)) {
+      query.gender = genderFilter;
+    }
+
+    // Giriş yöntemi filtresi
+    if (providerFilter && ["email", "google", "apple", "phone", "guest"].includes(providerFilter)) {
+      query.authProvider = providerFilter;
     }
 
     const total = await User.countDocuments(query);
