@@ -12,24 +12,24 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const resolveGender = (gender) => {
   const normalized = normalizeGender(gender);
-  // E─şer gender belirtilmemi┼şse (null/undefined/bo┼ş), varsay─▒lan olarak female ata
-  // Ama kullan─▒c─▒ a├ğ─▒k├ğa "other" se├ğtiyse, bunu kabul et
-  if (!normalized || normalized === "other") {
-    // E─şer input "other" olarak a├ğ─▒k├ğa belirtilmi┼şse, kabul et
-    const rawGender = String(gender || "")
-      .trim()
-      .toLowerCase();
-    if (
-      rawGender === "other" ||
-      rawGender === "di─şer" ||
-      rawGender === "diger"
-    ) {
-      return "other"; // Kullan─▒c─▒n─▒n tercihi
-    }
-    // Aksi halde varsay─▒lan
-    return "female";
+  if (normalized === "male" || normalized === "female") {
+    return normalized;
   }
-  return normalized;
+
+  const rawGender = String(gender || "")
+    .trim()
+    .toLowerCase();
+
+  if (
+    rawGender === "other" ||
+    rawGender === "di─şer" ||
+    rawGender === "diger"
+  ) {
+    return "other";
+  }
+
+  // Sosyal girişlerde cinsiyet bilinmiyorsa kullanıcıya uygulama içinde sordur.
+  return "other";
 };
 
 const createToken = (user, expiresIn = JWT_EXPIRES_IN || "30d") =>
