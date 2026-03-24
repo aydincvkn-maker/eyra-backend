@@ -8,14 +8,31 @@ const { validateLogin, validateRegister } = require("../middleware/validate");
 // Login
 router.post("/login", authLimiter, validateLogin, authController.login);
 
+// Panel login
+router.post(
+  "/panel-login",
+  authLimiter,
+  validateLogin,
+  authController.panelLogin,
+);
+
 // Register
-router.post("/register", authLimiter, validateRegister, authController.register);
+router.post(
+  "/register",
+  authLimiter,
+  validateRegister,
+  authController.register,
+);
 
 // Google Login (DEPRECATED - token doğrulaması yok, 403 döndürür)
 router.post("/google-login", authLimiter, authController.googleLogin);
 
 // ✅ Google Login (Token ile doğrulama - TEK GÜVENLİ YOL)
-router.post("/google-login-token", authLimiter, authController.googleLoginWithToken);
+router.post(
+  "/google-login-token",
+  authLimiter,
+  authController.googleLoginWithToken,
+);
 
 // ✅ YENİ: Apple Login
 router.post("/apple-login", authLimiter, authController.appleLogin);
