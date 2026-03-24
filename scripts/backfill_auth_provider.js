@@ -14,8 +14,11 @@ async function run() {
 
   // Guest kullanıcıları
   const guestResult = await User.updateMany(
-    { isGuest: true, $or: [{ authProvider: { $exists: false } }, { authProvider: null }] },
-    { $set: { authProvider: "guest" } }
+    {
+      isGuest: true,
+      $or: [{ authProvider: { $exists: false } }, { authProvider: null }],
+    },
+    { $set: { authProvider: "guest" } },
   );
   console.log(`Guest: ${guestResult.modifiedCount} updated`);
 
@@ -24,35 +27,35 @@ async function run() {
     {
       $or: [
         { email: { $regex: /@phone\./i } },
-        { phone: { $exists: true, $ne: "", $ne: null } }
+        { phone: { $exists: true, $ne: "", $ne: null } },
       ],
       isGuest: { $ne: true },
-      $or: [{ authProvider: { $exists: false } }, { authProvider: null }]
+      $or: [{ authProvider: { $exists: false } }, { authProvider: null }],
     },
-    { $set: { authProvider: "phone" } }
+    { $set: { authProvider: "phone" } },
   );
   console.log(`Phone: ${phoneResult.modifiedCount} updated`);
 
   // Kalanlar email olarak ayarla
   const emailResult = await User.updateMany(
     { $or: [{ authProvider: { $exists: false } }, { authProvider: null }] },
-    { $set: { authProvider: "email" } }
+    { $set: { authProvider: "email" } },
   );
   console.log(`Email (default): ${emailResult.modifiedCount} updated`);
 
   // Sonuç özeti
   const stats = await User.aggregate([
     { $group: { _id: "$authProvider", count: { $sum: 1 } } },
-    { $sort: { count: -1 } }
+    { $sort: { count: -1 } },
   ]);
   console.log("\nAuthProvider distribution:");
-  stats.forEach(s => console.log(`  ${s._id || "null"}: ${s.count}`));
+  stats.forEach((s) => console.log(`  ${s._id || "null"}: ${s.count}`));
 
   await mongoose.disconnect();
   console.log("\nDone");
 }
 
-run().catch(err => {
+run().catch((err) => {
   console.error(err);
   process.exit(1);
 });

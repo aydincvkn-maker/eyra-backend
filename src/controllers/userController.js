@@ -242,7 +242,10 @@ exports.getAdminUsers = async (req, res) => {
     }
 
     // Giriş yöntemi filtresi
-    if (providerFilter && ["email", "google", "apple", "phone", "guest"].includes(providerFilter)) {
+    if (
+      providerFilter &&
+      ["email", "google", "apple", "phone", "guest"].includes(providerFilter)
+    ) {
       query.authProvider = providerFilter;
     }
 
@@ -291,10 +294,15 @@ exports.getAdminUsers = async (req, res) => {
 // ADMIN: Elle kullanici olustur (panelden)
 exports.adminCreateUser = async (req, res) => {
   try {
-    const { username, name, email, password, gender, country, coins } = req.body;
+    const { username, name, email, password, gender, country, coins } =
+      req.body;
 
     if (!username || !name || !email || !password) {
-      return sendError(res, 400, "username, name, email ve password zorunludur");
+      return sendError(
+        res,
+        400,
+        "username, name, email ve password zorunludur",
+      );
     }
 
     const trimmedUsername = String(username).trim();
@@ -311,7 +319,8 @@ exports.adminCreateUser = async (req, res) => {
       $or: [{ username: trimmedUsername }, { email: trimmedEmail }],
     }).lean();
     if (existing) {
-      const field = existing.username === trimmedUsername ? "Kullanici adi" : "E-posta";
+      const field =
+        existing.username === trimmedUsername ? "Kullanici adi" : "E-posta";
       return sendError(res, 409, `${field} zaten kayitli`);
     }
 
@@ -328,7 +337,9 @@ exports.adminCreateUser = async (req, res) => {
       lastSeen: new Date(),
     });
 
-    logger.info(`Admin ${req.user.id} created user ${user._id} (${user.username})`);
+    logger.info(
+      `Admin ${req.user.id} created user ${user._id} (${user.username})`,
+    );
 
     res.status(201).json({
       success: true,
@@ -361,10 +372,15 @@ exports.getPanelAdmins = async (req, res) => {
 
     const userIds = adminUsers.map((u) => String(u._id));
     const presenceMap = await presenceService.getMultiplePresence(userIds);
-    const hasAdminNamespace = typeof adminSocket.getNsp === "function" && Boolean(adminSocket.getNsp());
-    const onlineAdminIds = hasAdminNamespace && typeof adminSocket.getConnectedAdminIds === "function"
-      ? new Set((await adminSocket.getConnectedAdminIds()).map((id) => String(id)))
-      : null;
+    const hasAdminNamespace =
+      typeof adminSocket.getNsp === "function" && Boolean(adminSocket.getNsp());
+    const onlineAdminIds =
+      hasAdminNamespace &&
+      typeof adminSocket.getConnectedAdminIds === "function"
+        ? new Set(
+            (await adminSocket.getConnectedAdminIds()).map((id) => String(id)),
+          )
+        : null;
 
     const formattedAdmins = adminUsers.map((user) => {
       const uid = String(user._id);
@@ -413,12 +429,10 @@ exports.deletePanelAdminUser = async (req, res) => {
     const isRequesterSuperAdmin = requestingUser.role === "super_admin";
 
     if (!isRequesterSuperAdmin) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Bu iÅŸlem iÃ§in sÃ¼per admin yetkisi gerekli",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Bu iÅŸlem iÃ§in sÃ¼per admin yetkisi gerekli",
+      });
     }
 
     const { userId } = req.params;
@@ -457,12 +471,10 @@ exports.deletePanelAdminUser = async (req, res) => {
       target.role !== "moderator" &&
       target.role !== "super_admin"
     ) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Sadece panel hesaplarÄ± silinebilir",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Sadece panel hesaplarÄ± silinebilir",
+      });
     }
 
     await User.findByIdAndDelete(userId);
@@ -538,12 +550,10 @@ exports.restrictPanelAdmin = async (req, res) => {
 
     if (!isRequesterOwner && isRequesterSuperAdmin) {
       if (targetUser.role === "super_admin") {
-        return res
-          .status(403)
-          .json({
-            success: false,
-            message: "SÃ¼per adminler birbirini kÄ±sÄ±tlayamaz",
-          });
+        return res.status(403).json({
+          success: false,
+          message: "SÃ¼per adminler birbirini kÄ±sÄ±tlayamaz",
+        });
       }
     }
 
@@ -728,12 +738,10 @@ exports.adminDeleteUser = async (req, res) => {
 
     // Admin sadece super_admin tarafÄ±ndan silinebilir
     if (user.role === "admin" && req.user.role !== "super_admin") {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Admin hesaplar sadece super admin tarafÄ±ndan silinebilir",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Admin hesaplar sadece super admin tarafÄ±ndan silinebilir",
+      });
     }
 
     await User.findByIdAndDelete(userId);
@@ -965,7 +973,16 @@ exports.getMyProfile = async (req, res) => {
 exports.updateMyProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { name, username, gender, age, location, country, bio, preferredLanguage } = req.body;
+    const {
+      name,
+      username,
+      gender,
+      age,
+      location,
+      country,
+      bio,
+      preferredLanguage,
+    } = req.body;
 
     // Username benzersizlik kontrolÃ¼
     if (username) {
@@ -1426,12 +1443,10 @@ exports.unfollowUser = async (req, res) => {
     const { userId } = req.params;
 
     if (currentUserId === userId) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Kendinizi takipten Ã§Ä±karamazsÄ±nÄ±z",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Kendinizi takipten Ã§Ä±karamazsÄ±nÄ±z",
+      });
     }
 
     // Follow kaydÄ±nÄ± sil
@@ -1766,12 +1781,10 @@ exports.startBroadcast = async (req, res) => {
 
     // Sadece kadÄ±n kullanÄ±cÄ±lar yayÄ±n yapabilir
     if (user.gender !== "female") {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Sadece kadÄ±n kullanÄ±cÄ±lar yayÄ±n yapabilir",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Sadece kadÄ±n kullanÄ±cÄ±lar yayÄ±n yapabilir",
+      });
     }
 
     // âœ… Presence is socket-driven: require an active presence record
@@ -1916,12 +1929,10 @@ exports.changeEmail = async (req, res) => {
       _id: { $ne: req.user.id },
     });
     if (existing) {
-      return res
-        .status(409)
-        .json({
-          success: false,
-          message: "Bu e-posta adresi zaten kullanılıyor",
-        });
+      return res.status(409).json({
+        success: false,
+        message: "Bu e-posta adresi zaten kullanılıyor",
+      });
     }
 
     await User.findByIdAndUpdate(req.user.id, { $set: { email: newEmail } });
@@ -1940,12 +1951,10 @@ exports.changePhone = async (req, res) => {
     const newPhone = String(phone || "").trim();
 
     if (!newPhone || newPhone.length < 10) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Geçerli bir telefon numarası girin",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Geçerli bir telefon numarası girin",
+      });
     }
 
     await User.findByIdAndUpdate(req.user.id, { $set: { phone: newPhone } });
