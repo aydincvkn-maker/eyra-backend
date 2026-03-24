@@ -4,6 +4,14 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 
 const BCRYPT_ROUNDS = 10;
+const PANEL_ROLES = ["admin", "super_admin", "moderator"];
+
+const resolveAccountScope = (userLike = {}) => {
+  const role = String(userLike.role || "").toLowerCase();
+  return PANEL_ROLES.includes(role) || userLike.isOwner === true
+    ? "panel"
+    : "app";
+};
 
 const isBcryptHash = (value) => {
   if (typeof value !== "string") return false;
@@ -33,6 +41,13 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["email", "google", "apple", "phone", "guest"],
       default: "email",
+    },
+
+    accountScope: {
+      type: String,
+      enum: ["app", "panel"],
+      default: "app",
+      index: true,
     },
 
     role: {
@@ -250,6 +265,8 @@ const userSchema = new mongoose.Schema(
 // Backward compatible: if old users have plaintext passwords, they will be
 // upgraded on next successful login (see authController).
 userSchema.pre("save", async function () {
+  this.accountScope = resolveAccountScope(this);
+
   if (!this.isModified("password")) {
     return;
   }

@@ -41,6 +41,7 @@ const ask = (question) => new Promise((resolve) => rl.question(question, resolve
       email,
       password,
       role: 'admin',
+      accountScope: 'panel',
       gender: 'other',
       age: 20,
       location: 'Türkiye',

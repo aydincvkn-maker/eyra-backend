@@ -12,6 +12,7 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const PANEL_ROLES = ["admin", "super_admin", "moderator"];
 
 const isPanelUser = (user) => {
+  if (user?.accountScope === "panel") return true;
   const role = String(user?.role || "").toLowerCase();
   return PANEL_ROLES.includes(role) || user?.isOwner === true;
 };

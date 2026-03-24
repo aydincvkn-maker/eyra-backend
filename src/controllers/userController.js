@@ -56,11 +56,13 @@ const normalizePresenceStatus = (presenceData = {}) => {
 };
 
 const buildAppUserQuery = (extra = {}) => ({
+  accountScope: { $ne: "panel" },
   role: { $nin: PANEL_ROLES },
   ...extra,
 });
 
 const isPanelUser = (user) => {
+  if (user?.accountScope === "panel") return true;
   const role = String(user?.role || "").toLowerCase();
   return PANEL_ROLES.includes(role) || user?.isOwner === true;
 };

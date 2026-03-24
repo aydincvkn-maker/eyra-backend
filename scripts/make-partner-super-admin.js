@@ -19,6 +19,7 @@ const TARGET_PASSWORD = '110405';
     if (user) {
       console.log(`📋 Mevcut kullanıcı bulundu: ${user.email}, role: ${user.role}`);
       user.role = 'super_admin';
+      user.accountScope = 'panel';
       user.isActive = true;
       user.isBanned = false;
       user.isFrozen = false;
@@ -33,6 +34,7 @@ const TARGET_PASSWORD = '110405';
         email: TARGET_EMAIL,
         password: TARGET_PASSWORD,
         role: 'super_admin',
+        accountScope: 'panel',
         gender: 'other',
         age: 25,
         location: 'Türkiye',

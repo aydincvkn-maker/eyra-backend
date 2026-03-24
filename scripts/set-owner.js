@@ -34,6 +34,7 @@ const TARGET_EMAIL = process.argv[2];
 
     user.isOwner = true;
     user.role = 'super_admin'; // Owner super_admin rolünde olmalı
+    user.accountScope = 'panel';
     user.isActive = true;
     user.isBanned = false;
     user.isPanelRestricted = false;

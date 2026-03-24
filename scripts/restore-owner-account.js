@@ -53,6 +53,7 @@ const ensureUniqueUsername = async (baseUsername, currentUserId = null) => {
         email,
         password,
         role: "super_admin",
+        accountScope: "panel",
         authProvider: "email",
         gender: "other",
         country: "TR",
@@ -74,6 +75,7 @@ const ensureUniqueUsername = async (baseUsername, currentUserId = null) => {
       user.name = displayName;
       user.password = password;
       user.role = "super_admin";
+      user.accountScope = "panel";
       user.authProvider = "email";
       user.isGuest = false;
       user.isActive = true;
