@@ -8,39 +8,56 @@ const BCRYPT_ROUNDS = 10;
 const isBcryptHash = (value) => {
   if (typeof value !== "string") return false;
   // bcrypt hashes start with $2a$, $2b$, or $2y$
-  return value.startsWith("$2a$") || value.startsWith("$2b$") || value.startsWith("$2y$");
+  return (
+    value.startsWith("$2a$") ||
+    value.startsWith("$2b$") ||
+    value.startsWith("$2y$")
+  );
 };
 
 const userSchema = new mongoose.Schema(
   {
     username: { type: String, required: true, unique: true, trim: true },
     name: { type: String, required: true },
-    email: { type: String, required: true, unique: true, trim: true, lowercase: true },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
     password: { type: String, required: true },
 
     // Giriş yöntemi
     authProvider: {
       type: String,
       enum: ["email", "google", "apple", "phone", "guest"],
-      default: "email"
+      default: "email",
     },
 
     role: {
       type: String,
       enum: ["super_admin", "moderator", "viewer", "admin"],
-      default: "viewer"
+      default: "viewer",
     },
 
-    permissions: [{
-      type: String,
-      enum: [
-        'streams:view', 'streams:edit', 'streams:ban',
-        'users:view', 'users:edit', 'users:ban',
-        'reports:view', 'reports:manage',
-        'finance:view',
-        'system:settings'
-      ]
-    }],
+    permissions: [
+      {
+        type: String,
+        enum: [
+          "streams:view",
+          "streams:edit",
+          "streams:ban",
+          "users:view",
+          "users:edit",
+          "users:ban",
+          "reports:view",
+          "reports:manage",
+          "finance:view",
+          "system:settings",
+        ],
+      },
+    ],
 
     // COIN VE SEVİYE
     coins: { type: Number, default: 1000, min: 0 },
@@ -53,24 +70,30 @@ const userSchema = new mongoose.Schema(
 
     // ÜCRETLI ARAMA AYARLARI
     callPricePerMinute: { type: Number, default: 100 }, // Dakika başı coin
-    preferredLanguage: { type: String, default: 'tr' }, // Tercih edilen dil
+    preferredLanguage: { type: String, default: "tr" }, // Tercih edilen dil
 
     // PROFİL BİLGİLERİ
     profileImage: { type: String, default: "" },
     bio: { type: String, default: "", maxlength: 500 },
-    gender: { type: String, enum: ["male", "female", "other"], default: "other" },
+    gender: {
+      type: String,
+      enum: ["male", "female", "other"],
+      default: "other",
+    },
     age: { type: Number, default: 18 },
     location: { type: String, default: "" },
     country: { type: String, default: "" },
     phone: { type: String, default: "" },
 
     // GİRİŞ GEÇMİŞİ
-    loginHistory: [{
-      platform: { type: String, default: "" },
-      device: { type: String, default: "" },
-      ip: { type: String, default: "" },
-      loginAt: { type: Date, default: Date.now },
-    }],
+    loginHistory: [
+      {
+        platform: { type: String, default: "" },
+        device: { type: String, default: "" },
+        ip: { type: String, default: "" },
+        loginAt: { type: Date, default: Date.now },
+      },
+    ],
 
     // SOSYAL İSTATİSTİKLER
     followers: { type: Number, default: 0 },
@@ -82,7 +105,11 @@ const userSchema = new mongoose.Schema(
     lastSeen: { type: Date, default: Date.now },
     isLive: { type: Boolean, default: false },
     isBusy: { type: Boolean, default: false },
-    presenceStatus: { type: String, enum: ["online", "offline", "live", "in_call"], default: "offline" },
+    presenceStatus: {
+      type: String,
+      enum: ["online", "offline", "live", "in_call"],
+      default: "offline",
+    },
 
     // Presence zaman damgaları (gerçek online/busy/offline)
     lastOnlineAt: { type: Date, default: null },
@@ -97,7 +124,7 @@ const userSchema = new mongoose.Schema(
     isGuest: { type: Boolean, default: false },
 
     // YETKİ HİYERARŞİSİ
-    isOwner: { type: Boolean, default: false },           // Patron - en yüksek yetki
+    isOwner: { type: Boolean, default: false }, // Patron - en yüksek yetki
     isPanelRestricted: { type: Boolean, default: false }, // Panel erişimi kısıtlı
 
     // AYARLAR
@@ -114,15 +141,19 @@ const userSchema = new mongoose.Schema(
       showOnlineStatus: { type: Boolean, default: true },
       profileVisibility: { type: Boolean, default: true },
       allowMessages: { type: Boolean, default: true },
-      showActivity: { type: Boolean, default: false }
+      showActivity: { type: Boolean, default: false },
     },
 
     // ENGELLENEN KULLANICILAR
-    blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 
     // VIP SİSTEMİ
     isVip: { type: Boolean, default: false },
-    vipTier: { type: String, enum: ['none', 'silver', 'gold', 'diamond'], default: 'none' },
+    vipTier: {
+      type: String,
+      enum: ["none", "silver", "gold", "diamond"],
+      default: "none",
+    },
     vipExpiresAt: { type: Date, default: null },
     vipPurchasedAt: { type: Date, default: null },
 
@@ -135,7 +166,7 @@ const userSchema = new mongoose.Schema(
       version: { type: String, default: "" },
     },
     // Ödeme yöntemleri
-    preferredWithdrawMethod: { type: String, default: 'bank' }, // bank | papara | paypal | crypto | wise
+    preferredWithdrawMethod: { type: String, default: "bank" }, // bank | papara | paypal | crypto | wise
     iban: { type: String, default: null },
     bankName: { type: String, default: null },
     accountHolder: { type: String, default: null },
@@ -143,7 +174,7 @@ const userSchema = new mongoose.Schema(
     paparaName: { type: String, default: null },
     paypalEmail: { type: String, default: null },
     cryptoAddress: { type: String, default: null },
-    cryptoNetwork: { type: String, default: 'TRC20' },
+    cryptoNetwork: { type: String, default: "TRC20" },
     wiseEmail: { type: String, default: null },
     wiseName: { type: String, default: null },
 
@@ -152,21 +183,33 @@ const userSchema = new mongoose.Schema(
     fcmTokenUpdatedAt: { type: Date, default: null },
 
     // PROFİL DOĞRULAMA
-    verificationStatus: { type: String, enum: ['none', 'pending', 'approved', 'rejected'], default: 'none' },
+    verificationStatus: {
+      type: String,
+      enum: ["none", "pending", "approved", "rejected"],
+      default: "none",
+    },
     verificationPhoto: { type: String, default: null },
     verificationRequestedAt: { type: Date, default: null },
     verificationReviewedAt: { type: Date, default: null },
-    verificationReviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    verificationReviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
 
     // BAŞARIMLAR
-    achievements: [{
-      id: String,
-      name: String,
-      icon: String,
-      description: String,
-      category: { type: String, enum: ['social', 'streaming', 'gifting', 'milestone'] },
-      unlockedAt: Date
-    }],
+    achievements: [
+      {
+        id: String,
+        name: String,
+        icon: String,
+        description: String,
+        category: {
+          type: String,
+          enum: ["social", "streaming", "gifting", "milestone"],
+        },
+        unlockedAt: Date,
+      },
+    ],
 
     // XP EVENT TRACKING
     dailyXpEarned: { type: Number, default: 0 },
@@ -180,21 +223,27 @@ const userSchema = new mongoose.Schema(
     loginStreak: { type: Number, default: 0 },
 
     // VIOLATIONS (İhlaller) — Maaş ceza sistemi
-    violations: [{
-      reason: { type: String, required: true },
-      severity: { type: String, enum: ['warning', 'minor', 'major', 'critical'], default: 'minor' },
-      penaltyPercent: { type: Number, default: 0 },
-      issuedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-      issuedAt: { type: Date, default: Date.now },
-      expiresAt: { type: Date, default: null },
-      active: { type: Boolean, default: true },
-      note: { type: String, default: '' },
-    }],
+    violations: [
+      {
+        reason: { type: String, required: true },
+        severity: {
+          type: String,
+          enum: ["warning", "minor", "major", "critical"],
+          default: "minor",
+        },
+        penaltyPercent: { type: Number, default: 0 },
+        issuedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        issuedAt: { type: Date, default: Date.now },
+        expiresAt: { type: Date, default: null },
+        active: { type: Boolean, default: true },
+        note: { type: String, default: "" },
+      },
+    ],
 
     // TOKEN
-    refreshToken: { type: String, default: null }
+    refreshToken: { type: String, default: null },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Hash password on create/update.
@@ -231,7 +280,10 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   // Legacy accounts: timing-safe plaintext compare
   if (cleanPassword.length !== stored.length) return false;
   try {
-    return crypto.timingSafeEqual(Buffer.from(cleanPassword), Buffer.from(stored));
+    return crypto.timingSafeEqual(
+      Buffer.from(cleanPassword),
+      Buffer.from(stored),
+    );
   } catch {
     return false;
   }
@@ -242,8 +294,10 @@ userSchema.methods.isPasswordHashed = function () {
 };
 
 // Seviye hesaplama
-userSchema.methods.calculateLevel = function() {
-  const xpThresholds = [0, 100, 300, 600, 1000, 1500, 2100, 2800, 3600, 4500, 5500];
+userSchema.methods.calculateLevel = function () {
+  const xpThresholds = [
+    0, 100, 300, 600, 1000, 1500, 2100, 2800, 3600, 4500, 5500,
+  ];
   for (let i = xpThresholds.length - 1; i >= 0; i--) {
     if (this.xp >= xpThresholds[i]) {
       return i + 1;
@@ -253,7 +307,7 @@ userSchema.methods.calculateLevel = function() {
 };
 
 // XP ekleme
-userSchema.methods.addXP = async function(amount) {
+userSchema.methods.addXP = async function (amount) {
   this.xp += amount;
   const oldLevel = this.level;
   this.level = this.calculateLevel();
@@ -262,7 +316,9 @@ userSchema.methods.addXP = async function(amount) {
   // ✅ Level-up achievement trigger (lazy require to avoid circular deps)
   if (this.level > oldLevel) {
     try {
-      const { checkLevelAchievements } = require("../controllers/achievementController");
+      const {
+        checkLevelAchievements,
+      } = require("../controllers/achievementController");
       await checkLevelAchievements(this._id, this.level);
     } catch (e) {
       console.warn("⚠️ Level achievement check failed:", e.message);
