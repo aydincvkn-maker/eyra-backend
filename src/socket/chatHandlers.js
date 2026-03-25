@@ -10,6 +10,7 @@ const Message = require('../models/Message');
 const { emitToUserSockets, getCounterpartyForRoom } = require('./helpers');
 const { logger } = require('../utils/logger');
 const { createNotification } = require('../controllers/notificationController');
+const { containsPaymentRedirect } = require('../utils/paymentRedirectModeration');
 
 /**
  * Register chat events on a connected socket.
@@ -96,6 +97,7 @@ function register(socket, io) {
       let errorMessage = 'Failed to send message';
       if (error.message === 'RATE_LIMIT_EXCEEDED') errorMessage = 'Too many messages. Please slow down.';
       if (error.message === 'USER_BLOCKED') errorMessage = 'user_blocked';
+      if (error.message === 'PAYMENT_REDIRECT_BLOCKED') errorMessage = 'payment_redirect_blocked';
 
       socket.emit('chat:error', {
         tempId: data.tempId,
@@ -140,6 +142,11 @@ function register(socket, io) {
     try {
       if (String(content).length > 500) {
         socket.emit('call:message_error', { error: 'message_too_long', maxLength: 500, tempId });
+        return;
+      }
+
+      if (containsPaymentRedirect(String(content))) {
+        socket.emit('call:message_error', { error: 'payment_redirect_blocked', tempId });
         return;
       }
 

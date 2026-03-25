@@ -6,6 +6,7 @@
 const LiveStream = require('../models/LiveStream');
 const Message = require('../models/Message');
 const User = require('../models/User');
+const { containsPaymentRedirect } = require('../utils/paymentRedirectModeration');
 
 /**
  * Register live stream events on a connected socket.
@@ -97,20 +98,25 @@ function register(socket, io) {
         return;
       }
 
+      if (containsPaymentRedirect(String(message))) {
+        socket.emit('error', { message: 'payment_redirect_blocked' });
+        return;
+      }
+
       const user = await User.findById(userId).select('username name profileImage').lean();
       if (!user) {
         socket.emit('error', { message: 'user_not_found' });
         return;
       }
 
+      const sanitizedContent = String(message).replace(/<[^>]*>/g, '');
+
       const msg = await Message.create({
         roomId,
         from: userId,
         type,
-        content: message.replace(/<[^>]*>/g, ''),
+        content: sanitizedContent,
       });
-
-      const sanitizedContent = message.replace(/<[^>]*>/g, '');
       io.to(roomId).emit('chat_message', {
         _id: msg._id,
         roomId,

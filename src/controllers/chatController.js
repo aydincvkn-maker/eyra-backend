@@ -223,6 +223,13 @@ exports.editMessage = async (req, res) => {
       return sendError(res, 404, "MESSAGE_NOT_FOUND");
     if (err.message === "UNAUTHORIZED")
       return sendError(res, 403, "UNAUTHORIZED");
+    if (err.message === "PAYMENT_REDIRECT_BLOCKED") {
+      return sendError(
+        res,
+        422,
+        "Mesajda uygulama disi odeme veya yonlendirme ifadesi kullanilamaz",
+      );
+    }
     return sendError(res, 500, "Sunucu hatası");
   }
 };
