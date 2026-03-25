@@ -11,7 +11,10 @@ const fs = require("fs");
 exports.getRoomMessages = async (req, res) => {
   try {
     const { roomId } = req.params;
-    const limit = Math.min(200, Math.max(1, Math.floor(Number(req.query.limit || 200))));
+    const limit = Math.min(
+      200,
+      Math.max(1, Math.floor(Number(req.query.limit || 200))),
+    );
     const messages = await Message.find({ roomId })
       .sort({ createdAt: 1 })
       .limit(limit);
@@ -45,7 +48,10 @@ exports.getConversation = async (req, res) => {
     const userId = String(req.user?.id || "");
     const otherUserId = String(req.params.userId || "").trim();
     const page = Math.max(0, Math.floor(Number(req.query.page || 0)));
-    const limit = Math.min(100, Math.max(1, Math.floor(Number(req.query.limit || 50))));
+    const limit = Math.min(
+      100,
+      Math.max(1, Math.floor(Number(req.query.limit || 50))),
+    );
 
     if (!otherUserId) {
       return sendError(res, 400, "Eksik userId");
@@ -452,7 +458,10 @@ exports.forwardMessage = async (req, res) => {
 
 exports.getRecentVoiceMessages = async (req, res) => {
   try {
-    const limit = Math.min(20, Math.max(1, Math.floor(Number(req.query.limit || 10))));
+    const limit = Math.min(
+      20,
+      Math.max(1, Math.floor(Number(req.query.limit || 10))),
+    );
 
     const messages = await Message.find({
       type: "audio",
