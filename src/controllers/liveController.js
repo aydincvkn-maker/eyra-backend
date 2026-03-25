@@ -13,7 +13,9 @@ const {
   getStreamThumbnail,
   getProfileImageUrl,
 } = require("../utils/cdn");
-const { containsPaymentRedirect } = require("../utils/paymentRedirectModeration");
+const {
+  containsPaymentRedirect,
+} = require("../utils/paymentRedirectModeration");
 const { trackMissionProgress } = require("./missionController");
 const { checkStreamAchievements } = require("./achievementController");
 const adminSocket = require("../socket/adminNamespace");
@@ -809,7 +811,9 @@ exports.sendChatMessage = async (req, res) => {
     }
 
     if (containsPaymentRedirect(String(message))) {
-      return res.status(422).json({ ok: false, error: "payment_redirect_blocked" });
+      return res
+        .status(422)
+        .json({ ok: false, error: "payment_redirect_blocked" });
     }
 
     // Yayın aktif mi kontrol et

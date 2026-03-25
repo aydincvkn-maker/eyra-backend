@@ -6,13 +6,14 @@ const { logger } = require("../utils/logger");
 const { getRedisClient } = require("../config/redis");
 const { getChatRoomId } = require("../utils/chatUtils");
 const { trackMissionProgress } = require("../controllers/missionController");
-const { containsPaymentRedirect } = require("../utils/paymentRedirectModeration");
+const {
+  containsPaymentRedirect,
+} = require("../utils/paymentRedirectModeration");
 
 // ✅ Rate limiting map (Fallback if Redis is unavailable)
 const messageRateLimits = new Map();
 const MESSAGE_RATE_LIMIT = 20; // messages per minute
 const RATE_LIMIT_WINDOW = 60; // seconds
-
 
 /**
  * Check if user exceeded rate limit (Redis Supported)

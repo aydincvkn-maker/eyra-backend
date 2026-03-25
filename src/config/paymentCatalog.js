@@ -72,8 +72,12 @@ const paymentCatalog = Object.freeze({
 });
 
 const normalizePaymentContext = (context = {}) => {
-  const platform = String(context.platform || "unknown").trim().toLowerCase();
-  const channel = String(context.channel || "app").trim().toLowerCase();
+  const platform = String(context.platform || "unknown")
+    .trim()
+    .toLowerCase();
+  const channel = String(context.channel || "app")
+    .trim()
+    .toLowerCase();
   const isStoreManagedPlatform =
     channel === "app" && (platform === "android" || platform === "ios");
 
