@@ -44,6 +44,83 @@ exports.getChatUsers = async (req, res) => {
 // Virtual sender ID for all admin-panel messages (shown as "Eyra Destek" in app)
 const EYRA_SUPPORT_ID = "eyra_support";
 
+const buildModerationDateRange = (from, to) => {
+  if (!from && !to) return null;
+
+  const range = {};
+  if (from) {
+    const fromDate = new Date(from);
+    if (!Number.isNaN(fromDate.getTime())) {
+      fromDate.setHours(0, 0, 0, 0);
+      range.$gte = fromDate;
+    }
+  }
+  if (to) {
+    const toDate = new Date(to);
+    if (!Number.isNaN(toDate.getTime())) {
+      toDate.setHours(23, 59, 59, 999);
+      range.$lte = toDate;
+    }
+  }
+
+  return Object.keys(range).length ? range : null;
+};
+
+const buildModerationSearchRegex = (search) => {
+  if (!search) return null;
+  const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(escapedSearch, "i");
+};
+
+const buildPaymentRedirectIncidentQuery = async ({
+  source = "",
+  actorUserId = "",
+  search = "",
+  from = "",
+  to = "",
+} = {}) => {
+  const query = { kind: "payment_redirect" };
+
+  if (source) query.source = source;
+  if (actorUserId) query.actorUser = actorUserId;
+
+  const createdAt = buildModerationDateRange(from, to);
+  if (createdAt) {
+    query.createdAt = createdAt;
+  }
+
+  const searchRegex = buildModerationSearchRegex(search);
+  if (!searchRegex) {
+    return query;
+  }
+
+  const matchedUsers = await User.find(
+    {
+      $or: [
+        { username: searchRegex },
+        { name: searchRegex },
+        { email: searchRegex },
+      ],
+    },
+    "_id",
+  )
+    .limit(50)
+    .lean();
+
+  const matchedUserIds = matchedUsers.map((user) => user._id);
+  query.$or = [
+    { contentPreview: searchRegex },
+    { normalizedContent: searchRegex },
+  ];
+
+  if (matchedUserIds.length) {
+    query.$or.push({ actorUser: { $in: matchedUserIds } });
+    query.$or.push({ targetUser: { $in: matchedUserIds } });
+  }
+
+  return query;
+};
+
 exports.getConversation = async (req, res) => {
   try {
     const userId = String(req.user?.id || "");
@@ -172,58 +249,13 @@ exports.adminGetPaymentRedirectAttempts = async (req, res) => {
     const from = String(req.query.from || "").trim();
     const to = String(req.query.to || "").trim();
 
-    const query = { kind: "payment_redirect" };
-    if (source) query.source = source;
-    if (actorUserId) query.actorUser = actorUserId;
-
-    if (from || to) {
-      query.createdAt = {};
-      if (from) {
-        const fromDate = new Date(from);
-        if (!Number.isNaN(fromDate.getTime())) {
-          fromDate.setHours(0, 0, 0, 0);
-          query.createdAt.$gte = fromDate;
-        }
-      }
-      if (to) {
-        const toDate = new Date(to);
-        if (!Number.isNaN(toDate.getTime())) {
-          toDate.setHours(23, 59, 59, 999);
-          query.createdAt.$lte = toDate;
-        }
-      }
-      if (!Object.keys(query.createdAt).length) {
-        delete query.createdAt;
-      }
-    }
-
-    if (search) {
-      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const searchRegex = new RegExp(escapedSearch, "i");
-      const matchedUsers = await User.find(
-        {
-          $or: [
-            { username: searchRegex },
-            { name: searchRegex },
-            { email: searchRegex },
-          ],
-        },
-        "_id",
-      )
-        .limit(50)
-        .lean();
-      const matchedUserIds = matchedUsers.map((user) => user._id);
-
-      query.$or = [
-        { contentPreview: searchRegex },
-        { normalizedContent: searchRegex },
-      ];
-
-      if (matchedUserIds.length) {
-        query.$or.push({ actorUser: { $in: matchedUserIds } });
-        query.$or.push({ targetUser: { $in: matchedUserIds } });
-      }
-    }
+    const query = await buildPaymentRedirectIncidentQuery({
+      source,
+      actorUserId,
+      search,
+      from,
+      to,
+    });
 
     const total = await ModerationIncident.countDocuments(query);
     const incidents = await ModerationIncident.find(query)
@@ -253,6 +285,66 @@ exports.adminGetPaymentRedirectAttempts = async (req, res) => {
     });
   } catch (err) {
     console.error("adminGetPaymentRedirectAttempts error:", err);
+    return sendError(res, 500, "Sunucu hatası");
+  }
+};
+
+exports.adminGetPaymentRedirectSummary = async (req, res) => {
+  try {
+    const source = String(req.query.source || "").trim();
+    const actorUserId = String(req.query.actorUserId || "").trim();
+    const search = String(req.query.search || "").trim();
+    const from = String(req.query.from || "").trim();
+    const to = String(req.query.to || "").trim();
+
+    const query = await buildPaymentRedirectIncidentQuery({
+      source,
+      actorUserId,
+      search,
+      from,
+      to,
+    });
+
+    const [total, uniqueActorsAgg, uniqueTargetsAgg, sourceBreakdown] = await Promise.all([
+      ModerationIncident.countDocuments(query),
+      ModerationIncident.aggregate([
+        { $match: { ...query, actorUser: { $ne: null } } },
+        { $group: { _id: "$actorUser" } },
+        { $count: "count" },
+      ]),
+      ModerationIncident.aggregate([
+        { $match: { ...query, targetUser: { $ne: null } } },
+        { $group: { _id: "$targetUser" } },
+        { $count: "count" },
+      ]),
+      ModerationIncident.aggregate([
+        { $match: query },
+        { $group: { _id: "$source", count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+      ]),
+    ]);
+
+    return res.json({
+      success: true,
+      summary: {
+        total,
+        uniqueActors: Number(uniqueActorsAgg[0]?.count || 0),
+        uniqueTargets: Number(uniqueTargetsAgg[0]?.count || 0),
+        sourceBreakdown: sourceBreakdown.map((entry) => ({
+          source: entry._id || "unknown",
+          count: Number(entry.count || 0),
+        })),
+      },
+      filters: {
+        source: source || null,
+        actorUserId: actorUserId || null,
+        search: search || null,
+        from: from || null,
+        to: to || null,
+      },
+    });
+  } catch (err) {
+    console.error("adminGetPaymentRedirectSummary error:", err);
     return sendError(res, 500, "Sunucu hatası");
   }
 };
