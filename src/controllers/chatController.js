@@ -305,24 +305,25 @@ exports.adminGetPaymentRedirectSummary = async (req, res) => {
       to,
     });
 
-    const [total, uniqueActorsAgg, uniqueTargetsAgg, sourceBreakdown] = await Promise.all([
-      ModerationIncident.countDocuments(query),
-      ModerationIncident.aggregate([
-        { $match: { ...query, actorUser: { $ne: null } } },
-        { $group: { _id: "$actorUser" } },
-        { $count: "count" },
-      ]),
-      ModerationIncident.aggregate([
-        { $match: { ...query, targetUser: { $ne: null } } },
-        { $group: { _id: "$targetUser" } },
-        { $count: "count" },
-      ]),
-      ModerationIncident.aggregate([
-        { $match: query },
-        { $group: { _id: "$source", count: { $sum: 1 } } },
-        { $sort: { count: -1, _id: 1 } },
-      ]),
-    ]);
+    const [total, uniqueActorsAgg, uniqueTargetsAgg, sourceBreakdown] =
+      await Promise.all([
+        ModerationIncident.countDocuments(query),
+        ModerationIncident.aggregate([
+          { $match: { ...query, actorUser: { $ne: null } } },
+          { $group: { _id: "$actorUser" } },
+          { $count: "count" },
+        ]),
+        ModerationIncident.aggregate([
+          { $match: { ...query, targetUser: { $ne: null } } },
+          { $group: { _id: "$targetUser" } },
+          { $count: "count" },
+        ]),
+        ModerationIncident.aggregate([
+          { $match: query },
+          { $group: { _id: "$source", count: { $sum: 1 } } },
+          { $sort: { count: -1, _id: 1 } },
+        ]),
+      ]);
 
     return res.json({
       success: true,
