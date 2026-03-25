@@ -204,6 +204,7 @@ const createPaymentIntent = async ({
     metadata: {
       title: item.title,
       coins: item.coins || 0,
+      vipTier: item.vipTier || null,
       vipDays: item.vipDays || 0,
       channel: paymentContext.channel,
       storeManagedPlatform: paymentContext.isStoreManagedPlatform,
@@ -300,13 +301,14 @@ const applyPaidEffectsWithTransaction = async (paymentDoc) => {
 
       if (lockedPayment.productType === "vip") {
         const vipDays = Number(lockedPayment.metadata?.vipDays || 0);
+        const vipTier = String(lockedPayment.metadata?.vipTier || "silver");
         const baseDate =
           user.vipExpiresAt && user.vipExpiresAt > new Date()
             ? user.vipExpiresAt
             : new Date();
 
         user.isVip = true;
-        user.vipTier = user.vipTier === "none" ? "silver" : user.vipTier;
+        user.vipTier = user.vipTier === "none" ? vipTier : user.vipTier;
         user.vipPurchasedAt = new Date();
         user.vipExpiresAt = new Date(
           baseDate.getTime() + vipDays * 24 * 60 * 60 * 1000,
@@ -323,6 +325,7 @@ const applyPaidEffectsWithTransaction = async (paymentDoc) => {
               description: `${lockedPayment.metadata?.title || "VIP"} satın alındı`,
               metadata: {
                 orderId: lockedPayment.orderId,
+                vipTier,
                 vipDays,
                 vipExpiresAt: user.vipExpiresAt,
                 provider: lockedPayment.provider,
@@ -396,13 +399,14 @@ const applyPaidEffectsWithoutTransaction = async (paymentDoc) => {
 
   if (lockedPayment.productType === "vip") {
     const vipDays = Number(lockedPayment.metadata?.vipDays || 0);
+    const vipTier = String(lockedPayment.metadata?.vipTier || "silver");
     const baseDate =
       user.vipExpiresAt && user.vipExpiresAt > new Date()
         ? user.vipExpiresAt
         : new Date();
 
     user.isVip = true;
-    user.vipTier = user.vipTier === "none" ? "silver" : user.vipTier;
+    user.vipTier = user.vipTier === "none" ? vipTier : user.vipTier;
     user.vipPurchasedAt = new Date();
     user.vipExpiresAt = new Date(
       baseDate.getTime() + vipDays * 24 * 60 * 60 * 1000,
@@ -417,6 +421,7 @@ const applyPaidEffectsWithoutTransaction = async (paymentDoc) => {
       description: `${lockedPayment.metadata?.title || "VIP"} satın alındı`,
       metadata: {
         orderId: lockedPayment.orderId,
+        vipTier,
         vipDays,
         vipExpiresAt: user.vipExpiresAt,
         provider: lockedPayment.provider,
