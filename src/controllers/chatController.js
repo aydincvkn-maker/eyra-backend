@@ -168,10 +168,62 @@ exports.adminGetPaymentRedirectAttempts = async (req, res) => {
     const limit = Math.min(100, Math.max(1, Number(req.query.limit || 20)));
     const source = String(req.query.source || "").trim();
     const actorUserId = String(req.query.actorUserId || "").trim();
+    const search = String(req.query.search || "").trim();
+    const from = String(req.query.from || "").trim();
+    const to = String(req.query.to || "").trim();
 
     const query = { kind: "payment_redirect" };
     if (source) query.source = source;
     if (actorUserId) query.actorUser = actorUserId;
+
+    if (from || to) {
+      query.createdAt = {};
+      if (from) {
+        const fromDate = new Date(from);
+        if (!Number.isNaN(fromDate.getTime())) {
+          fromDate.setHours(0, 0, 0, 0);
+          query.createdAt.$gte = fromDate;
+        }
+      }
+      if (to) {
+        const toDate = new Date(to);
+        if (!Number.isNaN(toDate.getTime())) {
+          toDate.setHours(23, 59, 59, 999);
+          query.createdAt.$lte = toDate;
+        }
+      }
+      if (!Object.keys(query.createdAt).length) {
+        delete query.createdAt;
+      }
+    }
+
+    if (search) {
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const searchRegex = new RegExp(escapedSearch, "i");
+      const matchedUsers = await User.find(
+        {
+          $or: [
+            { username: searchRegex },
+            { name: searchRegex },
+            { email: searchRegex },
+          ],
+        },
+        "_id",
+      )
+        .limit(50)
+        .lean();
+      const matchedUserIds = matchedUsers.map((user) => user._id);
+
+      query.$or = [
+        { contentPreview: searchRegex },
+        { normalizedContent: searchRegex },
+      ];
+
+      if (matchedUserIds.length) {
+        query.$or.push({ actorUser: { $in: matchedUserIds } });
+        query.$or.push({ targetUser: { $in: matchedUserIds } });
+      }
+    }
 
     const total = await ModerationIncident.countDocuments(query);
     const incidents = await ModerationIncident.find(query)
@@ -190,6 +242,13 @@ exports.adminGetPaymentRedirectAttempts = async (req, res) => {
         limit,
         total,
         pages: Math.ceil(total / limit),
+      },
+      filters: {
+        source: source || null,
+        actorUserId: actorUserId || null,
+        search: search || null,
+        from: from || null,
+        to: to || null,
       },
     });
   } catch (err) {
