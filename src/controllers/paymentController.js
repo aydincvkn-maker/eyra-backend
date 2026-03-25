@@ -415,12 +415,10 @@ exports.iapPurchase = async (req, res) => {
     const userId = req.user.id;
 
     if (!productId || !transactionId) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "productId ve transactionId gerekli",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "productId ve transactionId gerekli",
+      });
     }
 
     // 🔒 Coin miktarı SADECE sunucu tarafı map'ten belirlenir — client değerlerine güvenilmez
@@ -554,8 +552,16 @@ exports.mockComplete = async (req, res) => {
     const isWebChannel = payment.metadata?.channel === "web";
     const target = isWebChannel
       ? status === "paid"
-        ? payment.metadata?.successUrl || buildHostedCheckoutReturnUrl({ status: "success", orderId: payment.orderId })
-        : payment.metadata?.cancelUrl || buildHostedCheckoutReturnUrl({ status: "cancel", orderId: payment.orderId })
+        ? payment.metadata?.successUrl ||
+          buildHostedCheckoutReturnUrl({
+            status: "success",
+            orderId: payment.orderId,
+          })
+        : payment.metadata?.cancelUrl ||
+          buildHostedCheckoutReturnUrl({
+            status: "cancel",
+            orderId: payment.orderId,
+          })
       : status === "paid"
         ? PAYMENT_SUCCESS_URL || "eyra://payment/success"
         : PAYMENT_CANCEL_URL || "eyra://payment/cancel";
@@ -578,7 +584,9 @@ exports.mockComplete = async (req, res) => {
 };
 
 exports.checkoutReturnPage = async (req, res) => {
-  const status = String(req.query.status || "unknown").trim().toLowerCase();
+  const status = String(req.query.status || "unknown")
+    .trim()
+    .toLowerCase();
   const orderId = String(req.query.orderId || "").trim();
   const isSuccess = status === "success" || status === "paid";
   const title = isSuccess ? "Odeme tamamlandi" : "Odeme kapatildi";

@@ -80,8 +80,14 @@ const resolveCheckoutUrls = ({ paymentContext, orderId }) => {
   }
 
   return {
-    successUrl: String(PAYMENT_SUCCESS_URL || "eyra://payment/success").replace(/\{ORDER_ID\}/g, encodeURIComponent(orderId)),
-    cancelUrl: String(PAYMENT_CANCEL_URL || "eyra://payment/cancel").replace(/\{ORDER_ID\}/g, encodeURIComponent(orderId)),
+    successUrl: String(PAYMENT_SUCCESS_URL || "eyra://payment/success").replace(
+      /\{ORDER_ID\}/g,
+      encodeURIComponent(orderId),
+    ),
+    cancelUrl: String(PAYMENT_CANCEL_URL || "eyra://payment/cancel").replace(
+      /\{ORDER_ID\}/g,
+      encodeURIComponent(orderId),
+    ),
   };
 };
 
