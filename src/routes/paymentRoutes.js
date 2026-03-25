@@ -45,6 +45,7 @@ if (process.env.NODE_ENV !== "production") {
   router.get("/mock-checkout", paymentController.mockCheckout);
   router.get("/mock-complete", paymentController.mockComplete);
 }
+router.get("/checkout-return", paymentController.checkoutReturnPage);
 router.post("/webhook", paymentController.webhook);
 
 router.get("/:orderId", auth, paymentController.getMyPaymentByOrderId);

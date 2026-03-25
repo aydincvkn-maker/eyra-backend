@@ -6,7 +6,15 @@ const {
   PAYMENT_WEBHOOK_SECRET,
   PAYMENT_SUCCESS_URL,
   PAYMENT_CANCEL_URL,
+  BACKEND_URL,
 } = require("../config/env");
+
+const trimTrailingSlashes = (value) => String(value || "").replace(/\/+$/, "");
+
+const buildHostedCheckoutReturnUrl = ({ status, orderId }) => {
+  const baseUrl = trimTrailingSlashes(BACKEND_URL || "http://localhost:5000");
+  return `${baseUrl}/api/payments/checkout-return?status=${encodeURIComponent(status)}&orderId=${encodeURIComponent(orderId)}`;
+};
 
 exports.getCatalog = async (req, res) => {
   try {
@@ -543,8 +551,12 @@ exports.mockComplete = async (req, res) => {
       },
     });
 
-    const target =
-      status === "paid"
+    const isWebChannel = payment.metadata?.channel === "web";
+    const target = isWebChannel
+      ? status === "paid"
+        ? payment.metadata?.successUrl || buildHostedCheckoutReturnUrl({ status: "success", orderId: payment.orderId })
+        : payment.metadata?.cancelUrl || buildHostedCheckoutReturnUrl({ status: "cancel", orderId: payment.orderId })
+      : status === "paid"
         ? PAYMENT_SUCCESS_URL || "eyra://payment/success"
         : PAYMENT_CANCEL_URL || "eyra://payment/cancel";
 
@@ -563,4 +575,47 @@ exports.mockComplete = async (req, res) => {
       .status(err.statusCode || 500)
       .json({ success: false, message: err.message || "Sunucu hatası" });
   }
+};
+
+exports.checkoutReturnPage = async (req, res) => {
+  const status = String(req.query.status || "unknown").trim().toLowerCase();
+  const orderId = String(req.query.orderId || "").trim();
+  const isSuccess = status === "success" || status === "paid";
+  const title = isSuccess ? "Odeme tamamlandi" : "Odeme kapatildi";
+  const message = isSuccess
+    ? "Odeme islemi tamamlandi. Uygulamaya donup bakiye guncellemesini bekleyebilirsiniz."
+    : "Odeme islemi tamamlanmadi. Uygulamaya donup tekrar deneyebilirsiniz.";
+
+  res.setHeader("content-type", "text/html; charset=utf-8");
+  return res.send(`<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${title}</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#090611; color:#f8fafc; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; }
+    .card { width:min(92vw, 560px); border:1px solid rgba(148,163,184,.25); background:linear-gradient(180deg,#14071f,#090611); border-radius:24px; padding:28px; box-shadow:0 20px 60px rgba(0,0,0,.45); }
+    .badge { display:inline-block; padding:6px 10px; border-radius:999px; font-size:12px; background:${isSuccess ? "rgba(16,185,129,.15)" : "rgba(245,158,11,.15)"}; color:${isSuccess ? "#6ee7b7" : "#fcd34d"}; }
+    .meta { color:#94a3b8; font-size:13px; margin-top:14px; word-break:break-all; }
+    button { margin-top:22px; border:0; border-radius:12px; padding:12px 16px; background:#2563eb; color:white; font-weight:600; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="badge">${isSuccess ? "SUCCESS" : "CANCELLED"}</span>
+    <h1>${title}</h1>
+    <p>${message}</p>
+    ${orderId ? `<div class="meta">Order ID: ${orderId}</div>` : ""}
+    <button onclick="window.close();">Pencereyi Kapat</button>
+  </div>
+  <script>
+    try {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({ type: 'eyra-payment-return', status: '${isSuccess ? "success" : "cancel"}', orderId: '${orderId}' }, '*');
+      }
+    } catch (_) {}
+  </script>
+</body>
+</html>`);
 };
