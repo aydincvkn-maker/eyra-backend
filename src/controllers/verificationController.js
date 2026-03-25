@@ -27,22 +27,38 @@ exports.requestVerification = async (req, res) => {
     const userId = req.user.id;
 
     // Zaten doğrulanmış mı?
-    const user = await User.findById(userId).select("isVerified verificationStatus gender profileImage");
+    const user = await User.findById(userId).select(
+      "isVerified verificationStatus gender profileImage",
+    );
     if (user.isVerified) {
-      return res.status(400).json({ success: false, message: "Zaten doğrulanmış" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Zaten doğrulanmış" });
     }
 
     if (String(user.gender || "") !== "female") {
-      return res.status(403).json({ success: false, message: "Bu doğrulama akışı yalnızca kadın kullanıcılar içindir" });
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "Bu doğrulama akışı yalnızca kadın kullanıcılar içindir",
+        });
     }
 
     // Bekleyen talep var mı?
     if (user.verificationStatus === "pending") {
-      return res.status(400).json({ success: false, message: "Zaten bekleyen bir talebiniz var" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Zaten bekleyen bir talebiniz var" });
     }
 
     if (!String(user.profileImage || "").trim()) {
-      return res.status(400).json({ success: false, message: "Önce profil fotoğrafı yüklemelisiniz" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Önce profil fotoğrafı yüklemelisiniz",
+        });
     }
 
     const files = req.files || {};
@@ -52,7 +68,12 @@ exports.requestVerification = async (req, res) => {
 
     // Selfie fotoğrafları gerekli
     if (!centerFile || !leftFile || !rightFile) {
-      return res.status(400).json({ success: false, message: "Orta, sol ve sağ yüz selfie fotoğrafları gerekli" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Orta, sol ve sağ yüz selfie fotoğrafları gerekli",
+        });
     }
 
     const faceCenterUrl = saveVerificationUpload(userId, centerFile, "center");
@@ -79,7 +100,8 @@ exports.requestVerification = async (req, res) => {
 
     res.json({
       success: true,
-      message: "Doğrulama talebi gönderildi. Yaklaşık 20 dakika içinde değerlendirilecektir.",
+      message:
+        "Doğrulama talebi gönderildi. Yaklaşık 20 dakika içinde değerlendirilecektir.",
       verification: {
         _id: verification._id,
         status: "pending",
@@ -96,7 +118,9 @@ exports.requestVerification = async (req, res) => {
 exports.getVerificationStatus = async (req, res) => {
   try {
     const userId = req.user.id;
-    const user = await User.findById(userId).select("isVerified verificationStatus verificationRequestedAt verificationReviewedAt");
+    const user = await User.findById(userId).select(
+      "isVerified verificationStatus verificationRequestedAt verificationReviewedAt",
+    );
 
     res.json({
       success: true,
@@ -123,7 +147,10 @@ exports.adminGetPending = async (req, res) => {
 
     const total = await Verification.countDocuments({ status: "pending" });
     const verifications = await Verification.find({ status: "pending" })
-      .populate("user", "_id username name email profileImage gender age country")
+      .populate(
+        "user",
+        "_id username name email profileImage gender age country",
+      )
       .sort({ createdAt: 1 }) // En eski önce
       .skip((page - 1) * limit)
       .limit(limit)
@@ -152,7 +179,10 @@ exports.adminGetAll = async (req, res) => {
 
     const total = await Verification.countDocuments(query);
     const verifications = await Verification.find(query)
-      .populate("user", "_id username name email profileImage gender age country")
+      .populate(
+        "user",
+        "_id username name email profileImage gender age country",
+      )
       .populate("reviewedBy", "_id username name")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
@@ -178,11 +208,15 @@ exports.adminApprove = async (req, res) => {
 
     const verification = await Verification.findById(verificationId);
     if (!verification) {
-      return res.status(404).json({ success: false, message: "Talep bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Talep bulunamadı" });
     }
 
     if (verification.status !== "pending") {
-      return res.status(400).json({ success: false, message: "Bu talep zaten incelenmiş" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Bu talep zaten incelenmiş" });
     }
 
     // Verification güncelle
@@ -233,11 +267,15 @@ exports.adminReject = async (req, res) => {
 
     const verification = await Verification.findById(verificationId);
     if (!verification) {
-      return res.status(404).json({ success: false, message: "Talep bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Talep bulunamadı" });
     }
 
     if (verification.status !== "pending") {
-      return res.status(400).json({ success: false, message: "Bu talep zaten incelenmiş" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Bu talep zaten incelenmiş" });
     }
 
     await Verification.findByIdAndUpdate(verificationId, {
@@ -262,8 +300,10 @@ exports.adminReject = async (req, res) => {
       type: "verification",
       title: "Doğrulama Talebi Reddedildi",
       titleEn: "Verification Rejected",
-      body: reason || "Doğrulama talebiniz reddedildi. Tekrar deneyebilirsiniz.",
-      bodyEn: reason || "Your verification request was rejected. You can try again.",
+      body:
+        reason || "Doğrulama talebiniz reddedildi. Tekrar deneyebilirsiniz.",
+      bodyEn:
+        reason || "Your verification request was rejected. You can try again.",
     });
 
     res.json({ success: true, message: "Doğrulama reddedildi" });
