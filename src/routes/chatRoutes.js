@@ -132,5 +132,11 @@ router.get(
   requirePermission("reports:view"),
   chatController.adminGetPaymentRedirectAttempts,
 );
+router.get(
+  "/admin/payment-redirect-summary",
+  auth,
+  requirePermission("reports:view"),
+  chatController.adminGetPaymentRedirectSummary,
+);
 
 module.exports = router;
