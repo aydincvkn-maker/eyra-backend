@@ -96,6 +96,8 @@ module.exports = {
     "eyra://payment/success",
   ),
   PAYMENT_CANCEL_URL: required("PAYMENT_CANCEL_URL", "eyra://payment/cancel"),
+  PAYMENT_WEB_SUCCESS_URL: required("PAYMENT_WEB_SUCCESS_URL", ""),
+  PAYMENT_WEB_CANCEL_URL: required("PAYMENT_WEB_CANCEL_URL", ""),
 
   STRIPE_SECRET_KEY: required("STRIPE_SECRET_KEY", ""),
   STRIPE_WEBHOOK_SECRET: required("STRIPE_WEBHOOK_SECRET", ""),

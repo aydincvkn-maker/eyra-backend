@@ -16,8 +16,11 @@ const {
   PAYMENT_WEBHOOK_SECRET,
   PAYMENT_SUCCESS_URL,
   PAYMENT_CANCEL_URL,
+  PAYMENT_WEB_SUCCESS_URL,
+  PAYMENT_WEB_CANCEL_URL,
   STRIPE_SECRET_KEY,
   STRIPE_WEBHOOK_SECRET,
+  BACKEND_URL,
 } = require("../config/env");
 
 const ACTIVE_PAYMENT_PROVIDER = String(PAYMENT_PROVIDER || "mock")
@@ -48,6 +51,39 @@ const pickProvider = (paymentMethod) => {
 };
 
 const makeOrderId = () => `ord_${Date.now()}_${randomUUID().slice(0, 8)}`;
+
+const trimTrailingSlashes = (value) => String(value || "").replace(/\/+$/, "");
+
+const replaceCheckoutPlaceholders = (value, orderId) =>
+  String(value || "")
+    .replace(/\{ORDER_ID\}/g, encodeURIComponent(orderId))
+    .replace(/\{STATUS\}/g, "success");
+
+const buildHostedCheckoutReturnUrl = ({ status, orderId }) => {
+  const baseUrl = trimTrailingSlashes(BACKEND_URL || "http://localhost:5000");
+  return `${baseUrl}/api/payments/checkout-return?status=${encodeURIComponent(status)}&orderId=${encodeURIComponent(orderId)}`;
+};
+
+const resolveCheckoutUrls = ({ paymentContext, orderId }) => {
+  if (paymentContext.channel === "web") {
+    const successTemplate = String(PAYMENT_WEB_SUCCESS_URL || "").trim();
+    const cancelTemplate = String(PAYMENT_WEB_CANCEL_URL || "").trim();
+
+    return {
+      successUrl: successTemplate
+        ? successTemplate.replace(/\{ORDER_ID\}/g, encodeURIComponent(orderId))
+        : buildHostedCheckoutReturnUrl({ status: "success", orderId }),
+      cancelUrl: cancelTemplate
+        ? cancelTemplate.replace(/\{ORDER_ID\}/g, encodeURIComponent(orderId))
+        : buildHostedCheckoutReturnUrl({ status: "cancel", orderId }),
+    };
+  }
+
+  return {
+    successUrl: String(PAYMENT_SUCCESS_URL || "eyra://payment/success").replace(/\{ORDER_ID\}/g, encodeURIComponent(orderId)),
+    cancelUrl: String(PAYMENT_CANCEL_URL || "eyra://payment/cancel").replace(/\{ORDER_ID\}/g, encodeURIComponent(orderId)),
+  };
+};
 
 const getCatalog = (context = {}) => getPublicCatalog(context);
 
@@ -99,8 +135,10 @@ const createPaymentIntent = async ({
   const provider = pickProvider(paymentMethod);
   const orderId = makeOrderId();
 
-  const successUrl = PAYMENT_SUCCESS_URL || "eyra://payment/success";
-  const cancelUrl = PAYMENT_CANCEL_URL || "eyra://payment/cancel";
+  const { successUrl, cancelUrl } = resolveCheckoutUrls({
+    paymentContext,
+    orderId,
+  });
 
   let checkout;
   if (provider === "mock") {
@@ -163,6 +201,8 @@ const createPaymentIntent = async ({
       vipDays: item.vipDays || 0,
       channel: paymentContext.channel,
       storeManagedPlatform: paymentContext.isStoreManagedPlatform,
+      successUrl,
+      cancelUrl,
     },
   });
 
