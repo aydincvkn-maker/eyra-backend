@@ -111,6 +111,13 @@ exports.sendMessage = async (req, res) => {
     if (err.message === "RATE_LIMIT_EXCEEDED") {
       return sendError(res, 429, "RATE_LIMIT");
     }
+    if (err.message === "PAYMENT_REDIRECT_BLOCKED") {
+      return sendError(
+        res,
+        422,
+        "Mesajda uygulama disi odeme veya yonlendirme ifadesi kullanilamaz",
+      );
+    }
     if (err.message === "USER_BLOCKED") {
       return sendError(res, 403, "USER_BLOCKED");
     }
@@ -185,6 +192,13 @@ exports.deleteMessage = async (req, res) => {
       return sendError(res, 404, "MESSAGE_NOT_FOUND");
     if (err.message === "UNAUTHORIZED")
       return sendError(res, 403, "UNAUTHORIZED");
+    if (err.message === "PAYMENT_REDIRECT_BLOCKED") {
+      return sendError(
+        res,
+        422,
+        "Mesajda uygulama disi odeme veya yonlendirme ifadesi kullanilamaz",
+      );
+    }
     return sendError(res, 500, "Sunucu hatası");
   }
 };
