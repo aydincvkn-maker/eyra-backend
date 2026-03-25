@@ -132,6 +132,14 @@ const validateCreatePaymentIntent = [
     .isString()
     .isLength({ max: 100 })
     .withMessage("Idempotency key too long"),
+  body("platform")
+    .optional()
+    .isIn(["android", "ios", "web", "unknown"])
+    .withMessage("Invalid platform"),
+  body("channel")
+    .optional()
+    .isIn(["app", "web"])
+    .withMessage("Invalid channel"),
   handleValidationErrors,
 ];
 

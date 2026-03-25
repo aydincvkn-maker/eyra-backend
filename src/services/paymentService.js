@@ -3,7 +3,12 @@ const Payment = require("../models/Payment");
 const PaymentEvent = require("../models/PaymentEvent");
 const Transaction = require("../models/Transaction");
 const User = require("../models/User");
-const { getCatalogItem, getPublicCatalog } = require("../config/paymentCatalog");
+const {
+  getCatalogItem,
+  getPublicCatalog,
+  normalizePaymentContext,
+  isExternalPaymentAllowed,
+} = require("../config/paymentCatalog");
 const mockProvider = require("./paymentProviders/mockProvider");
 const stripeProvider = require("./paymentProviders/stripeProvider");
 const {
@@ -36,13 +41,29 @@ const pickProvider = (paymentMethod) => {
 
 const makeOrderId = () => `ord_${Date.now()}_${randomUUID().slice(0, 8)}`;
 
-const getCatalog = () => getPublicCatalog();
+const getCatalog = (context = {}) => getPublicCatalog(context);
 
-const createPaymentIntent = async ({ userId, productCode, method, idempotencyKey }) => {
+const createPaymentIntent = async ({
+  userId,
+  productCode,
+  method,
+  idempotencyKey,
+  platform,
+  channel,
+}) => {
   const item = getCatalogItem(productCode);
   if (!item) {
     const err = new Error("Geçersiz productCode");
     err.statusCode = 400;
+    throw err;
+  }
+
+  const paymentContext = normalizePaymentContext({ platform, channel });
+  if (!isExternalPaymentAllowed(item, paymentContext)) {
+    const err = new Error(
+      "Bu platformda harici odeme kapali. Satin alma uygulama ici magaza ile tamamlanmali",
+    );
+    err.statusCode = 403;
     throw err;
   }
 
@@ -120,10 +141,13 @@ const createPaymentIntent = async ({ userId, productCode, method, idempotencyKey
     providerPaymentId: checkout.providerPaymentId,
     providerCheckoutUrl: checkout.checkoutUrl,
     status: checkout.status,
+    platform: paymentContext.platform,
     metadata: {
       title: item.title,
       coins: item.coins || 0,
       vipDays: item.vipDays || 0,
+      channel: paymentContext.channel,
+      storeManagedPlatform: paymentContext.isStoreManagedPlatform,
     },
   });
 

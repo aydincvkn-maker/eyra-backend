@@ -71,12 +71,40 @@ const paymentCatalog = Object.freeze({
   },
 });
 
+const normalizePaymentContext = (context = {}) => {
+  const platform = String(context.platform || "unknown").trim().toLowerCase();
+  const channel = String(context.channel || "app").trim().toLowerCase();
+  const isStoreManagedPlatform =
+    channel === "app" && (platform === "android" || platform === "ios");
+
+  return {
+    platform,
+    channel,
+    isStoreManagedPlatform,
+  };
+};
+
+const getEnabledMethodsForContext = (item, context = {}) => {
+  const normalized = normalizePaymentContext(context);
+  if (normalized.isStoreManagedPlatform) {
+    return [];
+  }
+
+  return [...(item.enabledMethods || [])];
+};
+
+const isExternalPaymentAllowed = (item, context = {}) => {
+  return getEnabledMethodsForContext(item, context).length > 0;
+};
+
 const getCatalogItem = (code) => {
   const key = String(code || "").trim();
   return paymentCatalog[key] || null;
 };
 
-const getPublicCatalog = () => {
+const getPublicCatalog = (context = {}) => {
+  const normalized = normalizePaymentContext(context);
+
   return Object.values(paymentCatalog).map((item) => ({
     code: item.code,
     title: item.title,
@@ -85,7 +113,9 @@ const getPublicCatalog = () => {
     vipDays: item.vipDays || 0,
     amountMinor: item.amountMinor,
     currency: item.currency,
-    enabledMethods: item.enabledMethods,
+    enabledMethods: getEnabledMethodsForContext(item, normalized),
+    externalPurchaseAllowed: isExternalPaymentAllowed(item, normalized),
+    storeManagedPlatform: normalized.isStoreManagedPlatform,
     badge: item.badge || null,
   }));
 };
@@ -94,4 +124,6 @@ module.exports = {
   paymentCatalog,
   getCatalogItem,
   getPublicCatalog,
+  normalizePaymentContext,
+  isExternalPaymentAllowed,
 };

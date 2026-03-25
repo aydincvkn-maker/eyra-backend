@@ -4,9 +4,12 @@ const User = require("../models/User");
 const { sendError } = require("../utils/response");
 const { PAYMENT_WEBHOOK_SECRET, PAYMENT_SUCCESS_URL, PAYMENT_CANCEL_URL } = require("../config/env");
 
-exports.getCatalog = async (_req, res) => {
+exports.getCatalog = async (req, res) => {
   try {
-    const catalog = paymentService.getCatalog();
+    const catalog = paymentService.getCatalog({
+      platform: req.query.platform,
+      channel: req.query.channel,
+    });
     res.json({ success: true, catalog });
   } catch (err) {
     console.error("getCatalog error:", err);
@@ -16,13 +19,15 @@ exports.getCatalog = async (_req, res) => {
 
 exports.createIntent = async (req, res) => {
   try {
-    const { productCode, method, idempotencyKey } = req.body || {};
+    const { productCode, method, idempotencyKey, platform, channel } = req.body || {};
 
     const payment = await paymentService.createPaymentIntent({
       userId: req.user.id,
       productCode,
       method,
       idempotencyKey,
+      platform,
+      channel,
     });
 
     res.status(201).json({ success: true, payment });
