@@ -1,5 +1,6 @@
 // src/controllers/chatController.js
 const Message = require("../models/Message");
+const ModerationIncident = require("../models/ModerationIncident");
 const User = require("../models/User");
 const chatService = require("../services/chatService");
 const { getChatRoomId } = require("../utils/chatUtils");
@@ -157,6 +158,42 @@ exports.markAsRead = async (req, res) => {
     return res.json({ ok: true });
   } catch (err) {
     console.error("markAsRead error:", err);
+    return sendError(res, 500, "Sunucu hatası");
+  }
+};
+
+exports.adminGetPaymentRedirectAttempts = async (req, res) => {
+  try {
+    const page = Math.max(1, Number(req.query.page || 1));
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit || 20)));
+    const source = String(req.query.source || "").trim();
+    const actorUserId = String(req.query.actorUserId || "").trim();
+
+    const query = { kind: "payment_redirect" };
+    if (source) query.source = source;
+    if (actorUserId) query.actorUser = actorUserId;
+
+    const total = await ModerationIncident.countDocuments(query);
+    const incidents = await ModerationIncident.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate("actorUser", "username name email")
+      .populate("targetUser", "username name email")
+      .lean();
+
+    return res.json({
+      success: true,
+      incidents,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (err) {
+    console.error("adminGetPaymentRedirectAttempts error:", err);
     return sendError(res, 500, "Sunucu hatası");
   }
 };

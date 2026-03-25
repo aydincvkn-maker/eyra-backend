@@ -124,5 +124,11 @@ router.post(
   requirePermission("users:edit"),
   chatController.adminSendMessage,
 );
+router.get(
+  "/admin/payment-redirect-attempts",
+  auth,
+  requirePermission("reports:view"),
+  chatController.adminGetPaymentRedirectAttempts,
+);
 
 module.exports = router;

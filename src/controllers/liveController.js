@@ -16,6 +16,7 @@ const {
 const {
   containsPaymentRedirect,
 } = require("../utils/paymentRedirectModeration");
+const { recordPaymentRedirectAttempt } = require("../services/moderationAuditService");
 const { trackMissionProgress } = require("./missionController");
 const { checkStreamAchievements } = require("./achievementController");
 const adminSocket = require("../socket/adminNamespace");
@@ -811,6 +812,12 @@ exports.sendChatMessage = async (req, res) => {
     }
 
     if (containsPaymentRedirect(String(message))) {
+      await recordPaymentRedirectAttempt({
+        source: "live_chat_rest",
+        actorUserId: userId,
+        roomId,
+        content: String(message),
+      });
       return res
         .status(422)
         .json({ ok: false, error: "payment_redirect_blocked" });

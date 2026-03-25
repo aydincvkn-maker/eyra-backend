@@ -9,6 +9,7 @@ const { trackMissionProgress } = require("../controllers/missionController");
 const {
   containsPaymentRedirect,
 } = require("../utils/paymentRedirectModeration");
+const { recordPaymentRedirectAttempt } = require("./moderationAuditService");
 
 // ✅ Rate limiting map (Fallback if Redis is unavailable)
 const messageRateLimits = new Map();
@@ -156,6 +157,12 @@ exports.sendMessage = async (fromUserId, toUserId, data) => {
     }
 
     if (text && containsPaymentRedirect(text)) {
+      await recordPaymentRedirectAttempt({
+        source: "private_chat",
+        actorUserId: fromUserId,
+        targetUserId: toUserId,
+        content: text,
+      });
       throw new Error("PAYMENT_REDIRECT_BLOCKED");
     }
 
@@ -304,6 +311,16 @@ exports.editMessage = async (messageId, userId, newText) => {
 
     const sanitizedText = sanitizeText(newText);
     if (sanitizedText && containsPaymentRedirect(sanitizedText)) {
+      await recordPaymentRedirectAttempt({
+        source: "private_chat_edit",
+        actorUserId: userId,
+        targetUserId: message.to?.toString?.() || null,
+        roomId: message.roomId || null,
+        content: sanitizedText,
+        metadata: {
+          messageId: message._id?.toString?.() || null,
+        },
+      });
       throw new Error("PAYMENT_REDIRECT_BLOCKED");
     }
 

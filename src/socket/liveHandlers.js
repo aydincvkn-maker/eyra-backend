@@ -9,6 +9,7 @@ const User = require("../models/User");
 const {
   containsPaymentRedirect,
 } = require("../utils/paymentRedirectModeration");
+const { recordPaymentRedirectAttempt } = require("../services/moderationAuditService");
 
 /**
  * Register live stream events on a connected socket.
@@ -105,6 +106,12 @@ function register(socket, io) {
       }
 
       if (containsPaymentRedirect(String(message))) {
+        await recordPaymentRedirectAttempt({
+          source: "live_chat_socket",
+          actorUserId: userId,
+          roomId,
+          content: String(message),
+        });
         socket.emit("error", { message: "payment_redirect_blocked" });
         return;
       }

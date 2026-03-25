@@ -13,6 +13,7 @@ const { createNotification } = require("../controllers/notificationController");
 const {
   containsPaymentRedirect,
 } = require("../utils/paymentRedirectModeration");
+const { recordPaymentRedirectAttempt } = require("../services/moderationAuditService");
 
 /**
  * Register chat events on a connected socket.
@@ -167,6 +168,14 @@ function register(socket, io) {
         }
 
         if (containsPaymentRedirect(String(content))) {
+          const receiverId = getCounterpartyForRoom(roomName, senderId);
+          await recordPaymentRedirectAttempt({
+            source: "call_chat",
+            actorUserId: senderId,
+            targetUserId: receiverId || null,
+            roomId: roomName,
+            content: String(content),
+          });
           socket.emit("call:message_error", {
             error: "payment_redirect_blocked",
             tempId,
