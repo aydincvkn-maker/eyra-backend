@@ -16,7 +16,9 @@ const {
 const {
   containsPaymentRedirect,
 } = require("../utils/paymentRedirectModeration");
-const { recordPaymentRedirectAttempt } = require("../services/moderationAuditService");
+const {
+  recordPaymentRedirectAttempt,
+} = require("../services/moderationAuditService");
 const { trackMissionProgress } = require("./missionController");
 const { checkStreamAchievements } = require("./achievementController");
 const adminSocket = require("../socket/adminNamespace");

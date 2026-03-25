@@ -13,7 +13,9 @@ const { createNotification } = require("../controllers/notificationController");
 const {
   containsPaymentRedirect,
 } = require("../utils/paymentRedirectModeration");
-const { recordPaymentRedirectAttempt } = require("../services/moderationAuditService");
+const {
+  recordPaymentRedirectAttempt,
+} = require("../services/moderationAuditService");
 
 /**
  * Register chat events on a connected socket.

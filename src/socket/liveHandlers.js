@@ -9,7 +9,9 @@ const User = require("../models/User");
 const {
   containsPaymentRedirect,
 } = require("../utils/paymentRedirectModeration");
-const { recordPaymentRedirectAttempt } = require("../services/moderationAuditService");
+const {
+  recordPaymentRedirectAttempt,
+} = require("../services/moderationAuditService");
 
 /**
  * Register live stream events on a connected socket.

@@ -76,9 +76,7 @@ const upload = multer({
 router.get("/room/:roomId", auth, chatController.getRoomMessages);
 
 // Private chat (used by Flutter ChatApiService)
-const {
-  validateSendMessage,
-} = require("../middleware/validate");
+const { validateSendMessage } = require("../middleware/validate");
 
 router.get("/users", auth, chatController.getChatUsers);
 router.get("/conversation/:userId", auth, chatController.getConversation);
@@ -115,7 +113,11 @@ router.delete(
 router.post("/message/:messageId/forward", auth, chatController.forwardMessage);
 
 // Recent voice messages for Explore screen
-router.get("/voice-messages/recent", auth, chatController.getRecentVoiceMessages);
+router.get(
+  "/voice-messages/recent",
+  auth,
+  chatController.getRecentVoiceMessages,
+);
 
 // Admin: Send message to a user (admin panel → host)
 router.post(

@@ -1,8 +1,13 @@
 const ModerationIncident = require("../models/ModerationIncident");
 const { logger } = require("../utils/logger");
-const { normalizeForModeration } = require("../utils/paymentRedirectModeration");
+const {
+  normalizeForModeration,
+} = require("../utils/paymentRedirectModeration");
 
-const clampPreview = (text) => String(text || "").trim().slice(0, 280);
+const clampPreview = (text) =>
+  String(text || "")
+    .trim()
+    .slice(0, 280);
 
 const recordPaymentRedirectAttempt = async ({
   source,
