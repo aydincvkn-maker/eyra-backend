@@ -42,7 +42,12 @@ const upload = multer({
 router.post(
   "/request",
   auth,
-  upload.single("selfie"),
+  upload.fields([
+    { name: "faceCenter", maxCount: 1 },
+    { name: "faceLeft", maxCount: 1 },
+    { name: "faceRight", maxCount: 1 },
+    { name: "selfie", maxCount: 1 },
+  ]),
   verificationController.requestVerification,
 );
 router.get("/status", auth, verificationController.getVerificationStatus);

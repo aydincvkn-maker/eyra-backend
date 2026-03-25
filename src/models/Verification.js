@@ -7,6 +7,9 @@ const verificationSchema = new mongoose.Schema(
     
     // Doğrulama fotoğrafı
     selfieUrl: { type: String, required: true },
+    faceCenterUrl: { type: String, default: "" },
+    faceLeftUrl: { type: String, default: "" },
+    faceRightUrl: { type: String, default: "" },
     
     // Durum
     status: {

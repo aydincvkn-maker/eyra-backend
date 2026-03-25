@@ -7,6 +7,16 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 
+const saveVerificationUpload = (userId, file, suffix) => {
+  const fileName = `verify_${userId}_${suffix}_${crypto.randomBytes(16).toString("hex")}${path.extname(file.originalname || ".jpg")}`;
+  const uploadDir = path.join(__dirname, "../../uploads/verification");
+  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+  const filePath = path.join(uploadDir, fileName);
+  fs.writeFileSync(filePath, file.buffer);
+  return `/uploads/verification/${fileName}`;
+};
+
 // =============================================
 // KULLANICI ENDPOINT'LERİ
 // =============================================
@@ -17,9 +27,13 @@ exports.requestVerification = async (req, res) => {
     const userId = req.user.id;
 
     // Zaten doğrulanmış mı?
-    const user = await User.findById(userId).select("isVerified verificationStatus");
+    const user = await User.findById(userId).select("isVerified verificationStatus gender profileImage");
     if (user.isVerified) {
       return res.status(400).json({ success: false, message: "Zaten doğrulanmış" });
+    }
+
+    if (String(user.gender || "") !== "female") {
+      return res.status(403).json({ success: false, message: "Bu doğrulama akışı yalnızca kadın kullanıcılar içindir" });
     }
 
     // Bekleyen talep var mı?
@@ -27,38 +41,45 @@ exports.requestVerification = async (req, res) => {
       return res.status(400).json({ success: false, message: "Zaten bekleyen bir talebiniz var" });
     }
 
-    // Selfie fotoğrafı gerekli
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: "Selfie fotoğrafı gerekli" });
+    if (!String(user.profileImage || "").trim()) {
+      return res.status(400).json({ success: false, message: "Önce profil fotoğrafı yüklemelisiniz" });
     }
 
-    // Dosyayı kaydet
-    const fileName = `verify_${userId}_${crypto.randomBytes(16).toString('hex')}${path.extname(req.file.originalname)}`;
-    const uploadDir = path.join(__dirname, "../../uploads/verification");
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+    const files = req.files || {};
+    const centerFile = files.faceCenter?.[0] || req.file;
+    const leftFile = files.faceLeft?.[0] || null;
+    const rightFile = files.faceRight?.[0] || null;
 
-    const filePath = path.join(uploadDir, fileName);
-    fs.writeFileSync(filePath, req.file.buffer);
-    const selfieUrl = `/uploads/verification/${fileName}`;
+    // Selfie fotoğrafları gerekli
+    if (!centerFile || !leftFile || !rightFile) {
+      return res.status(400).json({ success: false, message: "Orta, sol ve sağ yüz selfie fotoğrafları gerekli" });
+    }
+
+    const faceCenterUrl = saveVerificationUpload(userId, centerFile, "center");
+    const faceLeftUrl = saveVerificationUpload(userId, leftFile, "left");
+    const faceRightUrl = saveVerificationUpload(userId, rightFile, "right");
 
     // Verification kaydı oluştur
     const verification = await Verification.create({
       user: userId,
-      selfieUrl,
+      selfieUrl: faceCenterUrl,
+      faceCenterUrl,
+      faceLeftUrl,
+      faceRightUrl,
     });
 
     // User durumunu güncelle
     await User.findByIdAndUpdate(userId, {
       $set: {
         verificationStatus: "pending",
-        verificationPhoto: selfieUrl,
+        verificationPhoto: faceCenterUrl,
         verificationRequestedAt: new Date(),
       },
     });
 
     res.json({
       success: true,
-      message: "Doğrulama talebi gönderildi! Admin inceleyecek.",
+      message: "Doğrulama talebi gönderildi. Yaklaşık 20 dakika içinde değerlendirilecektir.",
       verification: {
         _id: verification._id,
         status: "pending",
@@ -102,7 +123,7 @@ exports.adminGetPending = async (req, res) => {
 
     const total = await Verification.countDocuments({ status: "pending" });
     const verifications = await Verification.find({ status: "pending" })
-      .populate("user", "_id username name profileImage gender age")
+      .populate("user", "_id username name email profileImage gender age country")
       .sort({ createdAt: 1 }) // En eski önce
       .skip((page - 1) * limit)
       .limit(limit)
@@ -131,7 +152,7 @@ exports.adminGetAll = async (req, res) => {
 
     const total = await Verification.countDocuments(query);
     const verifications = await Verification.find(query)
-      .populate("user", "_id username name profileImage gender age")
+      .populate("user", "_id username name email profileImage gender age country")
       .populate("reviewedBy", "_id username name")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)

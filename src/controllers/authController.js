@@ -47,6 +47,19 @@ const validateLoginScope = (user, { panelLogin = false } = {}) => {
   return null;
 };
 
+const getPendingApprovalMessage = (user) => {
+  if (
+    user &&
+    user.gender === "female" &&
+    user.isVerified !== true &&
+    user.verificationStatus === "pending"
+  ) {
+    return "İşleminiz onay sürecinde. Yaklaşık 20 dakika içinde değerlendirilecektir.";
+  }
+
+  return null;
+};
+
 const updateLoginTracking = async (req, user) => {
   const loginEntry = {
     platform: String(
@@ -154,6 +167,18 @@ const handleEmailPasswordLogin = async (
       message: scopeError,
       error: scopeError,
     });
+  }
+
+  if (!panelLogin) {
+    const pendingApprovalMessage = getPendingApprovalMessage(user);
+    if (pendingApprovalMessage) {
+      return res.status(403).json({
+        success: false,
+        message: pendingApprovalMessage,
+        error: pendingApprovalMessage,
+        code: "VERIFICATION_PENDING",
+      });
+    }
   }
 
   return sendLoginResponse(req, res, user, {
@@ -574,6 +599,16 @@ exports.googleLoginWithToken = async (req, res) => {
         busyUntil: null,
       });
     } else {
+      const pendingApprovalMessage = getPendingApprovalMessage(user);
+      if (pendingApprovalMessage) {
+        return res.status(403).json({
+          success: false,
+          message: pendingApprovalMessage,
+          error: pendingApprovalMessage,
+          code: "VERIFICATION_PENDING",
+        });
+      }
+
       // Var olan user - online durumunu socket y├Ânetecek, burada de─şi┼ştirmiyoruz
       user.lastSeen = new Date();
       user.lastOnlineAt = new Date();
@@ -728,6 +763,16 @@ exports.appleLogin = async (req, res) => {
         busyUntil: null,
       });
     } else {
+      const pendingApprovalMessage = getPendingApprovalMessage(user);
+      if (pendingApprovalMessage) {
+        return res.status(403).json({
+          success: false,
+          message: pendingApprovalMessage,
+          error: pendingApprovalMessage,
+          code: "VERIFICATION_PENDING",
+        });
+      }
+
       // Var olan user - online durumunu socket y├Ânetecek, burada de─şi┼ştirmiyoruz
       user.lastSeen = new Date();
       user.lastOnlineAt = new Date();
@@ -1117,6 +1162,16 @@ exports.phoneLogin = async (req, res) => {
         lastOnlineAt: new Date(),
       });
     } else {
+      const pendingApprovalMessage = getPendingApprovalMessage(user);
+      if (pendingApprovalMessage) {
+        return res.status(403).json({
+          success: false,
+          message: pendingApprovalMessage,
+          error: pendingApprovalMessage,
+          code: "VERIFICATION_PENDING",
+        });
+      }
+
       // Mevcut kullanıcı — telefon numarasını güncelle
       if (!user.phone) user.phone = verifiedPhone;
       user.lastSeen = new Date();
