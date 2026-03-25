@@ -2,7 +2,11 @@ const paymentService = require("../services/paymentService");
 const Payment = require("../models/Payment");
 const User = require("../models/User");
 const { sendError } = require("../utils/response");
-const { PAYMENT_WEBHOOK_SECRET, PAYMENT_SUCCESS_URL, PAYMENT_CANCEL_URL } = require("../config/env");
+const {
+  PAYMENT_WEBHOOK_SECRET,
+  PAYMENT_SUCCESS_URL,
+  PAYMENT_CANCEL_URL,
+} = require("../config/env");
 
 exports.getCatalog = async (req, res) => {
   try {
@@ -19,7 +23,8 @@ exports.getCatalog = async (req, res) => {
 
 exports.createIntent = async (req, res) => {
   try {
-    const { productCode, method, idempotencyKey, platform, channel } = req.body || {};
+    const { productCode, method, idempotencyKey, platform, channel } =
+      req.body || {};
 
     const payment = await paymentService.createPaymentIntent({
       userId: req.user.id,
@@ -33,7 +38,9 @@ exports.createIntent = async (req, res) => {
     res.status(201).json({ success: true, payment });
   } catch (err) {
     console.error("createIntent error:", err);
-    res.status(err.statusCode || 500).json({ success: false, message: err.message || "Sunucu hatası" });
+    res
+      .status(err.statusCode || 500)
+      .json({ success: false, message: err.message || "Sunucu hatası" });
   }
 };
 
@@ -41,7 +48,11 @@ exports.getMyPayments = async (req, res) => {
   try {
     const page = Number(req.query.page || 1);
     const limit = Number(req.query.limit || 20);
-    const result = await paymentService.getMyPayments({ userId: req.user.id, page, limit });
+    const result = await paymentService.getMyPayments({
+      userId: req.user.id,
+      page,
+      limit,
+    });
 
     res.json({ success: true, ...result });
   } catch (err) {
@@ -52,9 +63,14 @@ exports.getMyPayments = async (req, res) => {
 
 exports.getMyPaymentByOrderId = async (req, res) => {
   try {
-    const payment = await paymentService.getMyPaymentByOrderId({ userId: req.user.id, orderId: req.params.orderId });
+    const payment = await paymentService.getMyPaymentByOrderId({
+      userId: req.user.id,
+      orderId: req.params.orderId,
+    });
     if (!payment) {
-      return res.status(404).json({ success: false, message: "Ödeme bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Ödeme bulunamadı" });
     }
 
     res.json({ success: true, payment });
@@ -74,20 +90,29 @@ exports.confirmMyPaymentByOrderId = async (req, res) => {
     res.json({ success: true, payment });
   } catch (err) {
     console.error("confirmMyPaymentByOrderId error:", err);
-    res.status(err.statusCode || 500).json({ success: false, message: err.message || "Sunucu hatası" });
+    res
+      .status(err.statusCode || 500)
+      .json({ success: false, message: err.message || "Sunucu hatası" });
   }
 };
 
 exports.webhook = async (req, res) => {
   try {
     const body = req.body || {};
-    const normalizedProvider = String(body.provider || req.query.provider || "").trim().toLowerCase();
+    const normalizedProvider = String(body.provider || req.query.provider || "")
+      .trim()
+      .toLowerCase();
 
-    const provider = normalizedProvider || (body.type && String(body.type).startsWith("checkout.session") ? "stripe" : "mock");
+    const provider =
+      normalizedProvider ||
+      (body.type && String(body.type).startsWith("checkout.session")
+        ? "stripe"
+        : "mock");
 
-    const signature = provider === "stripe"
-      ? req.headers["stripe-signature"]
-      : req.headers["x-eyra-signature"];
+    const signature =
+      provider === "stripe"
+        ? req.headers["stripe-signature"]
+        : req.headers["x-eyra-signature"];
 
     let mappedPayload = body;
     let eventId = body.eventId;
@@ -108,7 +133,10 @@ exports.webhook = async (req, res) => {
 
       if (eventType === "checkout.session.completed") {
         status = "paid";
-      } else if (eventType === "checkout.session.expired" || eventType === "checkout.session.async_payment_failed") {
+      } else if (
+        eventType === "checkout.session.expired" ||
+        eventType === "checkout.session.async_payment_failed"
+      ) {
         status = "failed";
       }
 
@@ -130,20 +158,30 @@ exports.webhook = async (req, res) => {
       payload: mappedPayload,
     });
 
-    res.json({ success: true, duplicate: result.duplicate, payment: result.payment });
+    res.json({
+      success: true,
+      duplicate: result.duplicate,
+      payment: result.payment,
+    });
   } catch (err) {
     console.error("payment webhook error:", err);
-    res.status(err.statusCode || 500).json({ success: false, message: err.message || "Sunucu hatası" });
+    res
+      .status(err.statusCode || 500)
+      .json({ success: false, message: err.message || "Sunucu hatası" });
   }
 };
 
 exports.refundPayment = async (req, res) => {
   try {
-    const payment = await paymentService.refundPayment({ orderId: req.params.orderId });
+    const payment = await paymentService.refundPayment({
+      orderId: req.params.orderId,
+    });
     res.json({ success: true, payment });
   } catch (err) {
     console.error("refundPayment error:", err);
-    res.status(err.statusCode || 500).json({ success: false, message: err.message || "Sunucu hatası" });
+    res
+      .status(err.statusCode || 500)
+      .json({ success: false, message: err.message || "Sunucu hatası" });
   }
 };
 
@@ -188,7 +226,9 @@ exports.adminGetPayments = async (req, res) => {
     const page = Math.max(Number(req.query.page || 1), 1);
     const limit = Math.min(Math.max(Number(req.query.limit || 20), 1), 100);
     const status = req.query.status ? String(req.query.status).trim() : null;
-    const productType = req.query.productType ? String(req.query.productType).trim() : null;
+    const productType = req.query.productType
+      ? String(req.query.productType).trim()
+      : null;
     const userId = req.query.userId ? String(req.query.userId).trim() : null;
 
     const query = {};
@@ -229,18 +269,34 @@ exports.adminGetStats = async (req, res) => {
 
     const revenueAgg = await Payment.aggregate([
       { $match: { status: "paid" } },
-      { $group: { _id: "$currency", total: { $sum: "$amountMinor" }, count: { $sum: 1 } } },
+      {
+        $group: {
+          _id: "$currency",
+          total: { $sum: "$amountMinor" },
+          count: { $sum: 1 },
+        },
+      },
     ]);
 
     const byProductType = await Payment.aggregate([
       { $match: { status: "paid" } },
-      { $group: { _id: "$productType", total: { $sum: "$amountMinor" }, count: { $sum: 1 } } },
+      {
+        $group: {
+          _id: "$productType",
+          total: { $sum: "$amountMinor" },
+          count: { $sum: 1 },
+        },
+      },
     ]);
 
     res.json({
       success: true,
       stats: {
-        total, paid, failed, refunded, pending,
+        total,
+        paid,
+        failed,
+        refunded,
+        pending,
         revenue: revenueAgg,
         byProductType,
       },
@@ -262,7 +318,11 @@ const IAP_COIN_MAP = {
 };
 
 // 🔒 RevenueCat REST API ile transaction doğrulama
-const { REVENUECAT_API_KEY, REVENUECAT_API_BASE_URL, NODE_ENV } = require("../config/env");
+const {
+  REVENUECAT_API_KEY,
+  REVENUECAT_API_BASE_URL,
+  NODE_ENV,
+} = require("../config/env");
 
 /**
  * RevenueCat subscriber bilgisinden transaction'ın gerçek olup olmadığını doğrular.
@@ -275,10 +335,14 @@ async function verifyIapWithRevenueCat(userId, transactionId, productId) {
   if (!REVENUECAT_API_KEY) {
     // API key yoksa doğrulama yapılamaz — production'da zorunlu olmalı
     if (NODE_ENV === "production") {
-      console.error("❌ REVENUECAT_API_KEY tanımlı değil — IAP doğrulama imkansız");
+      console.error(
+        "❌ REVENUECAT_API_KEY tanımlı değil — IAP doğrulama imkansız",
+      );
       return { valid: false, reason: "Server configuration error" };
     }
-    console.warn("⚠️ REVENUECAT_API_KEY tanımlı değil — development modunda doğrulama atlanıyor");
+    console.warn(
+      "⚠️ REVENUECAT_API_KEY tanımlı değil — development modunda doğrulama atlanıyor",
+    );
     return { valid: true, reason: "dev_skip" };
   }
 
@@ -292,7 +356,7 @@ async function verifyIapWithRevenueCat(userId, transactionId, productId) {
           "Content-Type": "application/json",
         },
         timeout: 10000,
-      }
+      },
     );
 
     const subscriber = response.data?.subscriber;
@@ -304,22 +368,24 @@ async function verifyIapWithRevenueCat(userId, transactionId, productId) {
     const purchases = subscriber.non_subscriptions?.[productId] || [];
     const found = purchases.some((p) => {
       // RevenueCat store_transaction_id veya id ile eşleştir
-      return (
-        p.store_transaction_id === transactionId ||
-        p.id === transactionId
-      );
+      return p.store_transaction_id === transactionId || p.id === transactionId;
     });
 
     if (!found) {
       // Alternatif: tüm non_subscriptions içinde transactionId ara
-      const allPurchases = Object.values(subscriber.non_subscriptions || {}).flat();
+      const allPurchases = Object.values(
+        subscriber.non_subscriptions || {},
+      ).flat();
       const foundAnywhere = allPurchases.some(
-        (p) => p.store_transaction_id === transactionId || p.id === transactionId
+        (p) =>
+          p.store_transaction_id === transactionId || p.id === transactionId,
       );
 
       if (foundAnywhere) {
         // Transaction var ama productId eşleşmiyor — muhtemelen manipülasyon
-        console.warn(`⚠️ IAP productId uyuşmazlığı: ${productId}, txId=${transactionId}`);
+        console.warn(
+          `⚠️ IAP productId uyuşmazlığı: ${productId}, txId=${transactionId}`,
+        );
         return { valid: false, reason: "Product ID mismatch" };
       }
 
@@ -341,17 +407,26 @@ exports.iapPurchase = async (req, res) => {
     const userId = req.user.id;
 
     if (!productId || !transactionId) {
-      return res.status(400).json({ success: false, message: "productId ve transactionId gerekli" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "productId ve transactionId gerekli",
+        });
     }
 
     // 🔒 Coin miktarı SADECE sunucu tarafı map'ten belirlenir — client değerlerine güvenilmez
     const coinAmount = IAP_COIN_MAP[productId];
     if (!coinAmount || coinAmount <= 0) {
-      return res.status(400).json({ success: false, message: "Geçersiz ürün: " + productId });
+      return res
+        .status(400)
+        .json({ success: false, message: "Geçersiz ürün: " + productId });
     }
 
     // ─── Duplicate kontrol ────────────────────────────────────
-    const existing = await Payment.findOne({ providerPaymentId: transactionId }).lean();
+    const existing = await Payment.findOne({
+      providerPaymentId: transactionId,
+    }).lean();
     if (existing) {
       return res.json({
         success: true,
@@ -362,12 +437,19 @@ exports.iapPurchase = async (req, res) => {
     }
 
     // 🔒 RevenueCat ile transaction doğrulama
-    const verification = await verifyIapWithRevenueCat(userId, transactionId, productId);
+    const verification = await verifyIapWithRevenueCat(
+      userId,
+      transactionId,
+      productId,
+    );
     if (!verification.valid) {
-      console.warn(`❌ IAP doğrulama başarısız: userId=${userId}, txId=${transactionId}, reason=${verification.reason}`);
+      console.warn(
+        `❌ IAP doğrulama başarısız: userId=${userId}, txId=${transactionId}, reason=${verification.reason}`,
+      );
       return res.status(403).json({
         success: false,
-        message: "Satın alma doğrulanamadı: " + (verification.reason || "Unknown"),
+        message:
+          "Satın alma doğrulanamadı: " + (verification.reason || "Unknown"),
       });
     }
 
@@ -375,11 +457,13 @@ exports.iapPurchase = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { $inc: { coins: coinAmount } },
-      { new: true, select: "coins" }
+      { new: true, select: "coins" },
     );
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     // ─── Transaction kaydı ────────────────────────────────────
@@ -408,31 +492,42 @@ exports.iapPurchase = async (req, res) => {
     });
   } catch (err) {
     console.error("iapPurchase error:", err);
-    return res.status(500).json({ success: false, message: err.message || "Sunucu hatası" });
+    return res
+      .status(500)
+      .json({ success: false, message: err.message || "Sunucu hatası" });
   }
 };
 
 exports.mockComplete = async (req, res) => {
   try {
     const providerPaymentId = String(req.query.providerPaymentId || "").trim();
-    const status = String(req.query.status || "paid").trim().toLowerCase();
+    const status = String(req.query.status || "paid")
+      .trim()
+      .toLowerCase();
 
     if (!providerPaymentId || !["paid", "failed"].includes(status)) {
-      return res.status(400).json({ success: false, message: "Geçersiz query" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Geçersiz query" });
     }
 
     const payment = await Payment.findOne({ providerPaymentId }).lean();
     if (!payment) {
-      return res.status(404).json({ success: false, message: "Ödeme bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Ödeme bulunamadı" });
     }
 
     const eventId = `evt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const signature = paymentService.signMockWebhook({
-      eventId,
-      providerPaymentId: payment.providerPaymentId,
-      status,
-      amountMinor: payment.amountMinor,
-    }, PAYMENT_WEBHOOK_SECRET || "dev_payment_webhook_secret");
+    const signature = paymentService.signMockWebhook(
+      {
+        eventId,
+        providerPaymentId: payment.providerPaymentId,
+        status,
+        amountMinor: payment.amountMinor,
+      },
+      PAYMENT_WEBHOOK_SECRET || "dev_payment_webhook_secret",
+    );
 
     const result = await paymentService.processWebhook({
       provider: "mock",
@@ -448,17 +543,24 @@ exports.mockComplete = async (req, res) => {
       },
     });
 
-    const target = status === "paid"
-      ? (PAYMENT_SUCCESS_URL || "eyra://payment/success")
-      : (PAYMENT_CANCEL_URL || "eyra://payment/cancel");
+    const target =
+      status === "paid"
+        ? PAYMENT_SUCCESS_URL || "eyra://payment/success"
+        : PAYMENT_CANCEL_URL || "eyra://payment/cancel";
 
     if (target.startsWith("http://") || target.startsWith("https://")) {
       return res.redirect(target);
     }
 
-    return res.json({ success: true, redirect: target, payment: result.payment });
+    return res.json({
+      success: true,
+      redirect: target,
+      payment: result.payment,
+    });
   } catch (err) {
     console.error("mockComplete error:", err);
-    return res.status(err.statusCode || 500).json({ success: false, message: err.message || "Sunucu hatası" });
+    return res
+      .status(err.statusCode || 500)
+      .json({ success: false, message: err.message || "Sunucu hatası" });
   }
 };

@@ -20,18 +20,26 @@ const {
   STRIPE_WEBHOOK_SECRET,
 } = require("../config/env");
 
-const ACTIVE_PAYMENT_PROVIDER = String(PAYMENT_PROVIDER || "mock").trim().toLowerCase();
-const WEBHOOK_SECRET = String(PAYMENT_WEBHOOK_SECRET || "dev_payment_webhook_secret");
+const ACTIVE_PAYMENT_PROVIDER = String(PAYMENT_PROVIDER || "mock")
+  .trim()
+  .toLowerCase();
+const WEBHOOK_SECRET = String(
+  PAYMENT_WEBHOOK_SECRET || "dev_payment_webhook_secret",
+);
 
 const pickProvider = (paymentMethod) => {
-  const method = String(paymentMethod || "").trim().toLowerCase();
+  const method = String(paymentMethod || "")
+    .trim()
+    .toLowerCase();
 
   if (method === "crypto") {
     return "mock";
   }
 
   if (!["mock", "stripe"].includes(ACTIVE_PAYMENT_PROVIDER)) {
-    const err = new Error("Geçersiz PAYMENT_PROVIDER. Desteklenen: mock, stripe");
+    const err = new Error(
+      "Geçersiz PAYMENT_PROVIDER. Desteklenen: mock, stripe",
+    );
     err.statusCode = 500;
     throw err;
   }
@@ -67,7 +75,9 @@ const createPaymentIntent = async ({
     throw err;
   }
 
-  const paymentMethod = String(method || "").trim().toLowerCase();
+  const paymentMethod = String(method || "")
+    .trim()
+    .toLowerCase();
   if (!item.enabledMethods.includes(paymentMethod)) {
     const err = new Error("Bu ürün seçilen ödeme yöntemiyle desteklenmiyor");
     err.statusCode = 400;
@@ -77,7 +87,10 @@ const createPaymentIntent = async ({
   const idemKey = String(idempotencyKey || "").trim() || null;
 
   if (idemKey) {
-    const existing = await Payment.findOne({ user: userId, idempotencyKey: idemKey }).lean();
+    const existing = await Payment.findOne({
+      user: userId,
+      idempotencyKey: idemKey,
+    }).lean();
     if (existing) {
       return existing;
     }
@@ -101,7 +114,9 @@ const createPaymentIntent = async ({
     });
   } else if (provider === "stripe") {
     if (paymentMethod !== "card") {
-      const err = new Error("Stripe provider şu an yalnızca card method destekliyor");
+      const err = new Error(
+        "Stripe provider şu an yalnızca card method destekliyor",
+      );
       err.statusCode = 400;
       throw err;
     }
@@ -168,10 +183,14 @@ const applyPaidEffects = async (paymentDoc) => {
   } catch (txErr) {
     useTransaction = false;
     if (session) {
-      try { await session.endSession(); } catch (_) {}
+      try {
+        await session.endSession();
+      } catch (_) {}
       session = null;
     }
-    console.warn('[PaymentService] Transaction kullanılamıyor (replica set yok?), fallback modda çalışılıyor');
+    console.warn(
+      "[PaymentService] Transaction kullanılamıyor (replica set yok?), fallback modda çalışılıyor",
+    );
   }
 
   if (useTransaction) {
@@ -188,7 +207,9 @@ const applyPaidEffectsWithTransaction = async (paymentDoc) => {
   const session = await Payment.startSession();
   try {
     await session.withTransaction(async () => {
-      const lockedPayment = await Payment.findById(paymentDoc._id).session(session);
+      const lockedPayment = await Payment.findById(paymentDoc._id).session(
+        session,
+      );
       if (!lockedPayment || lockedPayment.status === "paid") return;
 
       const user = await User.findById(lockedPayment.user).session(session);
@@ -227,18 +248,23 @@ const applyPaidEffectsWithTransaction = async (paymentDoc) => {
               },
             },
           ],
-          { session }
+          { session },
         );
       }
 
       if (lockedPayment.productType === "vip") {
         const vipDays = Number(lockedPayment.metadata?.vipDays || 0);
-        const baseDate = user.vipExpiresAt && user.vipExpiresAt > new Date() ? user.vipExpiresAt : new Date();
+        const baseDate =
+          user.vipExpiresAt && user.vipExpiresAt > new Date()
+            ? user.vipExpiresAt
+            : new Date();
 
         user.isVip = true;
         user.vipTier = user.vipTier === "none" ? "silver" : user.vipTier;
         user.vipPurchasedAt = new Date();
-        user.vipExpiresAt = new Date(baseDate.getTime() + vipDays * 24 * 60 * 60 * 1000);
+        user.vipExpiresAt = new Date(
+          baseDate.getTime() + vipDays * 24 * 60 * 60 * 1000,
+        );
         await user.save({ session });
 
         await Transaction.create(
@@ -257,7 +283,7 @@ const applyPaidEffectsWithTransaction = async (paymentDoc) => {
               },
             },
           ],
-          { session }
+          { session },
         );
       }
 
@@ -279,7 +305,7 @@ const applyPaidEffectsWithoutTransaction = async (paymentDoc) => {
   const lockedPayment = await Payment.findOneAndUpdate(
     { _id: paymentDoc._id, status: { $ne: "paid" } },
     { $set: { status: "paid", paidAt: new Date() } },
-    { new: true }
+    { new: true },
   );
   if (!lockedPayment) return; // Already paid or not found
 
@@ -302,7 +328,7 @@ const applyPaidEffectsWithoutTransaction = async (paymentDoc) => {
     const updatedUser = await User.findByIdAndUpdate(
       user._id,
       { $inc: { coins: coins } },
-      { new: true }
+      { new: true },
     );
 
     await Transaction.create({
@@ -324,12 +350,17 @@ const applyPaidEffectsWithoutTransaction = async (paymentDoc) => {
 
   if (lockedPayment.productType === "vip") {
     const vipDays = Number(lockedPayment.metadata?.vipDays || 0);
-    const baseDate = user.vipExpiresAt && user.vipExpiresAt > new Date() ? user.vipExpiresAt : new Date();
+    const baseDate =
+      user.vipExpiresAt && user.vipExpiresAt > new Date()
+        ? user.vipExpiresAt
+        : new Date();
 
     user.isVip = true;
     user.vipTier = user.vipTier === "none" ? "silver" : user.vipTier;
     user.vipPurchasedAt = new Date();
-    user.vipExpiresAt = new Date(baseDate.getTime() + vipDays * 24 * 60 * 60 * 1000);
+    user.vipExpiresAt = new Date(
+      baseDate.getTime() + vipDays * 24 * 60 * 60 * 1000,
+    );
     await user.save();
 
     await Transaction.create({
@@ -348,8 +379,20 @@ const applyPaidEffectsWithoutTransaction = async (paymentDoc) => {
   }
 };
 
-const processWebhook = async ({ provider, eventId, eventType, providerPaymentId, orderId, status, amountMinor, signature, payload }) => {
-  const providerName = String(provider || "").trim().toLowerCase();
+const processWebhook = async ({
+  provider,
+  eventId,
+  eventType,
+  providerPaymentId,
+  orderId,
+  status,
+  amountMinor,
+  signature,
+  payload,
+}) => {
+  const providerName = String(provider || "")
+    .trim()
+    .toLowerCase();
   if (providerName === "stripe") {
     const stripeEventId = String(eventId || "").trim();
     if (!stripeEventId) {
@@ -360,14 +403,21 @@ const processWebhook = async ({ provider, eventId, eventType, providerPaymentId,
 
     const sessionId = String(providerPaymentId || "").trim();
     if (!sessionId) {
-      const err = new Error("Stripe webhook providerPaymentId(session.id) zorunlu");
+      const err = new Error(
+        "Stripe webhook providerPaymentId(session.id) zorunlu",
+      );
       err.statusCode = 400;
       throw err;
     }
 
-    const existingStripeEvent = await PaymentEvent.findOne({ eventId: stripeEventId }).lean();
+    const existingStripeEvent = await PaymentEvent.findOne({
+      eventId: stripeEventId,
+    }).lean();
     if (existingStripeEvent) {
-      const existingPayment = await Payment.findOne({ provider: "stripe", providerPaymentId: sessionId }).lean();
+      const existingPayment = await Payment.findOne({
+        provider: "stripe",
+        providerPaymentId: sessionId,
+      }).lean();
       return { payment: existingPayment, duplicate: true };
     }
 
@@ -383,7 +433,10 @@ const processWebhook = async ({ provider, eventId, eventType, providerPaymentId,
       throw err;
     }
 
-    const payment = await Payment.findOne({ provider: "stripe", providerPaymentId: sessionId });
+    const payment = await Payment.findOne({
+      provider: "stripe",
+      providerPaymentId: sessionId,
+    });
     if (!payment) {
       const err = new Error("Stripe webhook için ödeme bulunamadı");
       err.statusCode = 404;
@@ -401,13 +454,18 @@ const processWebhook = async ({ provider, eventId, eventType, providerPaymentId,
       processedAt: new Date(),
     });
 
-    const normalizedType = String(eventType || "").trim().toLowerCase();
+    const normalizedType = String(eventType || "")
+      .trim()
+      .toLowerCase();
 
     if (normalizedType === "checkout.session.completed") {
       await applyPaidEffects(payment);
     }
 
-    if (normalizedType === "checkout.session.expired" || normalizedType === "checkout.session.async_payment_failed") {
+    if (
+      normalizedType === "checkout.session.expired" ||
+      normalizedType === "checkout.session.async_payment_failed"
+    ) {
       payment.status = "failed";
       payment.failedAt = new Date();
       await payment.save();
@@ -423,7 +481,9 @@ const processWebhook = async ({ provider, eventId, eventType, providerPaymentId,
     throw err;
   }
 
-  const normalizedStatus = String(status || "").trim().toLowerCase();
+  const normalizedStatus = String(status || "")
+    .trim()
+    .toLowerCase();
   if (!["paid", "failed", "refunded"].includes(normalizedStatus)) {
     const err = new Error("Geçersiz webhook status");
     err.statusCode = 400;
@@ -448,7 +508,9 @@ const processWebhook = async ({ provider, eventId, eventType, providerPaymentId,
     throw err;
   }
 
-  const existingEvent = await PaymentEvent.findOne({ eventId: webhookEventId }).lean();
+  const existingEvent = await PaymentEvent.findOne({
+    eventId: webhookEventId,
+  }).lean();
   if (existingEvent) {
     return { payment: payment.toObject(), duplicate: true };
   }
@@ -461,7 +523,7 @@ const processWebhook = async ({ provider, eventId, eventType, providerPaymentId,
       amountMinor: Number(amountMinor || payment.amountMinor),
       signature,
     },
-    WEBHOOK_SECRET
+    WEBHOOK_SECRET,
   );
 
   if (!isSignatureValid) {
@@ -525,18 +587,28 @@ const getMyPayments = async ({ userId, page = 1, limit = 20 }) => {
 };
 
 const getMyPaymentByOrderId = async ({ userId, orderId }) => {
-  return Payment.findOne({ user: userId, orderId: String(orderId || "") }).lean();
+  return Payment.findOne({
+    user: userId,
+    orderId: String(orderId || ""),
+  }).lean();
 };
 
 const confirmPaymentByOrderId = async ({ userId, orderId }) => {
-  const payment = await Payment.findOne({ user: userId, orderId: String(orderId || "") });
+  const payment = await Payment.findOne({
+    user: userId,
+    orderId: String(orderId || ""),
+  });
   if (!payment) {
     const err = new Error("Ödeme bulunamadı");
     err.statusCode = 404;
     throw err;
   }
 
-  if (payment.status === "paid" || payment.status === "failed" || payment.status === "refunded") {
+  if (
+    payment.status === "paid" ||
+    payment.status === "failed" ||
+    payment.status === "refunded"
+  ) {
     return payment.toObject();
   }
 
@@ -546,8 +618,12 @@ const confirmPaymentByOrderId = async ({ userId, orderId }) => {
       sessionId: payment.providerPaymentId,
     });
 
-    const sessionStatus = String(session.status || "").trim().toLowerCase();
-    const paymentStatus = String(session.payment_status || "").trim().toLowerCase();
+    const sessionStatus = String(session.status || "")
+      .trim()
+      .toLowerCase();
+    const paymentStatus = String(session.payment_status || "")
+      .trim()
+      .toLowerCase();
 
     if (sessionStatus === "complete" && paymentStatus === "paid") {
       await applyPaidEffects(payment);
@@ -567,7 +643,9 @@ const confirmPaymentByOrderId = async ({ userId, orderId }) => {
 };
 
 const refundPayment = async ({ orderId }) => {
-  const paymentToRefund = await Payment.findOne({ orderId: String(orderId || "") });
+  const paymentToRefund = await Payment.findOne({
+    orderId: String(orderId || ""),
+  });
   if (!paymentToRefund) {
     const err = new Error("Ödeme bulunamadı");
     err.statusCode = 404;
@@ -596,9 +674,13 @@ const refundPayment = async ({ orderId }) => {
           paymentIntentId,
           reason: "requested_by_customer",
         });
-        console.log(`✅ Stripe refund oluşturuldu: ${refundResult.refundId} (${refundResult.status})`);
+        console.log(
+          `✅ Stripe refund oluşturuldu: ${refundResult.refundId} (${refundResult.status})`,
+        );
       } else {
-        console.warn("⚠️ Payment Intent bulunamadı, sadece DB refund yapılacak");
+        console.warn(
+          "⚠️ Payment Intent bulunamadı, sadece DB refund yapılacak",
+        );
       }
     } catch (stripeErr) {
       // Stripe hatası olsa bile DB tarafını yine de işle
@@ -619,10 +701,14 @@ const refundPayment = async ({ orderId }) => {
   } catch (txErr) {
     useTransaction = false;
     if (session) {
-      try { await session.endSession(); } catch (_) {}
+      try {
+        await session.endSession();
+      } catch (_) {}
       session = null;
     }
-    console.warn('[PaymentService] Refund: Transaction kullanılamıyor (replica set yok?), fallback modda çalışılıyor');
+    console.warn(
+      "[PaymentService] Refund: Transaction kullanılamıyor (replica set yok?), fallback modda çalışılıyor",
+    );
   }
 
   const executeRefundLogic = async (sessionOrNull) => {
@@ -657,7 +743,9 @@ const refundPayment = async ({ orderId }) => {
     if (lockedPayment.productType === "vip") {
       const vipDays = Number(lockedPayment.metadata?.vipDays || 0);
       if (vipDays > 0 && user.vipExpiresAt) {
-        const newExpiry = new Date(user.vipExpiresAt.getTime() - vipDays * 24 * 60 * 60 * 1000);
+        const newExpiry = new Date(
+          user.vipExpiresAt.getTime() - vipDays * 24 * 60 * 60 * 1000,
+        );
         if (newExpiry <= new Date()) {
           user.isVip = false;
           user.vipExpiresAt = null;
@@ -675,22 +763,24 @@ const refundPayment = async ({ orderId }) => {
 
     if (sessionOrNull) {
       await Transaction.create(
-        [{
-          user: lockedPayment.user,
-          type: "refund",
-          amount: refundAmount,
-          balanceAfter: Number(user.coins || 0),
-          status: "completed",
-          description: refundDescription,
-          metadata: {
-            orderId: lockedPayment.orderId,
-            providerPaymentId: lockedPayment.providerPaymentId,
-            amountMinor: lockedPayment.amountMinor,
-            currency: lockedPayment.currency,
-            productType: lockedPayment.productType,
+        [
+          {
+            user: lockedPayment.user,
+            type: "refund",
+            amount: refundAmount,
+            balanceAfter: Number(user.coins || 0),
+            status: "completed",
+            description: refundDescription,
+            metadata: {
+              orderId: lockedPayment.orderId,
+              providerPaymentId: lockedPayment.providerPaymentId,
+              amountMinor: lockedPayment.amountMinor,
+              currency: lockedPayment.currency,
+              productType: lockedPayment.productType,
+            },
           },
-        }],
-        { session: sessionOrNull }
+        ],
+        { session: sessionOrNull },
       );
     } else {
       await Transaction.create({
