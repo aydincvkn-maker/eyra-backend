@@ -8,8 +8,24 @@ const presenceService = require("../services/presenceService");
 const SystemSettings = require("../models/SystemSettings");
 const Transaction = require("../models/Transaction");
 
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const PANEL_ROLES = ["admin", "super_admin", "moderator"];
+
+const getGoogleAudiences = () => {
+  const values = [
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_WEB_CLIENT_ID,
+    process.env.GOOGLE_SERVER_CLIENT_ID,
+  ]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+
+  return [...new Set(values)];
+};
+
+const getGoogleClient = () => {
+  const [primaryAudience] = getGoogleAudiences();
+  return new OAuth2Client(primaryAudience || undefined);
+};
 
 const getAppleAudiences = () => {
   const values = [
@@ -509,10 +525,12 @@ exports.googleLoginWithToken = async (req, res) => {
       });
     }
 
+    const googleAudiences = getGoogleAudiences();
+
     // ­şöÆ GOOGLE_CLIENT_ID kontrol ÔÇö ayarlanmam─▒┼şsa token do─şrulama imkans─▒z
-    if (!process.env.GOOGLE_CLIENT_ID) {
+    if (googleAudiences.length === 0) {
       console.error(
-        "ÔØî GOOGLE_CLIENT_ID tan─▒ml─▒ de─şil ÔÇö Google login kullan─▒lamaz",
+        "ÔØî Google client ID tan─▒ml─▒ de─şil ÔÇö Google login kullan─▒lamaz",
       );
       return res.status(500).json({
         success: false,
@@ -529,9 +547,9 @@ exports.googleLoginWithToken = async (req, res) => {
     let payloadPhoto = null;
 
     try {
-      const ticket = await googleClient.verifyIdToken({
+      const ticket = await getGoogleClient().verifyIdToken({
         idToken,
-        audience: process.env.GOOGLE_CLIENT_ID,
+        audience: googleAudiences,
       });
       const payload = ticket.getPayload();
 
