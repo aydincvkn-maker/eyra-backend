@@ -3,6 +3,7 @@ const LiveStream = require("../models/LiveStream");
 const User = require("../models/User");
 const Message = require("../models/Message");
 const Report = require("../models/Report");
+const Transaction = require("../models/Transaction");
 const { v4: uuidv4 } = require("uuid");
 const { AccessToken } = require("livekit-server-sdk");
 const presenceService = require("../services/presenceService");
@@ -43,6 +44,18 @@ const normalizeCategory = (input) => {
   if (!input) return "chat";
   const normalized = String(input).toLowerCase().trim();
   return CATEGORY_MAP[normalized] || "chat";
+};
+
+const ISTANBUL_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+const getIstanbulDayBounds = (date = new Date()) => {
+  const shifted = new Date(date.getTime() + ISTANBUL_OFFSET_MS);
+  shifted.setUTCHours(0, 0, 0, 0);
+
+  const start = new Date(shifted.getTime() - ISTANBUL_OFFSET_MS);
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+
+  return { start, end };
 };
 
 // ============ TOKEN GENERATORS ============
@@ -2074,6 +2087,71 @@ exports.getHostCallPrice = async (req, res) => {
     });
   } catch (err) {
     console.error("getHostCallPrice error:", err);
+    res.status(500).json({ ok: false, error: "fetch_failed" });
+  }
+};
+
+/**
+ * İzleyici için yayıncı özet bilgisini getir
+ */
+exports.getHostLiveSummary = async (req, res) => {
+  try {
+    const { hostId } = req.params;
+
+    const host = await User.findById(hostId).select(
+      "username name profileImage age country callPricePerMinute dailyQuotaTarget isLive isOnline isBusy presenceStatus",
+    );
+
+    if (!host) {
+      return res.status(404).json({ ok: false, error: "host_not_found" });
+    }
+
+    const { start, end } = getIstanbulDayBounds();
+
+    const totals = await Transaction.aggregate([
+      {
+        $match: {
+          user: host._id,
+          type: "gift_received",
+          status: "completed",
+          createdAt: { $gte: start, $lt: end },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$amount" },
+        },
+      },
+    ]);
+
+    const dailyGiftTotal = totals[0]?.total || 0;
+
+    res.json({
+      ok: true,
+      host: {
+        _id: host._id,
+        username: host.username,
+        name: host.name,
+        profileImage: host.profileImage || "",
+        age: host.age || 0,
+        country: host.country || "",
+        callPricePerMinute: host.callPricePerMinute || 100,
+        dailyQuotaTarget: host.dailyQuotaTarget || 0,
+        dailyGiftTotal,
+        dayWindow: {
+          timezone: "Europe/Istanbul",
+          startsAt: start.toISOString(),
+          endsAt: end.toISOString(),
+        },
+        presenceStatus: host.presenceStatus || "offline",
+        isLive: host.isLive === true,
+        isOnline: host.isOnline === true,
+        isBusy: host.isBusy === true,
+      },
+    });
+  } catch (err) {
+    console.error("getHostLiveSummary error:", err);
     res.status(500).json({ ok: false, error: "fetch_failed" });
   }
 };

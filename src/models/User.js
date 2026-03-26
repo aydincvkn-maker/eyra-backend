@@ -85,6 +85,7 @@ const userSchema = new mongoose.Schema(
 
     // ÜCRETLI ARAMA AYARLARI
     callPricePerMinute: { type: Number, default: 100 }, // Dakika başı coin
+    dailyQuotaTarget: { type: Number, default: 45000, min: 0 },
     preferredLanguage: { type: String, default: "tr" }, // Tercih edilen dil
 
     // PROFİL BİLGİLERİ

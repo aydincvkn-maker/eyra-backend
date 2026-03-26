@@ -99,6 +99,9 @@ router.get("/list", auth, liveController.getActiveLives);
 // Tek yayın detayı
 router.get("/stream/:roomId", auth, liveController.getStreamDetails);
 
+// İzleyici için yayıncı özet kartı
+router.get("/host-summary/:hostId", auth, liveController.getHostLiveSummary);
+
 // İzleyici listesi
 router.get("/viewers/:roomId", auth, liveController.getViewers);
 
