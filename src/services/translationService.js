@@ -1,35 +1,36 @@
 // src/services/translationService.js
 // Anlık mesaj çeviri servisi - Google Translate API ile
 
-const axios = require('axios');
+const axios = require("axios");
 
 // Google Translate ücretsiz endpoint (unofficial - production için resmi API kullanın)
-const TRANSLATE_ENDPOINT = 'https://translate.googleapis.com/translate_a/single';
+const TRANSLATE_ENDPOINT =
+  "https://translate.googleapis.com/translate_a/single";
 
 // Desteklenen diller (Flutter LanguageProvider ile senkronize)
 const SUPPORTED_LANGUAGES = {
-  'tr': 'Türkçe',
-  'en': 'English',
-  'ar': 'العربية',
-  'ru': 'Русский',
-  'de': 'Deutsch',
-  'fr': 'Français',
-  'es': 'Español',
-  'pt': 'Português',
-  'it': 'Italiano',
-  'ja': '日本語',
-  'ko': '한국어',
-  'zh': '中文',
-  'hi': 'हिन्दी',
-  'fa': 'فارسی',
-  'az': 'Azərbaycan',
-  'uk': 'Українська',
-  'id': 'Indonesia',
-  'vi': 'Tiếng Việt',
-  'th': 'ไทย',
-  'fil': 'Filipino',
-  'ms': 'Melayu',
-  'pl': 'Polski'
+  tr: "Türkçe",
+  en: "English",
+  ar: "العربية",
+  ru: "Русский",
+  de: "Deutsch",
+  fr: "Français",
+  es: "Español",
+  pt: "Português",
+  it: "Italiano",
+  ja: "日本語",
+  ko: "한국어",
+  zh: "中文",
+  hi: "हिन्दी",
+  fa: "فارسی",
+  az: "Azərbaycan",
+  uk: "Українська",
+  id: "Indonesia",
+  vi: "Tiếng Việt",
+  th: "ไทย",
+  fil: "Filipino",
+  ms: "Melayu",
+  pl: "Polski",
 };
 
 // Cache: son çeviriler için memory cache (performans için)
@@ -63,40 +64,39 @@ const cleanCache = () => {
  * @param {string} sourceLang - Kaynak dil kodu (opsiyonel, 'auto' için boş bırak)
  * @returns {Promise<{translatedText: string, detectedLanguage: string}>}
  */
-exports.translateText = async (text, targetLang, sourceLang = 'auto') => {
+exports.translateText = async (text, targetLang, sourceLang = "auto") => {
   if (!text || text.trim().length === 0) {
     return { translatedText: text, detectedLanguage: sourceLang };
   }
 
   // Hedef dil kaynak dil ile aynıysa çevirme
-  if (sourceLang !== 'auto' && sourceLang === targetLang) {
+  if (sourceLang !== "auto" && sourceLang === targetLang) {
     return { translatedText: text, detectedLanguage: sourceLang };
   }
 
   // Cache kontrol
   const cacheKey = getCacheKey(text, sourceLang, targetLang);
   const cached = translationCache.get(cacheKey);
-  if (cached && (Date.now() - cached.timestamp) < CACHE_TTL_MS) {
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return cached.result;
   }
 
   try {
     const response = await axios.get(TRANSLATE_ENDPOINT, {
       params: {
-        client: 'gtx',
+        client: "gtx",
         sl: sourceLang,
         tl: targetLang,
-        dt: 't',
-        q: text
+        dt: "t",
+        q: text,
       },
-      timeout: 5000
+      timeout: 5000,
     });
 
     // Response formatı: [[["çeviri","orijinal",null,null,1]],null,"en"]
-    const translatedText = response.data[0]
-      ?.map(item => item[0])
-      ?.join('') || text;
-    
+    const translatedText =
+      response.data[0]?.map((item) => item[0])?.join("") || text;
+
     const detectedLanguage = response.data[2] || sourceLang;
 
     const result = { translatedText, detectedLanguage };
@@ -107,9 +107,13 @@ exports.translateText = async (text, targetLang, sourceLang = 'auto') => {
 
     return result;
   } catch (err) {
-    console.error('❌ Translation error:', err.message);
+    console.error("❌ Translation error:", err.message);
     // Hata durumunda orijinal metni döndür
-    return { translatedText: text, detectedLanguage: sourceLang, error: err.message };
+    return {
+      translatedText: text,
+      detectedLanguage: sourceLang,
+      error: err.message,
+    };
   }
 };
 
@@ -120,16 +124,20 @@ exports.translateText = async (text, targetLang, sourceLang = 'auto') => {
  * @param {string} sourceLang - Kaynak dil
  * @returns {Promise<Array<{original: string, translated: string, detectedLanguage: string}>>}
  */
-exports.translateBatch = async (texts, targetLang, sourceLang = 'auto') => {
+exports.translateBatch = async (texts, targetLang, sourceLang = "auto") => {
   const results = await Promise.all(
     texts.map(async (text) => {
-      const { translatedText, detectedLanguage } = await exports.translateText(text, targetLang, sourceLang);
+      const { translatedText, detectedLanguage } = await exports.translateText(
+        text,
+        targetLang,
+        sourceLang,
+      );
       return {
         original: text,
         translated: translatedText,
-        detectedLanguage
+        detectedLanguage,
       };
-    })
+    }),
   );
   return results;
 };
@@ -141,20 +149,24 @@ exports.translateBatch = async (texts, targetLang, sourceLang = 'auto') => {
  * @param {string} viewerLang - İzleyicinin dili (opsiyonel)
  * @returns {Promise<Object>} - Çevrilmiş mesaj
  */
-exports.translateChatMessage = async (message, targetLang, viewerLang = null) => {
+exports.translateChatMessage = async (
+  message,
+  targetLang,
+  viewerLang = null,
+) => {
   if (!message || !message.content) {
     return message;
   }
 
   // Gift mesajları çevirilmez
-  if (message.type === 'gift') {
+  if (message.type === "gift") {
     return message;
   }
 
   const { translatedText, detectedLanguage } = await exports.translateText(
     message.content,
     targetLang,
-    'auto'
+    "auto",
   );
 
   return {
@@ -163,7 +175,7 @@ exports.translateChatMessage = async (message, targetLang, viewerLang = null) =>
     content: translatedText,
     translatedTo: targetLang,
     detectedLanguage,
-    isTranslated: translatedText !== message.content
+    isTranslated: translatedText !== message.content,
   };
 };
 
@@ -178,16 +190,19 @@ exports.detectUserLanguage = (req) => {
   }
 
   // 2. Header kontrol
-  const acceptLanguage = req.headers['accept-language'];
+  const acceptLanguage = req.headers["accept-language"];
   if (acceptLanguage) {
-    const primaryLang = acceptLanguage.split(',')[0].split('-')[0].toLowerCase();
+    const primaryLang = acceptLanguage
+      .split(",")[0]
+      .split("-")[0]
+      .toLowerCase();
     if (SUPPORTED_LANGUAGES[primaryLang]) {
       return primaryLang;
     }
   }
 
   // 3. Default Türkçe
-  return 'tr';
+  return "tr";
 };
 
 /**
@@ -196,7 +211,7 @@ exports.detectUserLanguage = (req) => {
 exports.getSupportedLanguages = () => {
   return Object.entries(SUPPORTED_LANGUAGES).map(([code, name]) => ({
     code,
-    name
+    name,
   }));
 };
 
@@ -213,6 +228,6 @@ exports.isValidLanguage = (langCode) => {
 exports.getCacheStats = () => {
   return {
     size: translationCache.size,
-    maxSize: MAX_CACHE_SIZE
+    maxSize: MAX_CACHE_SIZE,
   };
 };
