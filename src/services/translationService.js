@@ -6,7 +6,7 @@ const axios = require('axios');
 // Google Translate ücretsiz endpoint (unofficial - production için resmi API kullanın)
 const TRANSLATE_ENDPOINT = 'https://translate.googleapis.com/translate_a/single';
 
-// Desteklenen diller
+// Desteklenen diller (Flutter LanguageProvider ile senkronize)
 const SUPPORTED_LANGUAGES = {
   'tr': 'Türkçe',
   'en': 'English',
@@ -23,7 +23,13 @@ const SUPPORTED_LANGUAGES = {
   'hi': 'हिन्दी',
   'fa': 'فارسی',
   'az': 'Azərbaycan',
-  'uk': 'Українська'
+  'uk': 'Українська',
+  'id': 'Indonesia',
+  'vi': 'Tiếng Việt',
+  'th': 'ไทย',
+  'fil': 'Filipino',
+  'ms': 'Melayu',
+  'pl': 'Polski'
 };
 
 // Cache: son çeviriler için memory cache (performans için)
