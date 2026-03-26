@@ -4,79 +4,93 @@ const router = express.Router();
 const liveController = require("../controllers/liveController");
 const auth = require("../middleware/auth");
 const requirePermission = require("../middleware/requirePermission");
-const { liveStartLimiter, chatLimiter, reportLimiter } = require("../middleware/rateLimit");
+const {
+  liveStartLimiter,
+  chatLimiter,
+  reportLimiter,
+} = require("../middleware/rateLimit");
 
 // ============ DEBUG ROUTES (Admin only, non-production) ============
 // Token kontrolü (authentication debug)
-router.post("/debug/token-check", auth, requirePermission("admin"), (req, res) => {
-  res.json({
-    ok: true,
-    message: "Token valid ✅",
-    userId: req.user.id,
-    username: req.user.username,
-    role: req.user.role,
-  });
-});
+router.post(
+  "/debug/token-check",
+  auth,
+  requirePermission("admin"),
+  (req, res) => {
+    res.json({
+      ok: true,
+      message: "Token valid ✅",
+      userId: req.user.id,
+      username: req.user.username,
+      role: req.user.role,
+    });
+  },
+);
 
 // LiveKit Token generation test
 // ✅ FIX: async handler for livekit-server-sdk v2.x
-router.post("/debug/generate-test-token", auth, requirePermission("admin"), async (req, res) => {
-  try {
-    const { AccessToken } = require("livekit-server-sdk");
-    const roomId = `test_room_${Date.now()}`;
-    const userId = req.user.id;
-    
-    console.log('🔵 [DEBUG] Generating test token...');
-    console.log('   API_KEY:', process.env.LIVEKIT_API_KEY ? '✓' : '✗');
-    console.log('   API_SECRET:', process.env.LIVEKIT_API_SECRET ? '✓' : '✗');
-    console.log('   URL:', process.env.LIVEKIT_URL);
-    
-    const at = new AccessToken(
-      process.env.LIVEKIT_API_KEY,
-      process.env.LIVEKIT_API_SECRET,
-      { identity: String(userId) }
-    );
-    
-    at.addGrant({
-      roomJoin: true,
-      room: String(roomId),
-      canPublish: true,
-      canSubscribe: true
-    });
-    
-    // ✅ FIX: await toJwt() for v2.x
-    const token = await at.toJwt();
-    
-    // Decode token for inspection
-    const parts = token.split('.');
-    const header = JSON.parse(Buffer.from(parts[0], 'base64').toString());
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-    
-    res.json({
-      ok: true,
-      token,
-      decoded: {
-        header,
-        payload: {
-          sub: payload.sub,
-          aud: payload.aud,
-          iat: payload.iat,
-          exp: payload.exp,
-          video: payload.video,
-          metadata: payload.metadata
-        }
-      },
-      livekitUrl: process.env.LIVEKIT_URL
-    });
-  } catch (err) {
-    console.error('❌ Test token generation failed:', err.message);
-    res.status(500).json({
-      ok: false,
-      error: 'token_generation_failed',
-      message: err.message
-    });
-  }
-});
+router.post(
+  "/debug/generate-test-token",
+  auth,
+  requirePermission("admin"),
+  async (req, res) => {
+    try {
+      const { AccessToken } = require("livekit-server-sdk");
+      const roomId = `test_room_${Date.now()}`;
+      const userId = req.user.id;
+
+      console.log("🔵 [DEBUG] Generating test token...");
+      console.log("   API_KEY:", process.env.LIVEKIT_API_KEY ? "✓" : "✗");
+      console.log("   API_SECRET:", process.env.LIVEKIT_API_SECRET ? "✓" : "✗");
+      console.log("   URL:", process.env.LIVEKIT_URL);
+
+      const at = new AccessToken(
+        process.env.LIVEKIT_API_KEY,
+        process.env.LIVEKIT_API_SECRET,
+        { identity: String(userId) },
+      );
+
+      at.addGrant({
+        roomJoin: true,
+        room: String(roomId),
+        canPublish: true,
+        canSubscribe: true,
+      });
+
+      // ✅ FIX: await toJwt() for v2.x
+      const token = await at.toJwt();
+
+      // Decode token for inspection
+      const parts = token.split(".");
+      const header = JSON.parse(Buffer.from(parts[0], "base64").toString());
+      const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
+
+      res.json({
+        ok: true,
+        token,
+        decoded: {
+          header,
+          payload: {
+            sub: payload.sub,
+            aud: payload.aud,
+            iat: payload.iat,
+            exp: payload.exp,
+            video: payload.video,
+            metadata: payload.metadata,
+          },
+        },
+        livekitUrl: process.env.LIVEKIT_URL,
+      });
+    } catch (err) {
+      console.error("❌ Test token generation failed:", err.message);
+      res.status(500).json({
+        ok: false,
+        error: "token_generation_failed",
+        message: err.message,
+      });
+    }
+  },
+);
 
 // ============ BROADCASTER ENDPOINTS ============
 // Yayın başlat (Sadece kadınlar) - Rate limited: 5 attempts per 5 minutes
@@ -123,10 +137,20 @@ router.get("/leaderboard/:roomId", auth, liveController.getGiftLeaderboard);
 router.post("/flag", auth, reportLimiter, liveController.flagStream);
 
 // Yayını banla (admin only)
-router.post("/ban", auth, requirePermission("streams:ban"), liveController.banStream);
+router.post(
+  "/ban",
+  auth,
+  requirePermission("streams:ban"),
+  liveController.banStream,
+);
 
 // Yayın yasağını kaldır (admin only)
-router.post("/unban", auth, requirePermission("streams:ban"), liveController.unbanStream);
+router.post(
+  "/unban",
+  auth,
+  requirePermission("streams:ban"),
+  liveController.unbanStream,
+);
 
 // ============ CO-HOST ENDPOINTS ============
 // Co-host daveti gönder (Host tarafından)
@@ -161,7 +185,11 @@ router.post("/translate/message", auth, liveController.translateMessage);
 router.post("/translate/batch", auth, liveController.translateBatch);
 
 // Chat geçmişini çevrilmiş olarak getir
-router.get("/translate/chat/:roomId", auth, liveController.getTranslatedChatHistory);
+router.get(
+  "/translate/chat/:roomId",
+  auth,
+  liveController.getTranslatedChatHistory,
+);
 
 // ============ PAID VIDEO CALL ENDPOINTS ============
 // Yayıncının arama fiyatını getir
