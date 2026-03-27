@@ -1812,7 +1812,10 @@ exports.requestPaidCall = async (req, res) => {
       // Odaya host'un özel görüşmede olduğunu bildir
       global.io.to(roomId).emit("host_in_private_call", {
         hostId,
+        hostName: stream.host?.name || stream.host?.username || "Yayıncı",
+        callerName: updatedCaller.name || updatedCaller.username || "Kullanıcı",
         duration: parsedDuration,
+        totalPrice,
       });
     }
 
@@ -1904,7 +1907,10 @@ exports.acceptPaidCall = async (req, res) => {
       // Room'daki herkese bildir (yayın duraklatılabilir)
       global.io.to(request.roomId).emit("host_in_private_call", {
         hostId,
+        hostName: request.hostName || "Yayıncı",
+        callerName: request.callerName || "Kullanıcı",
         duration: request.duration,
+        totalPrice: request.totalPrice || 0,
       });
     }
 
@@ -2054,6 +2060,8 @@ exports.endPaidCall = async (req, res) => {
       // Yayın odasına host'un döndüğünü bildir
       global.io.to(request.roomId).emit("host_returned_from_call", {
         hostId: request.hostId,
+        hostName: request.hostName || "Yayıncı",
+        callerName: request.callerName || "Kullanıcı",
       });
     }
 
