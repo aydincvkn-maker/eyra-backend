@@ -31,9 +31,7 @@ function register(socket, io) {
       socket.join(roomId);
       console.log(`📺 User ${userId} joined live room: ${roomId}`);
 
-      const user = await User.findById(userId)
-        .select("username name")
-        .lean();
+      const user = await User.findById(userId).select("username name").lean();
       const viewerName = user?.name || user?.username || "Birisi";
 
       // NOT: viewerCount artırma joinAsViewer HTTP endpoint'inde yapılıyor.
