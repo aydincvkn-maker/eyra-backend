@@ -68,6 +68,22 @@ function register(socket, io) {
 
       activeCalls.delete(roomName);
       console.log(`🧹 Cleaned up call: ${roomName}`);
+
+      // Yayın odasına host'un döndüğünü bildir (pembe overlay kapatılsın)
+      if (eventName === "call:ended" && global.callRequests && global.io) {
+        for (const [reqId, req] of global.callRequests) {
+          if (req.callRoomName === roomName && req.roomId) {
+            global.io.to(req.roomId).emit("host_returned_from_call", {
+              hostId: req.hostId,
+              hostName: req.hostName || "Yayıncı",
+              callerName: req.callerName || "Kullanıcı",
+            });
+            console.log(`📺 host_returned_from_call emitted to room ${req.roomId}`);
+            global.callRequests.delete(reqId);
+            break;
+          }
+        }
+      }
     }
   };
 
