@@ -1711,6 +1711,7 @@ exports.requestPaidCall = async (req, res) => {
       callerName: updatedCaller.name || updatedCaller.username,
       callerImage: updatedCaller.profileImage,
       hostId: String(hostId),
+      hostName: stream.host?.name || stream.host?.username || "Yayıncı",
       roomId,
       duration: parsedDuration,
       pricePerMinute,
