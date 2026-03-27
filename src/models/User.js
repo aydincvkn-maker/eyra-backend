@@ -138,6 +138,7 @@ const userSchema = new mongoose.Schema(
     isBanned: { type: Boolean, default: false },
     isFrozen: { type: Boolean, default: false },
     isGuest: { type: Boolean, default: false },
+    createdByAdmin: { type: Boolean, default: false },
 
     // YETKİ HİYERARŞİSİ
     isOwner: { type: Boolean, default: false }, // Patron - en yüksek yetki
