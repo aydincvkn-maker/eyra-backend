@@ -278,6 +278,7 @@ const buildUserPayload = (user) => ({
   permissions: user.permissions || [],
   isOwner: user.isOwner || false,
   isPanelRestricted: user.isPanelRestricted || false,
+  createdByAdmin: user.createdByAdmin || false,
 });
 
 // G├╝nl├╝k giri┼ş bonusu kontrol├╝ ve verme
