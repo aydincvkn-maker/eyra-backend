@@ -348,6 +348,9 @@ exports.adminCreateUser = async (req, res) => {
       isGuest: false,
       isOnline: false,
       lastSeen: new Date(),
+      isVerified: true,
+      verificationStatus: "approved",
+      createdByAdmin: true,
     });
 
     logger.info(
