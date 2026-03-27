@@ -31,6 +31,11 @@ function register(socket, io) {
       socket.join(roomId);
       console.log(`📺 User ${userId} joined live room: ${roomId}`);
 
+      const user = await User.findById(userId)
+        .select("username name")
+        .lean();
+      const viewerName = user?.name || user?.username || "Birisi";
+
       // NOT: viewerCount artırma joinAsViewer HTTP endpoint'inde yapılıyor.
       // Socket sadece room'a join olur, double count önlenir.
       const stream = await LiveStream.findOne({
@@ -45,6 +50,7 @@ function register(socket, io) {
         socket.to(roomId).emit("viewer_joined", {
           roomId,
           userId,
+          viewerName,
           viewerCount: stream.viewerCount,
           timestamp: Date.now(),
         });
