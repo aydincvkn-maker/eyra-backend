@@ -366,7 +366,9 @@ function register(socket, io) {
         message: "Yayından çıkarıldınız",
       });
 
-      console.log(`🚫 User ${targetId} kicked from room ${roomId}, event delivered: ${kickDelivered}`);
+      console.log(
+        `🚫 User ${targetId} kicked from room ${roomId}, event delivered: ${kickDelivered}`,
+      );
     } catch (e) {
       console.error("❌ live:kick_user error:", e.message);
     }
