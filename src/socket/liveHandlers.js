@@ -281,13 +281,13 @@ function register(socket, io) {
         .select("viewerCount")
         .lean();
 
-      const nextViewerCount = Math.max(updatedStream?.viewerCount ?? stream.viewerCount ?? 0, 0);
+      const nextViewerCount = Math.max(
+        updatedStream?.viewerCount ?? stream.viewerCount ?? 0,
+        0,
+      );
 
       if (updatedStream && updatedStream.viewerCount < 0) {
-        await LiveStream.updateOne(
-          { roomId },
-          { $set: { viewerCount: 0 } },
-        );
+        await LiveStream.updateOne({ roomId }, { $set: { viewerCount: 0 } });
       }
 
       io.to(roomId).emit("viewer_left", {
