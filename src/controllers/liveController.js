@@ -593,12 +593,16 @@ exports.joinAsViewer = async (req, res) => {
       );
     }
 
-    // Socket ile bildir
+    // Socket ile bildir (viewerName dahil — join notice için)
     if (global.io) {
+      const user = await User.findById(userId).select("username name").lean();
+      const viewerName = user?.name || user?.username || "Birisi";
       global.io.to(roomId).emit("viewer_joined", {
         roomId,
         viewerCount: updatedStream.viewerCount,
         userId,
+        viewerName,
+        timestamp: Date.now(),
       });
     }
 

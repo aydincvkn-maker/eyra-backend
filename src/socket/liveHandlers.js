@@ -63,29 +63,8 @@ function register(socket, io) {
     try {
       socket.join(roomId);
       console.log(`📺 User ${userId} joined live room: ${roomId}`);
-
-      const user = await User.findById(userId).select("username name").lean();
-      const viewerName = user?.name || user?.username || "Birisi";
-
-      // NOT: viewerCount artırma joinAsViewer HTTP endpoint'inde yapılıyor.
-      // Socket sadece room'a join olur, double count önlenir.
-      const stream = await LiveStream.findOne({
-        roomId,
-        isLive: true,
-        status: "live",
-      })
-        .select("viewerCount")
-        .lean();
-
-      if (stream) {
-        socket.to(roomId).emit("viewer_joined", {
-          roomId,
-          userId,
-          viewerName,
-          viewerCount: stream.viewerCount,
-          timestamp: Date.now(),
-        });
-      }
+      // NOT: viewer_joined event'i joinAsViewer HTTP endpoint'inde emit ediliyor.
+      // Burada tekrar emit etmiyoruz, double event önlenir.
     } catch (e) {
       console.error("❌ live:join_room error:", e.message);
       socket.emit("error", { message: "join_room_failed" });
