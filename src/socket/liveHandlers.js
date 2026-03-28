@@ -360,13 +360,13 @@ function register(socket, io) {
         kicked: true,
       });
 
-      emitToUserSockets(targetId, "live:kicked", {
+      const kickDelivered = emitToUserSockets(targetId, "live:kicked", {
         roomId,
         kickedUserId: targetId,
         message: "Yayından çıkarıldınız",
       });
 
-      console.log(`🚫 User ${targetId} kicked from room ${roomId}`);
+      console.log(`🚫 User ${targetId} kicked from room ${roomId}, event delivered: ${kickDelivered}`);
     } catch (e) {
       console.error("❌ live:kick_user error:", e.message);
     }
