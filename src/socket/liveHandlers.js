@@ -347,7 +347,7 @@ function register(socket, io) {
 
       const targetSocketsForLog = userSockets.get(targetId);
       console.log(
-        `🚫 User ${targetId} kicked from room ${roomId}, event delivered: ${kickDelivered}, targetSockets: ${targetSocketsForLog ? targetSocketsForLog.size : 'NONE'}`,
+        `🚫 User ${targetId} kicked from room ${roomId}, event delivered: ${kickDelivered}, targetSockets: ${targetSocketsForLog ? targetSocketsForLog.size : "NONE"}`,
       );
     } catch (e) {
       console.error("❌ live:kick_user error:", e.message);
