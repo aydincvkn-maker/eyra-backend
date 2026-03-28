@@ -7,12 +7,44 @@ const LiveStream = require("../models/LiveStream");
 const Message = require("../models/Message");
 const User = require("../models/User");
 const { emitToUserSockets } = require("./helpers");
+const { userSockets } = require("./state");
 const {
   containsPaymentRedirect,
 } = require("../utils/paymentRedirectModeration");
 const {
   recordPaymentRedirectAttempt,
 } = require("../services/moderationAuditService");
+
+const mutedUsersByRoom = new Map();
+
+function getRoomMuteMap(roomId) {
+  const key = String(roomId || "").trim();
+  if (!mutedUsersByRoom.has(key)) {
+    mutedUsersByRoom.set(key, new Map());
+  }
+  return mutedUsersByRoom.get(key);
+}
+
+function getMuteExpiry(roomId, userId) {
+  const roomMuteMap = mutedUsersByRoom.get(String(roomId || "").trim());
+  if (!roomMuteMap) return null;
+  return roomMuteMap.get(String(userId || "").trim()) ?? null;
+}
+
+function setMuteExpiry(roomId, userId, expiresAt) {
+  const roomMuteMap = getRoomMuteMap(roomId);
+  roomMuteMap.set(String(userId || "").trim(), expiresAt);
+}
+
+function clearMute(roomId, userId) {
+  const roomKey = String(roomId || "").trim();
+  const roomMuteMap = mutedUsersByRoom.get(roomKey);
+  if (!roomMuteMap) return;
+  roomMuteMap.delete(String(userId || "").trim());
+  if (roomMuteMap.size === 0) {
+    mutedUsersByRoom.delete(roomKey);
+  }
+}
 
 /**
  * Register live stream events on a connected socket.
@@ -105,6 +137,20 @@ function register(socket, io) {
       if (!stream) {
         socket.emit("error", { message: "stream_not_found" });
         return;
+      }
+
+      const mutedUntil = getMuteExpiry(roomId, userId);
+      if (mutedUntil && mutedUntil > Date.now()) {
+        socket.emit("user_muted", {
+          roomId,
+          mutedUserId: String(userId),
+          mutedUntil: new Date(mutedUntil),
+          duration: Math.max(Math.ceil((mutedUntil - Date.now()) / 1000), 1),
+        });
+        return;
+      }
+      if (mutedUntil && mutedUntil <= Date.now()) {
+        clearMute(roomId, userId);
       }
 
       if (message.length > 500) {
@@ -220,10 +266,13 @@ function register(socket, io) {
           return;
         }
 
+        const expiresAt = Date.now() + duration * 1000;
+        setMuteExpiry(roomId, targetUserId, expiresAt);
+
         io.to(roomId).emit("user_muted", {
           roomId,
           mutedUserId: targetUserId,
-          mutedUntil: new Date(Date.now() + duration * 1000),
+          mutedUntil: new Date(expiresAt),
           duration,
         });
 
@@ -244,6 +293,8 @@ function register(socket, io) {
     try {
       const stream = await LiveStream.findOne({ roomId, isLive: true }).lean();
       if (!stream || stream.host.toString() !== userId) return;
+
+      clearMute(roomId, targetUserId);
 
       io.to(roomId).emit("user_unmuted", {
         roomId,
@@ -289,6 +340,18 @@ function register(socket, io) {
       if (updatedStream && updatedStream.viewerCount < 0) {
         await LiveStream.updateOne({ roomId }, { $set: { viewerCount: 0 } });
       }
+
+      const targetSockets = userSockets.get(targetId);
+      if (targetSockets && targetSockets.size > 0) {
+        targetSockets.forEach((sid) => {
+          const targetSocket = io.sockets.sockets.get(sid);
+          if (targetSocket) {
+            targetSocket.leave(roomId);
+          }
+        });
+      }
+
+      clearMute(roomId, targetId);
 
       io.to(roomId).emit("viewer_left", {
         roomId,
