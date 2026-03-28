@@ -6,6 +6,7 @@
 const LiveStream = require("../models/LiveStream");
 const Message = require("../models/Message");
 const User = require("../models/User");
+const { emitToUserSockets } = require("./helpers");
 const {
   containsPaymentRedirect,
 } = require("../utils/paymentRedirectModeration");
@@ -252,6 +253,59 @@ function register(socket, io) {
       console.log(`🔊 User ${targetUserId} unmuted in room ${roomId}`);
     } catch (e) {
       console.error("❌ live:unmute_user error:", e.message);
+    }
+  });
+
+  socket.on("live:kick_user", async ({ roomId, targetUserId }) => {
+    const userId = socket.data.userId;
+    if (!roomId || !userId || !targetUserId) return;
+
+    try {
+      const stream = await LiveStream.findOne({ roomId, isLive: true }).lean();
+      if (!stream) return;
+
+      if (stream.host.toString() !== userId) {
+        socket.emit("error", { message: "only_host_can_kick" });
+        return;
+      }
+
+      const targetId = String(targetUserId);
+      const updatedStream = await LiveStream.findOneAndUpdate(
+        { roomId, viewers: targetId },
+        {
+          $inc: { viewerCount: -1 },
+          $pull: { viewers: targetId },
+        },
+        { new: true },
+      )
+        .select("viewerCount")
+        .lean();
+
+      const nextViewerCount = Math.max(updatedStream?.viewerCount ?? stream.viewerCount ?? 0, 0);
+
+      if (updatedStream && updatedStream.viewerCount < 0) {
+        await LiveStream.updateOne(
+          { roomId },
+          { $set: { viewerCount: 0 } },
+        );
+      }
+
+      io.to(roomId).emit("viewer_left", {
+        roomId,
+        userId: targetId,
+        viewerCount: nextViewerCount,
+        kicked: true,
+      });
+
+      emitToUserSockets(targetId, "live:kicked", {
+        roomId,
+        kickedUserId: targetId,
+        message: "Yayından çıkarıldınız",
+      });
+
+      console.log(`🚫 User ${targetId} kicked from room ${roomId}`);
+    } catch (e) {
+      console.error("❌ live:kick_user error:", e.message);
     }
   });
 }
