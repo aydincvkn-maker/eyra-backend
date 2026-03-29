@@ -32,6 +32,7 @@ const allowedAdminChatMimeTypes = new Set([
   "application/zip",
   "application/x-rar-compressed",
   "application/vnd.rar",
+  "application/vnd.android.package-archive",
 ]);
 
 const allowedAdminChatExtensions = new Set([
@@ -55,6 +56,7 @@ const allowedAdminChatExtensions = new Set([
   ".txt",
   ".zip",
   ".rar",
+  ".apk",
 ]);
 
 const attachmentUpload = multer({
@@ -64,8 +66,8 @@ const attachmentUpload = multer({
     const mimeType = String(file.mimetype || "").toLowerCase();
     const extension = path.extname(file.originalname || "").toLowerCase();
     if (
-      allowedAdminChatMimeTypes.has(mimeType)
-      || allowedAdminChatExtensions.has(extension)
+      allowedAdminChatMimeTypes.has(mimeType) ||
+      allowedAdminChatExtensions.has(extension)
     ) {
       return cb(null, true);
     }
@@ -84,14 +86,17 @@ function inferAttachmentType(mimeType) {
 function normalizeAttachment(rawAttachment) {
   if (!rawAttachment) return null;
 
-  const attachment = typeof rawAttachment === "string"
-    ? JSON.parse(rawAttachment)
-    : rawAttachment;
+  const attachment =
+    typeof rawAttachment === "string"
+      ? JSON.parse(rawAttachment)
+      : rawAttachment;
 
   const url = String(attachment.url || "").trim();
   const type = String(attachment.type || "file").trim();
   const fileName = String(attachment.fileName || "Ek dosya").trim();
-  const mimeType = String(attachment.mimeType || "application/octet-stream").trim();
+  const mimeType = String(
+    attachment.mimeType || "application/octet-stream",
+  ).trim();
   const fileSize = Number(attachment.fileSize || 0);
 
   if (!url || !url.startsWith("/uploads/admin-chat/")) {
@@ -175,7 +180,12 @@ function buildVisibleMessagesFilter(filter, viewerId) {
   };
 }
 
-function emitThreadCleared(adminNamespace, threadType, actorId, recipientId = null) {
+function emitThreadCleared(
+  adminNamespace,
+  threadType,
+  actorId,
+  recipientId = null,
+) {
   const payload = {
     threadType,
     actorId: String(actorId),
@@ -199,12 +209,17 @@ router.post("/upload", attachmentUpload.single("media"), async (req, res) => {
 
     const file = req.file;
     const extension = path.extname(file.originalname || "").toLowerCase();
-    const mimeType = String(file.mimetype || "application/octet-stream").toLowerCase();
+    const mimeType = String(
+      file.mimetype || "application/octet-stream",
+    ).toLowerCase();
     const attachmentType = inferAttachmentType(mimeType);
     const folder = attachmentType === "file" ? "files" : `${attachmentType}s`;
     const timestamp = Date.now();
     const fileName = `admin_${String(req.user.id)}_${timestamp}${extension}`;
-    const uploadDir = path.join(__dirname, `../../uploads/admin-chat/${folder}`);
+    const uploadDir = path.join(
+      __dirname,
+      `../../uploads/admin-chat/${folder}`,
+    );
 
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
@@ -213,15 +228,19 @@ router.post("/upload", attachmentUpload.single("media"), async (req, res) => {
     const filePath = path.join(uploadDir, fileName);
     fs.writeFileSync(filePath, file.buffer);
 
-    return sendSuccess(res, {
-      attachment: {
-        url: `/uploads/admin-chat/${folder}/${fileName}`,
-        type: attachmentType,
-        fileName: file.originalname,
-        fileSize: file.size,
-        mimeType,
+    return sendSuccess(
+      res,
+      {
+        attachment: {
+          url: `/uploads/admin-chat/${folder}/${fileName}`,
+          type: attachmentType,
+          fileName: file.originalname,
+          fileSize: file.size,
+          mimeType,
+        },
       },
-    }, 201);
+      201,
+    );
   } catch (err) {
     return sendError(res, 500, err.message || "Dosya yüklenemedi");
   }
@@ -242,7 +261,10 @@ router.get("/messages", async (req, res) => {
         return sendError(res, 400, "Geçersiz alıcı kimliği");
       }
 
-      filter = buildVisibleMessagesFilter(buildDirectThreadFilter(myId, requestedRecipientId), myId);
+      filter = buildVisibleMessagesFilter(
+        buildDirectThreadFilter(myId, requestedRecipientId),
+        myId,
+      );
     } else {
       filter = buildVisibleMessagesFilter(buildGroupThreadFilter(), myId);
     }
@@ -299,8 +321,16 @@ router.post("/messages", async (req, res) => {
 
     const adminNamespace = require("../socket/adminNamespace");
     if (recipientId) {
-      adminNamespace.emitToAdminUser(recipientId, "admin-chat:message", payload);
-      adminNamespace.emitToAdminUser(req.user.id, "admin-chat:message", payload);
+      adminNamespace.emitToAdminUser(
+        recipientId,
+        "admin-chat:message",
+        payload,
+      );
+      adminNamespace.emitToAdminUser(
+        req.user.id,
+        "admin-chat:message",
+        payload,
+      );
     } else {
       adminNamespace.emit("admin-chat:message", payload);
     }
@@ -325,14 +355,19 @@ router.delete("/messages/:id", async (req, res) => {
     }
 
     const adminNamespace = require("../socket/adminNamespace");
-    const isDirectMessage = msg.threadType === "direct" || Boolean(msg.recipientId);
+    const isDirectMessage =
+      msg.threadType === "direct" || Boolean(msg.recipientId);
 
     if (isSuperAdmin && !isSelf) {
       await AdminMessage.findByIdAndDelete(req.params.id);
 
       if (isDirectMessage) {
-        adminNamespace.emitToAdminUser(msg.senderId, "admin-chat:deleted", { messageId: req.params.id });
-        adminNamespace.emitToAdminUser(msg.recipientId, "admin-chat:deleted", { messageId: req.params.id });
+        adminNamespace.emitToAdminUser(msg.senderId, "admin-chat:deleted", {
+          messageId: req.params.id,
+        });
+        adminNamespace.emitToAdminUser(msg.recipientId, "admin-chat:deleted", {
+          messageId: req.params.id,
+        });
       } else {
         adminNamespace.emit("admin-chat:deleted", { messageId: req.params.id });
       }
@@ -370,7 +405,10 @@ router.delete("/messages", async (req, res) => {
         return sendError(res, 400, "Geçersiz alıcı kimliği");
       }
 
-      filter = buildVisibleMessagesFilter(buildDirectThreadFilter(myId, requestedRecipientId), myId);
+      filter = buildVisibleMessagesFilter(
+        buildDirectThreadFilter(myId, requestedRecipientId),
+        myId,
+      );
       threadType = "direct";
     } else {
       filter = buildVisibleMessagesFilter(buildGroupThreadFilter(), myId);
