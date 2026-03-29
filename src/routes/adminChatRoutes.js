@@ -61,7 +61,7 @@ const allowedAdminChatExtensions = new Set([
 
 const attachmentUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 },
+  limits: { fileSize: 150 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const mimeType = String(file.mimetype || "").toLowerCase();
     const extension = path.extname(file.originalname || "").toLowerCase();
