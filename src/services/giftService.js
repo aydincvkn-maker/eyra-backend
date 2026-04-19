@@ -18,6 +18,67 @@ const giftRateLimits = new Map(); // `${userId}:${giftId}` -> { count, lastReset
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 dakika
 const RATE_LIMIT_MAX_GIFTS = 10; // 1 dakikada max 10 aynı hediye
 
+const DEFAULT_GIFTS = [
+  {
+    name: "Gül",
+    description: "Sevimli bir gül hediyesi",
+    imageUrl: "/gifts/rose.png",
+    valueCoins: 10,
+    category: "basic",
+    order: 1,
+  },
+  {
+    name: "Havai Fişek",
+    description: "Ateşli bir hediye",
+    imageUrl: "/gifts/fireworks.png",
+    valueCoins: 50,
+    category: "basic",
+    order: 2,
+  },
+  {
+    name: "Ayıcık",
+    description: "Sevimli peluş ayıcık",
+    imageUrl: "/gifts/teddy.png",
+    valueCoins: 200,
+    category: "premium",
+    order: 1,
+  },
+  {
+    name: "Parfüm",
+    description: "Lüks bir parfüm",
+    imageUrl: "/gifts/perfume.png",
+    valueCoins: 500,
+    category: "premium",
+    order: 2,
+  },
+  {
+    name: "Yüzük",
+    description: "Altın yüzük",
+    imageUrl: "/gifts/ring.png",
+    valueCoins: 2000,
+    category: "vip",
+    order: 1,
+  },
+  {
+    name: "Elmas",
+    description: "Pırlanta elmas",
+    imageUrl: "/gifts/diamond.png",
+    valueCoins: 5000,
+    category: "vip",
+    order: 2,
+    animationUrl: "/animations/diamond.json",
+  },
+  {
+    name: "Kale",
+    description: "Muhteşem bir kale",
+    imageUrl: "/gifts/castle.png",
+    valueCoins: 50000,
+    category: "special",
+    order: 1,
+    animationUrl: "/animations/castle.json",
+  },
+];
+
 // Periyodik temizlik — expired rate limit kayıtlarını sil (her 2 dakika)
 setInterval(
   () => {
@@ -61,7 +122,18 @@ exports.getAllGifts = async (category = null) => {
   const query = { isActive: true };
   if (category) query.category = category;
 
-  return await Gift.find(query).sort({ order: 1, valueCoins: 1 });
+  let gifts = await Gift.find(query).sort({ order: 1, valueCoins: 1 });
+
+  if (gifts.length === 0) {
+    const activeGiftCount = await Gift.countDocuments({ isActive: true });
+    if (activeGiftCount === 0) {
+      await Gift.insertMany(DEFAULT_GIFTS);
+      logger.info("Default gifts auto-seeded on first catalog request");
+      gifts = await Gift.find(query).sort({ order: 1, valueCoins: 1 });
+    }
+  }
+
+  return gifts;
 };
 
 /**
@@ -373,76 +445,8 @@ exports.seedDefaultGifts = async () => {
     return;
   }
 
-  const defaultGifts = [
-    // Basic
-    {
-      name: "Gül",
-      description: "Sevimli bir gül hediyesi",
-      imageUrl: "/gifts/rose.png",
-      valueCoins: 10,
-      category: "basic",
-      order: 1,
-    },
-    {
-      name: "Havai Fişek",
-      description: "Ateşli bir hediye",
-      imageUrl: "/gifts/fireworks.png",
-      valueCoins: 50,
-      category: "basic",
-      order: 2,
-    },
-
-    // Premium
-    {
-      name: "Ayıcık",
-      description: "Sevimli peluş ayıcık",
-      imageUrl: "/gifts/teddy.png",
-      valueCoins: 200,
-      category: "premium",
-      order: 1,
-    },
-    {
-      name: "Parfüm",
-      description: "Lüks bir parfüm",
-      imageUrl: "/gifts/perfume.png",
-      valueCoins: 500,
-      category: "premium",
-      order: 2,
-    },
-
-    // VIP
-    {
-      name: "Yüzük",
-      description: "Altın yüzük",
-      imageUrl: "/gifts/ring.png",
-      valueCoins: 2000,
-      category: "vip",
-      order: 1,
-    },
-    {
-      name: "Elmas",
-      description: "Pırlanta elmas",
-      imageUrl: "/gifts/diamond.png",
-      valueCoins: 5000,
-      category: "vip",
-      order: 2,
-      animationUrl: "/animations/diamond.json",
-    },
-
-    // Special
-    {
-      name: "Kale",
-      description: "Muhteşem bir kale",
-      imageUrl: "/gifts/castle.png",
-      valueCoins: 50000,
-      category: "special",
-      order: 1,
-      animationUrl: "/animations/castle.json",
-    },
-  ];
-
-  await Gift.insertMany(defaultGifts);
-  logger.info("✅ Default gifts seeded:", defaultGifts.length);
+  await Gift.insertMany(DEFAULT_GIFTS);
+  logger.info("✅ Default gifts seeded:", DEFAULT_GIFTS.length);
 };
 
 // Rate limit cache temizleme (memory leak önleme)

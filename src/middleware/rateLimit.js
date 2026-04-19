@@ -25,6 +25,7 @@ setInterval(() => {
  * @param {string} options.message - Error message
  * @param {string} options.keyPrefix - Key prefix for different limiters
  * @param {boolean} options.skipSuccessfulRequests - Don't count successful requests
+ * @param {(req: import('express').Request) => boolean} options.skip - Skip limiter for matching requests
  */
 const createRateLimiter = (options = {}) => {
   const {
@@ -32,10 +33,15 @@ const createRateLimiter = (options = {}) => {
     max = 100,
     message = "Çok fazla istek gönderdiniz. Lütfen bekleyin.",
     keyPrefix = "rl",
-    skipSuccessfulRequests = false
+    skipSuccessfulRequests = false,
+    skip = null,
   } = options;
 
   return (req, res, next) => {
+    if (typeof skip === 'function' && skip(req)) {
+      return next();
+    }
+
     // Admin ve super_admin rate limit'ten muaf
     const userRole = req.user?.role;
     if (userRole === 'admin' || userRole === 'super_admin') {
@@ -124,7 +130,8 @@ const generalLimiter = createRateLimiter({
   windowMs: 60 * 1000,
   max: 100,
   message: "Çok fazla istek gönderdiniz. Lütfen bekleyin.",
-  keyPrefix: "general"
+  keyPrefix: "general",
+  skip: (req) => req.method === 'GET' && req.path.startsWith('/gifts'),
 });
 
 /**
