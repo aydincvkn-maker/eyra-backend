@@ -36,6 +36,22 @@ const DEFAULT_GIFTS = [
     order: 2,
   },
   {
+    name: "Kalp",
+    description: "Tatlı kalp hediyesi",
+    imageUrl: "/gifts/heart.jpeg",
+    valueCoins: 25,
+    category: "basic",
+    order: 3,
+  },
+  {
+    name: "Kutular",
+    description: "Pembe hediye kutuları",
+    imageUrl: "/gifts/gift_boxes.webp",
+    valueCoins: 75,
+    category: "basic",
+    order: 4,
+  },
+  {
     name: "Ayıcık",
     description: "Sevimli peluş ayıcık",
     imageUrl: "/gifts/teddy.png",
@@ -50,6 +66,15 @@ const DEFAULT_GIFTS = [
     valueCoins: 500,
     category: "premium",
     order: 2,
+  },
+  {
+    name: "Sandık",
+    description: "Mavi sihirli sandık",
+    imageUrl: "/gifts/magic_chest.jpeg",
+    valueCoins: 1200,
+    category: "premium",
+    order: 3,
+    animationUrl: "/videos/gift_animations/gift_box_open.webm",
   },
   {
     name: "Yüzük",
@@ -77,7 +102,34 @@ const DEFAULT_GIFTS = [
     order: 1,
     animationUrl: "/animations/castle.json",
   },
+  {
+    name: "Melek",
+    description: "Parlayan melek hediyesi",
+    imageUrl: "/gifts/angel.jpeg",
+    valueCoins: 15000,
+    category: "special",
+    order: 2,
+  },
 ];
+
+const syncDefaultGifts = async () => {
+  const existingGifts = await Gift.find({}, "name imageUrl").lean();
+  const existingKeys = new Set(
+    existingGifts.flatMap((gift) => [gift.name, gift.imageUrl].filter(Boolean)),
+  );
+
+  const missingGifts = DEFAULT_GIFTS.filter(
+    (gift) => !existingKeys.has(gift.name) && !existingKeys.has(gift.imageUrl),
+  );
+
+  if (missingGifts.length === 0) {
+    return 0;
+  }
+
+  await Gift.insertMany(missingGifts);
+  logger.info("Default gifts synced:", missingGifts.length);
+  return missingGifts.length;
+};
 
 // Periyodik temizlik — expired rate limit kayıtlarını sil (her 2 dakika)
 setInterval(
@@ -129,6 +181,11 @@ exports.getAllGifts = async (category = null) => {
     if (activeGiftCount === 0) {
       await Gift.insertMany(DEFAULT_GIFTS);
       logger.info("Default gifts auto-seeded on first catalog request");
+      gifts = await Gift.find(query).sort({ order: 1, valueCoins: 1 });
+    }
+  } else {
+    const insertedCount = await syncDefaultGifts();
+    if (insertedCount > 0) {
       gifts = await Gift.find(query).sort({ order: 1, valueCoins: 1 });
     }
   }
@@ -439,9 +496,10 @@ exports.deleteGift = async (giftId) => {
  * Default hediyeleri oluştur (ilk setup için)
  */
 exports.seedDefaultGifts = async () => {
-  const existingCount = await Gift.countDocuments();
+  const existingCount = await Gift.countDocuments({ isActive: true });
   if (existingCount > 0) {
-    logger.info("Gifts already seeded");
+    const synced = await syncDefaultGifts();
+    logger.info(synced > 0 ? "Missing default gifts added" : "Gifts already seeded");
     return;
   }
 
