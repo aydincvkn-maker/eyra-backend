@@ -22,6 +22,7 @@ const {
   STRIPE_WEBHOOK_SECRET,
   BACKEND_URL,
 } = require("../config/env");
+const { logger } = require("../utils/logger");
 
 const ACTIVE_PAYMENT_PROVIDER = String(PAYMENT_PROVIDER || "mock")
   .trim()
@@ -235,7 +236,7 @@ const applyPaidEffects = async (paymentDoc) => {
       } catch (_) {}
       session = null;
     }
-    console.warn(
+    logger.warn(
       "[PaymentService] Transaction kullanılamıyor (replica set yok?), fallback modda çalışılıyor",
     );
   }
@@ -725,17 +726,17 @@ const refundPayment = async ({ orderId }) => {
           paymentIntentId,
           reason: "requested_by_customer",
         });
-        console.log(
+        logger.info(
           `✅ Stripe refund oluşturuldu: ${refundResult.refundId} (${refundResult.status})`,
         );
       } else {
-        console.warn(
+        logger.warn(
           "⚠️ Payment Intent bulunamadı, sadece DB refund yapılacak",
         );
       }
     } catch (stripeErr) {
       // Stripe hatası olsa bile DB tarafını yine de işle
-      console.error("❌ Stripe refund hatası:", stripeErr.message);
+      logger.error("❌ Stripe refund hatası:", stripeErr.message);
     }
   }
 
@@ -757,7 +758,7 @@ const refundPayment = async ({ orderId }) => {
       } catch (_) {}
       session = null;
     }
-    console.warn(
+    logger.warn(
       "[PaymentService] Refund: Transaction kullanılamıyor (replica set yok?), fallback modda çalışılıyor",
     );
   }

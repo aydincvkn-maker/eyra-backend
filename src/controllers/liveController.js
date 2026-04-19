@@ -23,6 +23,7 @@ const {
 const { trackMissionProgress } = require("./missionController");
 const { checkStreamAchievements } = require("./achievementController");
 const adminSocket = require("../socket/adminNamespace");
+const { logger } = require("../utils/logger");
 
 // ============ CATEGORY MAPPING (Turkish → English) ============
 const CATEGORY_MAP = {
@@ -62,18 +63,18 @@ const getIstanbulDayBounds = (date = new Date()) => {
 
 const generateHostToken = async (userId, roomId) => {
   try {
-    console.log("🔵 [generateHostToken] Creating token...");
-    console.log("   userId:", userId, "(type:", typeof userId, ")");
-    console.log("   roomId:", roomId);
-    console.log(
+    logger.info("🔵 [generateHostToken] Creating token...");
+    logger.info("   userId:", userId, "(type:", typeof userId, ")");
+    logger.info("   roomId:", roomId);
+    logger.info(
       "   LIVEKIT_API_KEY:",
       process.env.LIVEKIT_API_KEY ? "✓ SET" : "✗ MISSING",
     );
-    console.log(
+    logger.info(
       "   LIVEKIT_API_SECRET:",
       process.env.LIVEKIT_API_SECRET ? "✓ SET" : "✗ MISSING",
     );
-    console.log("   LIVEKIT_URL:", process.env.LIVEKIT_URL || "✗ MISSING");
+    logger.info("   LIVEKIT_URL:", process.env.LIVEKIT_URL || "✗ MISSING");
 
     if (!process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) {
       throw new Error(
@@ -88,7 +89,7 @@ const generateHostToken = async (userId, roomId) => {
     // ✅ IMPORTANT: Convert userId to string properly (handles ObjectId)
     const identity =
       userId && userId.toString ? userId.toString() : String(userId);
-    console.log("   identity:", identity, "(length:", identity.length, ")");
+    logger.info("   identity:", identity, "(length:", identity.length, ")");
 
     const at = new AccessToken(
       process.env.LIVEKIT_API_KEY,
@@ -108,9 +109,9 @@ const generateHostToken = async (userId, roomId) => {
     const token = await at.toJwt();
 
     // Debug token type
-    console.log("🔵 [DEBUG] token type:", typeof token);
-    console.log("🔵 [DEBUG] token value:", token);
-    console.log("🔵 [DEBUG] token constructor:", token?.constructor?.name);
+    logger.info("🔵 [DEBUG] token type:", typeof token);
+    logger.info("🔵 [DEBUG] token value:", token);
+    logger.info("🔵 [DEBUG] token constructor:", token?.constructor?.name);
 
     // ✅ Make sure token is a string
     let tokenString = token;
@@ -124,15 +125,15 @@ const generateHostToken = async (userId, roomId) => {
       tokenString = String(token);
     }
 
-    console.log("🔵 [DEBUG] final tokenString type:", typeof tokenString);
-    console.log("🔵 [DEBUG] final tokenString length:", tokenString.length);
+    logger.info("🔵 [DEBUG] final tokenString type:", typeof tokenString);
+    logger.info("🔵 [DEBUG] final tokenString length:", tokenString.length);
 
     if (
       !tokenString ||
       tokenString === "undefined" ||
       tokenString === "[object Object]"
     ) {
-      console.error("❌ Token generation failed! Got:", tokenString);
+      logger.error("❌ Token generation failed! Got:", tokenString);
       throw new Error(
         "Token generation failed: toJwt() returned invalid value",
       );
@@ -146,27 +147,27 @@ const generateHostToken = async (userId, roomId) => {
       }
       const header = JSON.parse(Buffer.from(parts[0], "base64").toString());
       const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
-      console.log("✅ [generateHostToken] Token created successfully");
-      console.log("   Header:", header);
-      console.log("   Payload sub:", payload.sub);
+      logger.info("✅ [generateHostToken] Token created successfully");
+      logger.info("   Header:", header);
+      logger.info("   Payload sub:", payload.sub);
     } catch (decodeErr) {
-      console.warn("⚠️ Could not decode token for logging:", decodeErr.message);
-      console.warn("⚠️ But token should still be valid");
+      logger.warn("⚠️ Could not decode token for logging:", decodeErr.message);
+      logger.warn("⚠️ But token should still be valid");
     }
 
     return tokenString;
   } catch (err) {
-    console.error("❌ generateHostToken error:", err.message);
-    console.error("Stack:", err.stack);
+    logger.error("❌ generateHostToken error:", err.message);
+    logger.error("Stack:", err.stack);
     throw new Error("host_token_generation_failed: " + err.message);
   }
 };
 
 const generateViewerToken = async (userId, roomId) => {
   try {
-    console.log("🔵 [generateViewerToken] Creating viewer token...");
-    console.log("   userId:", userId, "(type:", typeof userId, ")");
-    console.log("   roomId:", roomId);
+    logger.info("🔵 [generateViewerToken] Creating viewer token...");
+    logger.info("   userId:", userId, "(type:", typeof userId, ")");
+    logger.info("   roomId:", roomId);
 
     if (!process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) {
       throw new Error(
@@ -181,7 +182,7 @@ const generateViewerToken = async (userId, roomId) => {
     // ✅ IMPORTANT: Convert userId to string properly (handles ObjectId)
     const identity =
       userId && userId.toString ? userId.toString() : String(userId);
-    console.log("   identity:", identity, "(length:", identity.length, ")");
+    logger.info("   identity:", identity, "(length:", identity.length, ")");
 
     const at = new AccessToken(
       process.env.LIVEKIT_API_KEY,
@@ -200,8 +201,8 @@ const generateViewerToken = async (userId, roomId) => {
     // ✅ FIX: livekit-server-sdk v2.x'te toJwt() Promise döndürür
     const token = await at.toJwt();
 
-    console.log("🔵 [DEBUG] viewer token type:", typeof token);
-    console.log("🔵 [DEBUG] viewer token exists:", !!token);
+    logger.info("🔵 [DEBUG] viewer token type:", typeof token);
+    logger.info("🔵 [DEBUG] viewer token exists:", !!token);
 
     // ✅ Make sure token is a string
     let tokenString = token;
@@ -218,7 +219,7 @@ const generateViewerToken = async (userId, roomId) => {
       tokenString === "undefined" ||
       tokenString === "[object Object]"
     ) {
-      console.error("❌ Viewer token generation failed! Got:", tokenString);
+      logger.error("❌ Viewer token generation failed! Got:", tokenString);
       throw new Error("Viewer token generation failed");
     }
 
@@ -227,19 +228,19 @@ const generateViewerToken = async (userId, roomId) => {
       const parts = tokenString.split(".");
       if (parts.length === 3) {
         const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
-        console.log(
+        logger.info(
           "✅ [generateViewerToken] Token created successfully, sub:",
           payload.sub,
         );
       }
     } catch (decodeErr) {
-      console.warn("⚠️ Viewer token decode failed:", decodeErr.message);
+      logger.warn("⚠️ Viewer token decode failed:", decodeErr.message);
     }
 
     return tokenString;
   } catch (err) {
-    console.error("❌ generateViewerToken error:", err.message);
-    console.error("Stack:", err.stack);
+    logger.error("❌ generateViewerToken error:", err.message);
+    logger.error("Stack:", err.stack);
     throw new Error("viewer_token_generation_failed: " + err.message);
   }
 };
@@ -272,17 +273,17 @@ exports.startLive = async (req, res) => {
     };
     const bitrate = bitrateMap[quality] || 2000;
 
-    console.log("🔵 [startLive] Starting live broadcast...");
-    console.log("   userId:", userId);
-    console.log("   title:", title);
-    console.log("   category (normalized):", category);
-    console.log("   quality:", quality, "resolution:", resolution);
+    logger.info("🔵 [startLive] Starting live broadcast...");
+    logger.info("   userId:", userId);
+    logger.info("   title:", title);
+    logger.info("   category (normalized):", category);
+    logger.info("   quality:", quality, "resolution:", resolution);
 
     // Cinsiyet kontrolü
     const host = await User.findById(userId).select(
       "gender isBanned isActive username name profileImage",
     );
-    console.log(
+    logger.info(
       "🔵 [startLive] Host found:",
       host ? `${host.username} (${host.gender})` : "NOT FOUND",
     );
@@ -294,7 +295,7 @@ exports.startLive = async (req, res) => {
       return res.status(403).json({ ok: false, error: "account_restricted" });
     }
     if (host.gender !== "female") {
-      console.log("⚠️ [startLive] Gender check failed:", host.gender);
+      logger.info("⚠️ [startLive] Gender check failed:", host.gender);
       return res.status(403).json({
         ok: false,
         error: "only_female_can_broadcast",
@@ -324,7 +325,7 @@ exports.startLive = async (req, res) => {
 
     // Yeni yayın oluştur
     const roomId = "room_" + Date.now().toString() + "_" + uuidv4().slice(0, 8);
-    console.log("🔵 [startLive] Creating stream with roomId:", roomId);
+    logger.info("🔵 [startLive] Creating stream with roomId:", roomId);
 
     const stream = await LiveStream.create({
       host: userId,
@@ -342,13 +343,13 @@ exports.startLive = async (req, res) => {
       bitrate,
     });
 
-    console.log("✅ [startLive] Stream created:", stream._id);
+    logger.info("✅ [startLive] Stream created:", stream._id);
 
     // ✅ Cache invalidate - yeni yayın eklendi
     try {
       await liveService.invalidateStreamCache();
     } catch (e) {
-      console.warn("⚠️ Cache invalidation failed:", e.message);
+      logger.warn("⚠️ Cache invalidation failed:", e.message);
     }
 
     // User'ı live olarak işaretle
@@ -362,13 +363,13 @@ exports.startLive = async (req, res) => {
     try {
       await presenceService.setLive(userId, true, { streamId: roomId });
     } catch (e) {
-      console.warn("⚠️ presenceService.setLive failed:", e.message);
+      logger.warn("⚠️ presenceService.setLive failed:", e.message);
     }
 
     // Token oluştur
-    console.log("🔵 [startLive] Generating host token...");
+    logger.info("🔵 [startLive] Generating host token...");
     const token = await generateHostToken(userId, roomId);
-    console.log("✅ [startLive] Token generated, length:", token?.length);
+    logger.info("✅ [startLive] Token generated, length:", token?.length);
 
     // ✅ Mission & Achievement tracking for streaming
     try {
@@ -378,7 +379,7 @@ exports.startLive = async (req, res) => {
       const streamCount = await LiveStream.countDocuments({ host: userId });
       await checkStreamAchievements(userId, streamCount);
     } catch (e) {
-      console.warn("⚠️ Mission/achievement tracking failed:", e.message);
+      logger.warn("⚠️ Mission/achievement tracking failed:", e.message);
     }
 
     // Notify admin sockets
@@ -410,8 +411,8 @@ exports.startLive = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("❌ startLive error:", err.message);
-    console.error("Stack:", err.stack);
+    logger.error("❌ startLive error:", err.message);
+    logger.error("Stack:", err.stack);
     res.status(500).json({
       ok: false,
       error: "live_start_failed",
@@ -469,14 +470,14 @@ exports.endLive = async (req, res) => {
     try {
       await liveService.invalidateStreamCache(streamRoomId);
     } catch (e) {
-      console.warn("⚠️ Cache invalidation failed:", e.message);
+      logger.warn("⚠️ Cache invalidation failed:", e.message);
     }
 
     // ✅ LiveKit room'u proaktif sil
     try {
       await liveService.deleteLiveKitRoom(streamRoomId);
     } catch (e) {
-      console.warn("⚠️ LiveKit room deletion failed:", e.message);
+      logger.warn("⚠️ LiveKit room deletion failed:", e.message);
     }
 
     // User'ı offline yap
@@ -490,7 +491,7 @@ exports.endLive = async (req, res) => {
     try {
       await presenceService.setLive(userId, false);
     } catch (e) {
-      console.warn("⚠️ presenceService.setLive(false) failed:", e.message);
+      logger.warn("⚠️ presenceService.setLive(false) failed:", e.message);
     }
 
     // ✅ PROFESSIONAL: İzleyicilere detaylı bildir
@@ -513,7 +514,7 @@ exports.endLive = async (req, res) => {
         s.leave(streamRoomId);
       }
 
-      console.log(
+      logger.info(
         `📺 Stream ${streamRoomId} ended by host. ${sockets.length} sockets removed from room.`,
       );
     }
@@ -538,7 +539,7 @@ exports.endLive = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("endLive error:", err);
+    logger.error("endLive error:", err);
     res.status(500).json({ ok: false, error: "live_stop_failed" });
   }
 };
@@ -625,7 +626,7 @@ exports.joinAsViewer = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("joinAsViewer error:", err);
+    logger.error("joinAsViewer error:", err);
     res.status(500).json({ ok: false, error: "join_failed" });
   }
 };
@@ -678,7 +679,7 @@ exports.leaveAsViewer = async (req, res) => {
 
     res.json({ ok: true, viewerCount: stream.viewerCount });
   } catch (err) {
-    console.error("leaveAsViewer error:", err);
+    logger.error("leaveAsViewer error:", err);
     res.status(500).json({ ok: false, error: "leave_failed" });
   }
 };
@@ -730,7 +731,7 @@ exports.getActiveLives = async (req, res) => {
       cached: result.cached || false,
     });
   } catch (err) {
-    console.error("getActiveLives error:", err);
+    logger.error("getActiveLives error:", err);
     res.status(500).json({ ok: false, error: "list_failed" });
   }
 };
@@ -751,7 +752,7 @@ exports.getStreamDetails = async (req, res) => {
 
     res.json({ ok: true, stream });
   } catch (err) {
-    console.error("getStreamDetails error:", err);
+    logger.error("getStreamDetails error:", err);
     res.status(500).json({ ok: false, error: "fetch_failed" });
   }
 };
@@ -781,7 +782,7 @@ exports.getViewers = async (req, res) => {
 
     res.json({ ok: true, viewers, viewerCount: stream.viewerCount || 0 });
   } catch (err) {
-    console.error("getViewers error:", err);
+    logger.error("getViewers error:", err);
     res.status(500).json({ ok: false, error: "fetch_failed" });
   }
 };
@@ -807,7 +808,7 @@ exports.getUserStreamHistory = async (req, res) => {
 
     res.json({ ok: true, streams });
   } catch (err) {
-    console.error("getUserStreamHistory error:", err);
+    logger.error("getUserStreamHistory error:", err);
     res.status(500).json({ ok: false, error: "fetch_failed" });
   }
 };
@@ -882,7 +883,7 @@ exports.sendChatMessage = async (req, res) => {
 
     res.status(201).json({ ok: true, message: msg });
   } catch (err) {
-    console.error("sendChatMessage error:", err);
+    logger.error("sendChatMessage error:", err);
     res.status(500).json({ ok: false, error: "send_failed" });
   }
 };
@@ -911,7 +912,7 @@ exports.getChatHistory = async (req, res) => {
       messages: messages.reverse(),
     });
   } catch (err) {
-    console.error("getChatHistory error:", err);
+    logger.error("getChatHistory error:", err);
     res.status(500).json({ ok: false, error: "fetch_failed" });
   }
 };
@@ -950,12 +951,12 @@ exports.flagStream = async (req, res) => {
         });
       }
     } catch (e) {
-      console.warn("⚠️ Report create failed:", e.message);
+      logger.warn("⚠️ Report create failed:", e.message);
     }
 
     res.json({ ok: true, message: "Yayın işaretlendi" });
   } catch (err) {
-    console.error("flagStream error:", err);
+    logger.error("flagStream error:", err);
     res.status(500).json({ ok: false, error: "flag_failed" });
   }
 };
@@ -996,7 +997,7 @@ exports.banStream = async (req, res) => {
     try {
       await liveService.invalidateStreamCache(streamRoomId);
     } catch (e) {
-      console.warn("⚠️ Cache invalidation failed:", e.message);
+      logger.warn("⚠️ Cache invalidation failed:", e.message);
     }
 
     // Host'u offline yap
@@ -1022,14 +1023,14 @@ exports.banStream = async (req, res) => {
         s.leave(streamRoomId);
       }
 
-      console.log(
+      logger.info(
         `🚫 Stream ${streamRoomId} banned by admin. ${sockets.length} sockets removed from room.`,
       );
     }
 
     res.json({ ok: true, message: "Yayın yasaklandı" });
   } catch (err) {
-    console.error("banStream error:", err);
+    logger.error("banStream error:", err);
     res.status(500).json({ ok: false, error: "ban_failed" });
   }
 };
@@ -1062,12 +1063,12 @@ exports.unbanStream = async (req, res) => {
     try {
       await liveService.invalidateStreamCache(stream.roomId);
     } catch (e) {
-      console.warn("⚠️ Cache invalidation failed:", e.message);
+      logger.warn("⚠️ Cache invalidation failed:", e.message);
     }
 
     res.json({ ok: true, message: "Yayın yasağı kaldırıldı" });
   } catch (err) {
-    console.error("unbanStream error:", err);
+    logger.error("unbanStream error:", err);
     res.status(500).json({ ok: false, error: "unban_failed" });
   }
 };
@@ -1096,7 +1097,7 @@ const generateCoHostToken = async (userId, roomId, canPublish = true) => {
     // ✅ FIX: livekit-server-sdk v2.x'te toJwt() Promise döndürür
     return await at.toJwt();
   } catch (err) {
-    console.error("❌ generateCoHostToken error:", err.message);
+    logger.error("❌ generateCoHostToken error:", err.message);
     throw new Error("token_generation_failed: " + err.message);
   }
 };
@@ -1192,7 +1193,7 @@ exports.inviteCoHost = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("inviteCoHost error:", err);
+    logger.error("inviteCoHost error:", err);
     res.status(500).json({ ok: false, error: "invite_failed" });
   }
 };
@@ -1236,7 +1237,7 @@ exports.acceptCoHostInvite = async (req, res) => {
       const canPublish = stream.coHosts[coHostIndex].canPublish;
       token = await generateCoHostToken(userId, roomId, canPublish);
     } catch (tokenErr) {
-      console.error(
+      logger.error(
         "⚠️ Token generation failed, returning error:",
         tokenErr.message,
       );
@@ -1274,7 +1275,7 @@ exports.acceptCoHostInvite = async (req, res) => {
       canPublish: stream.coHosts[coHostIndex].canPublish,
     });
   } catch (err) {
-    console.error("acceptCoHostInvite error:", err);
+    logger.error("acceptCoHostInvite error:", err);
     res.status(500).json({ ok: false, error: "accept_failed" });
   }
 };
@@ -1313,7 +1314,7 @@ exports.rejectCoHostInvite = async (req, res) => {
 
     res.json({ ok: true, message: "Davet reddedildi" });
   } catch (err) {
-    console.error("rejectCoHostInvite error:", err);
+    logger.error("rejectCoHostInvite error:", err);
     res.status(500).json({ ok: false, error: "reject_failed" });
   }
 };
@@ -1352,7 +1353,7 @@ exports.leaveAsCoHost = async (req, res) => {
 
     res.json({ ok: true, message: "Yayından ayrıldınız" });
   } catch (err) {
-    console.error("leaveAsCoHost error:", err);
+    logger.error("leaveAsCoHost error:", err);
     res.status(500).json({ ok: false, error: "leave_failed" });
   }
 };
@@ -1400,7 +1401,7 @@ exports.removeCoHost = async (req, res) => {
 
     res.json({ ok: true, message: "Co-host yayından çıkarıldı" });
   } catch (err) {
-    console.error("removeCoHost error:", err);
+    logger.error("removeCoHost error:", err);
     res.status(500).json({ ok: false, error: "remove_failed" });
   }
 };
@@ -1441,7 +1442,7 @@ exports.getCoHosts = async (req, res) => {
       allowRequests: stream.allowCoHostRequests,
     });
   } catch (err) {
-    console.error("getCoHosts error:", err);
+    logger.error("getCoHosts error:", err);
     res.status(500).json({ ok: false, error: "fetch_failed" });
   }
 };
@@ -1478,7 +1479,7 @@ exports.updateCoHostSettings = async (req, res) => {
       allowCoHostRequests: stream.allowCoHostRequests,
     });
   } catch (err) {
-    console.error("updateCoHostSettings error:", err);
+    logger.error("updateCoHostSettings error:", err);
     res.status(500).json({ ok: false, error: "update_failed" });
   }
 };
@@ -1512,7 +1513,7 @@ exports.translateMessage = async (req, res) => {
       targetLang,
     });
   } catch (err) {
-    console.error("translateMessage error:", err);
+    logger.error("translateMessage error:", err);
     res.status(500).json({ ok: false, error: "translation_failed" });
   }
 };
@@ -1548,7 +1549,7 @@ exports.translateBatch = async (req, res) => {
       targetLang,
     });
   } catch (err) {
-    console.error("translateBatch error:", err);
+    logger.error("translateBatch error:", err);
     res.status(500).json({ ok: false, error: "translation_failed" });
   }
 };
@@ -1598,7 +1599,7 @@ exports.getTranslatedChatHistory = async (req, res) => {
       targetLang,
     });
   } catch (err) {
-    console.error("getTranslatedChatHistory error:", err);
+    logger.error("getTranslatedChatHistory error:", err);
     res.status(500).json({ ok: false, error: "fetch_failed" });
   }
 };
@@ -1611,7 +1612,7 @@ exports.getSupportedLanguages = async (req, res) => {
     const languages = translationService.getSupportedLanguages();
     res.json({ ok: true, languages });
   } catch (err) {
-    console.error("getSupportedLanguages error:", err);
+    logger.error("getSupportedLanguages error:", err);
     res.status(500).json({ ok: false, error: "fetch_failed" });
   }
 };
@@ -1693,7 +1694,7 @@ exports.requestPaidCall = async (req, res) => {
       hostToken = await generateHostToken(hostId, callRoomName);
     } catch (tokenErr) {
       // 🛡️ Token üretilemezse coin'leri geri iade et
-      console.error(
+      logger.error(
         "❌ Token generation failed, rolling back coins:",
         tokenErr.message,
       );
@@ -1732,7 +1733,7 @@ exports.requestPaidCall = async (req, res) => {
         const req = global.callRequests?.get(requestId);
         if (req && req.status !== "connected") {
           // Görüşme başlamadı — refund
-          console.log(
+          logger.info(
             `⏰ Call request ${requestId} timed out, refunding ${totalPrice} coins to caller`,
           );
           User.findByIdAndUpdate(callerId, {
@@ -1842,7 +1843,7 @@ exports.requestPaidCall = async (req, res) => {
       message: "Özel görüşme başlatıldı",
     });
   } catch (err) {
-    console.error("requestPaidCall error:", err);
+    logger.error("requestPaidCall error:", err);
     res.status(500).json({ ok: false, error: "request_failed" });
   }
 };
@@ -1930,7 +1931,7 @@ exports.acceptPaidCall = async (req, res) => {
       message: "Arama başlatıldı",
     });
   } catch (err) {
-    console.error("acceptPaidCall error:", err);
+    logger.error("acceptPaidCall error:", err);
     res.status(500).json({ ok: false, error: "accept_failed" });
   }
 };
@@ -2002,7 +2003,7 @@ exports.rejectPaidCall = async (req, res) => {
         relatedType: "paid_call",
       });
     } catch (notifErr) {
-      console.error(
+      logger.error(
         "❌ Ücretli cevapsız arama bildirimi hatası:",
         notifErr.message,
       );
@@ -2010,7 +2011,7 @@ exports.rejectPaidCall = async (req, res) => {
 
     res.json({ ok: true, message: "Talep reddedildi" });
   } catch (err) {
-    console.error("rejectPaidCall error:", err);
+    logger.error("rejectPaidCall error:", err);
     res.status(500).json({ ok: false, error: "reject_failed" });
   }
 };
@@ -2072,7 +2073,7 @@ exports.endPaidCall = async (req, res) => {
 
     res.json({ ok: true, message: "Arama sonlandırıldı" });
   } catch (err) {
-    console.error("endPaidCall error:", err);
+    logger.error("endPaidCall error:", err);
     res.status(500).json({ ok: false, error: "end_failed" });
   }
 };
@@ -2099,7 +2100,7 @@ exports.getHostCallPrice = async (req, res) => {
       currency: "coins",
     });
   } catch (err) {
-    console.error("getHostCallPrice error:", err);
+    logger.error("getHostCallPrice error:", err);
     res.status(500).json({ ok: false, error: "fetch_failed" });
   }
 };
@@ -2164,7 +2165,7 @@ exports.getHostLiveSummary = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("getHostLiveSummary error:", err);
+    logger.error("getHostLiveSummary error:", err);
     res.status(500).json({ ok: false, error: "fetch_failed" });
   }
 };
@@ -2195,7 +2196,7 @@ exports.setCallPrice = async (req, res) => {
       message: "Arama fiyatı güncellendi",
     });
   } catch (err) {
-    console.error("setCallPrice error:", err);
+    logger.error("setCallPrice error:", err);
     res.status(500).json({ ok: false, error: "update_failed" });
   }
 };
@@ -2269,7 +2270,7 @@ exports.getGiftLeaderboard = async (req, res) => {
 
     res.json({ ok: true, leaderboard });
   } catch (err) {
-    console.error("getGiftLeaderboard error:", err);
+    logger.error("getGiftLeaderboard error:", err);
     res.status(500).json({ ok: false, error: "fetch_failed" });
   }
 };

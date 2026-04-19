@@ -4,6 +4,7 @@ const User = require("../models/User");
 const Transaction = require("../models/Transaction");
 const SystemSettings = require("../models/SystemSettings");
 const { createNotification } = require("./notificationController");
+const { logger } = require("../utils/logger");
 
 // =============================================
 // SPIN HELPER
@@ -37,7 +38,7 @@ exports.getRewards = async (req, res) => {
 
     res.json({ success: true, rewards });
   } catch (err) {
-    console.error("getRewards error:", err);
+    logger.error("getRewards error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -87,7 +88,7 @@ exports.getSpinStatus = async (req, res) => {
       lastSpinAt: user.spinLastUsedAt,
     });
   } catch (err) {
-    console.error("getSpinStatus error:", err);
+    logger.error("getSpinStatus error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -230,7 +231,7 @@ exports.spin = async (req, res) => {
       nextSpinAt: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000),
     });
   } catch (err) {
-    console.error("spin error:", err);
+    logger.error("spin error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -268,7 +269,7 @@ exports.seedRewards = async (req, res) => {
       count: defaultRewards.length,
     });
   } catch (err) {
-    console.error("seedRewards error:", err);
+    logger.error("seedRewards error:", err);
     res.status(500).json({ success: false, message: "Seed başarısız" });
   }
 };
@@ -279,7 +280,7 @@ exports.adminGetRewards = async (req, res) => {
     const rewards = await SpinReward.find().sort({ order: 1 }).lean();
     res.json({ success: true, rewards });
   } catch (err) {
-    console.error("adminGetRewards error:", err);
+    logger.error("adminGetRewards error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -290,7 +291,7 @@ exports.adminCreateReward = async (req, res) => {
     const reward = await SpinReward.create(req.body);
     res.json({ success: true, reward });
   } catch (err) {
-    console.error("adminCreateReward error:", err);
+    logger.error("adminCreateReward error:", err);
     res.status(500).json({ success: false, message: "Ödül oluşturulamadı" });
   }
 };
@@ -309,7 +310,7 @@ exports.adminUpdateReward = async (req, res) => {
     }
     res.json({ success: true, reward });
   } catch (err) {
-    console.error("adminUpdateReward error:", err);
+    logger.error("adminUpdateReward error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -321,7 +322,7 @@ exports.adminDeleteReward = async (req, res) => {
     await SpinReward.findByIdAndDelete(rewardId);
     res.json({ success: true, message: "Ödül silindi" });
   } catch (err) {
-    console.error("adminDeleteReward error:", err);
+    logger.error("adminDeleteReward error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };

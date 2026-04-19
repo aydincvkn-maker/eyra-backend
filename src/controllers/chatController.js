@@ -7,6 +7,7 @@ const { getChatRoomId } = require("../utils/chatUtils");
 const { sendError } = require("../utils/response");
 const path = require("path");
 const fs = require("fs");
+const { logger } = require("../utils/logger");
 
 // Legacy/live room messages
 exports.getRoomMessages = async (req, res) => {
@@ -21,7 +22,7 @@ exports.getRoomMessages = async (req, res) => {
       .limit(limit);
     res.json(messages);
   } catch (err) {
-    console.error("getRoomMessages error:", err);
+    logger.error("getRoomMessages error:", err);
     sendError(res, 500, "Sunucu hatası");
   }
 };
@@ -36,7 +37,7 @@ exports.getChatUsers = async (req, res) => {
     const users = await chatService.getChatUsers(userId);
     return res.json({ users });
   } catch (err) {
-    console.error("getChatUsers error:", err);
+    logger.error("getChatUsers error:", err);
     return sendError(res, 500, "Sunucu hatası");
   }
 };
@@ -166,7 +167,7 @@ exports.getConversation = async (req, res) => {
     );
     return res.json({ messages });
   } catch (err) {
-    console.error("getConversation error:", err);
+    logger.error("getConversation error:", err);
     return sendError(res, 500, "Sunucu hatası");
   }
 };
@@ -191,7 +192,7 @@ exports.sendMessage = async (req, res) => {
 
     return res.status(201).json({ message });
   } catch (err) {
-    console.error("sendMessage error:", err);
+    logger.error("sendMessage error:", err);
     if (err.message === "RATE_LIMIT_EXCEEDED") {
       return sendError(res, 429, "RATE_LIMIT");
     }
@@ -219,7 +220,7 @@ exports.deleteConversation = async (req, res) => {
     await chatService.deleteConversation(userId, otherUserId);
     return res.json({ ok: true });
   } catch (err) {
-    console.error("deleteConversation error:", err);
+    logger.error("deleteConversation error:", err);
     return sendError(res, 500, "Sunucu hatası");
   }
 };
@@ -234,7 +235,7 @@ exports.markAsRead = async (req, res) => {
     await chatService.markAsRead(userId, otherUserId);
     return res.json({ ok: true });
   } catch (err) {
-    console.error("markAsRead error:", err);
+    logger.error("markAsRead error:", err);
     return sendError(res, 500, "Sunucu hatası");
   }
 };
@@ -284,7 +285,7 @@ exports.adminGetPaymentRedirectAttempts = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("adminGetPaymentRedirectAttempts error:", err);
+    logger.error("adminGetPaymentRedirectAttempts error:", err);
     return sendError(res, 500, "Sunucu hatası");
   }
 };
@@ -345,7 +346,7 @@ exports.adminGetPaymentRedirectSummary = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("adminGetPaymentRedirectSummary error:", err);
+    logger.error("adminGetPaymentRedirectSummary error:", err);
     return sendError(res, 500, "Sunucu hatası");
   }
 };
@@ -369,7 +370,7 @@ exports.getUnreadCount = async (req, res) => {
 
     return res.json({ unreadCount });
   } catch (err) {
-    console.error("getUnreadCount error:", err);
+    logger.error("getUnreadCount error:", err);
     return sendError(res, 500, "Sunucu hatası");
   }
 };
@@ -382,7 +383,7 @@ exports.deleteMessage = async (req, res) => {
     await chatService.deleteMessage(messageId, userId);
     return res.json({ ok: true });
   } catch (err) {
-    console.error("deleteMessage error:", err);
+    logger.error("deleteMessage error:", err);
     if (err.message === "MESSAGE_NOT_FOUND")
       return sendError(res, 404, "MESSAGE_NOT_FOUND");
     if (err.message === "UNAUTHORIZED")
@@ -407,7 +408,7 @@ exports.editMessage = async (req, res) => {
     const message = await chatService.editMessage(messageId, userId, newText);
     return res.json({ message });
   } catch (err) {
-    console.error("editMessage error:", err);
+    logger.error("editMessage error:", err);
     if (err.message === "MESSAGE_NOT_FOUND")
       return sendError(res, 404, "MESSAGE_NOT_FOUND");
     if (err.message === "UNAUTHORIZED")
@@ -432,7 +433,7 @@ exports.addReaction = async (req, res) => {
     const message = await chatService.addReaction(messageId, userId, emoji);
     return res.json({ message });
   } catch (err) {
-    console.error("addReaction error:", err);
+    logger.error("addReaction error:", err);
     if (err.message === "MESSAGE_NOT_FOUND")
       return sendError(res, 404, "MESSAGE_NOT_FOUND");
     return sendError(res, 500, "Sunucu hatası");
@@ -447,7 +448,7 @@ exports.removeReaction = async (req, res) => {
     const message = await chatService.removeReaction(messageId, userId);
     return res.json({ message });
   } catch (err) {
-    console.error("removeReaction error:", err);
+    logger.error("removeReaction error:", err);
     if (err.message === "MESSAGE_NOT_FOUND")
       return sendError(res, 404, "MESSAGE_NOT_FOUND");
     return sendError(res, 500, "Sunucu hatası");
@@ -489,7 +490,7 @@ exports.adminSendMessage = async (req, res) => {
 
     return res.json({ success: true, message });
   } catch (err) {
-    console.error("adminSendMessage error:", err);
+    logger.error("adminSendMessage error:", err);
     return sendError(res, 500, "Sunucu hatası");
   }
 };
@@ -564,7 +565,7 @@ exports.uploadMedia = async (req, res) => {
       mimeType,
     });
   } catch (err) {
-    console.error("uploadMedia error:", err);
+    logger.error("uploadMedia error:", err);
     res.status(500).json({ success: false, message: "Dosya yüklenemedi" });
   }
 };
@@ -633,7 +634,7 @@ exports.forwardMessage = async (req, res) => {
           }
         }
       } catch (e) {
-        console.error(`Forward to ${toUserId} failed:`, e);
+        logger.error(`Forward to ${toUserId} failed:`, e);
       }
     }
 
@@ -643,7 +644,7 @@ exports.forwardMessage = async (req, res) => {
       forwardedCount: forwardedMessages.length,
     });
   } catch (err) {
-    console.error("forwardMessage error:", err);
+    logger.error("forwardMessage error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -683,7 +684,7 @@ exports.getRecentVoiceMessages = async (req, res) => {
 
     res.json({ success: true, voiceMessages: result });
   } catch (err) {
-    console.error("getRecentVoiceMessages error:", err);
+    logger.error("getRecentVoiceMessages error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };

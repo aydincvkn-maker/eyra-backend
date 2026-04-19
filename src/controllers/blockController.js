@@ -1,6 +1,7 @@
 // src/controllers/blockController.js
 const User = require("../models/User");
 const mongoose = require("mongoose");
+const { logger } = require("../utils/logger");
 
 // POST /api/users/:userId/block - Kullanıcı engelle
 exports.blockUser = async (req, res) => {
@@ -29,7 +30,7 @@ exports.blockUser = async (req, res) => {
 
     res.json({ success: true, message: "Kullanıcı engellendi", isBlocked: true });
   } catch (err) {
-    console.error("blockUser error:", err);
+    logger.error("blockUser error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -46,7 +47,7 @@ exports.unblockUser = async (req, res) => {
 
     res.json({ success: true, message: "Engel kaldırıldı", isBlocked: false });
   } catch (err) {
-    console.error("unblockUser error:", err);
+    logger.error("unblockUser error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -70,7 +71,7 @@ exports.getBlockedUsers = async (req, res) => {
 
     res.json({ success: true, blockedUsers, count: blockedUsers.length });
   } catch (err) {
-    console.error("getBlockedUsers error:", err);
+    logger.error("getBlockedUsers error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -90,7 +91,7 @@ exports.isBlocked = async (req, res) => {
 
     res.json({ success: true, isBlocked, isBlockedBy });
   } catch (err) {
-    console.error("isBlocked error:", err);
+    logger.error("isBlocked error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };

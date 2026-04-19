@@ -3,6 +3,7 @@ const SystemSettings = require("../models/SystemSettings");
 const Transaction = require("../models/Transaction");
 const { trackMissionProgress } = require("./missionController");
 const { createNotification } = require("./notificationController");
+const { logger } = require("../utils/logger");
 
 // VIP paketlerini getir
 exports.getVipPackages = async (req, res) => {
@@ -52,7 +53,7 @@ exports.getVipPackages = async (req, res) => {
 
     res.json({ success: true, packages });
   } catch (err) {
-    console.error("getVipPackages error:", err);
+    logger.error("getVipPackages error:", err);
     res.status(500).json({
       success: false,
       message: "Paketler al─▒namad─▒",
@@ -206,7 +207,7 @@ exports.purchaseVip = async (req, res) => {
       coins: updatedUser.coins,
     });
   } catch (err) {
-    console.error("purchaseVip error:", err);
+    logger.error("purchaseVip error:", err);
     res.status(500).json({
       success: false,
       message: "VIP sat─▒n al─▒namad─▒",
@@ -246,7 +247,7 @@ exports.getVipStatus = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("getVipStatus error:", err);
+    logger.error("getVipStatus error:", err);
     res.status(500).json({
       success: false,
       message: "VIP durumu al─▒namad─▒",
@@ -285,7 +286,7 @@ exports.adminGetVipStats = async (req, res) => {
 
     res.json({ success: true, stats: result });
   } catch (err) {
-    console.error("adminGetVipStats error:", err);
+    logger.error("adminGetVipStats error:", err);
     res.status(500).json({
       success: false,
       message: "─░statistikler al─▒namad─▒",
@@ -362,7 +363,7 @@ exports.adminSetVip = async (req, res) => {
       user: { _id: user._id, name: user.name, vipTier: tier, vipExpiresAt: newExpiry },
     });
   } catch (err) {
-    console.error("adminSetVip error:", err);
+    logger.error("adminSetVip error:", err);
     res.status(500).json({
       success: false,
       message: "VIP ayarlanamad─▒",

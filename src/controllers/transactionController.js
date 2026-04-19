@@ -1,6 +1,7 @@
 // src/controllers/transactionController.js
 const Transaction = require("../models/Transaction");
 const User = require("../models/User");
+const { logger } = require("../utils/logger");
 
 // GET /api/transactions - Kendi işlem geçmişim
 exports.getMyTransactions = async (req, res) => {
@@ -27,7 +28,7 @@ exports.getMyTransactions = async (req, res) => {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    console.error("getMyTransactions error:", err);
+    logger.error("getMyTransactions error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -70,7 +71,7 @@ exports.getTransactionSummary = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("getTransactionSummary error:", err);
+    logger.error("getTransactionSummary error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -106,7 +107,7 @@ exports.adminGetTransactions = async (req, res) => {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    console.error("adminGetTransactions error:", err);
+    logger.error("adminGetTransactions error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -245,7 +246,7 @@ exports.adminGetFinanceStats = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("adminGetFinanceStats error:", err);
+    logger.error("adminGetFinanceStats error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };

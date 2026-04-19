@@ -4,6 +4,7 @@ const User = require("../models/User");
 const path = require("path");
 const fs = require("fs");
 const fsp = require("fs/promises");
+const { logger } = require("../utils/logger");
 
 // =============================================
 // POST FEED - Keşfet akışı
@@ -48,7 +49,7 @@ exports.getFeed = async (req, res) => {
 
     res.json({ success: true, posts: result, page, limit });
   } catch (err) {
-    console.error("getFeed error:", err);
+    logger.error("getFeed error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -93,7 +94,7 @@ exports.getUserPosts = async (req, res) => {
 
     res.json({ success: true, posts: result, page, limit });
   } catch (err) {
-    console.error("getUserPosts error:", err);
+    logger.error("getUserPosts error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -160,7 +161,7 @@ exports.createPost = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("createPost error:", err);
+    logger.error("createPost error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -194,7 +195,7 @@ exports.toggleLike = async (req, res) => {
       likeCount: post.likeCount,
     });
   } catch (err) {
-    console.error("toggleLike error:", err);
+    logger.error("toggleLike error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -228,7 +229,7 @@ exports.deletePost = async (req, res) => {
 
     res.json({ success: true, message: "Post silindi" });
   } catch (err) {
-    console.error("deletePost error:", err);
+    logger.error("deletePost error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };

@@ -6,6 +6,7 @@ const LiveStream = require("../models/LiveStream");
 const User = require("../models/User");
 const mongoose = require("mongoose");
 const Transaction = require("../models/Transaction");
+const { logger } = require("../utils/logger");
 
 router.get("/dashboard", auth, requirePermission("streams:view"), async (req, res) => {
   try {
@@ -39,7 +40,7 @@ router.get("/dashboard", auth, requirePermission("streams:view"), async (req, re
     });
     
   } catch (err) {
-    console.error("❌ Stats error:", err);
+    logger.error("❌ Stats error:", err);
     res.status(500).json({
       success: false,
       error: "stats_fetch_failed",
@@ -72,7 +73,7 @@ router.get("/system", auth, requirePermission(["streams:view", "system:settings"
       serverTime: new Date().toISOString(),
     });
   } catch (err) {
-    console.error("❌ System stats error:", err);
+    logger.error("❌ System stats error:", err);
     res.status(500).json({ success: false, error: "system_stats_failed" });
   }
 });
@@ -101,7 +102,7 @@ router.get("/users", auth, requirePermission("system:settings"), async (req, res
       dailySignups: dailySignups.map(d => ({ date: d._id, count: d.count })),
     });
   } catch (err) {
-    console.error("❌ User stats error:", err);
+    logger.error("❌ User stats error:", err);
     res.status(500).json({ success: false, error: "user_stats_failed" });
   }
 });
@@ -138,7 +139,7 @@ router.get("/streams", auth, requirePermission("streams:view"), async (req, res)
       topHosts,
     });
   } catch (err) {
-    console.error("❌ Stream stats error:", err);
+    logger.error("❌ Stream stats error:", err);
     res.status(500).json({ success: false, error: "stream_stats_failed" });
   }
 });
@@ -179,7 +180,7 @@ router.get("/finance", auth, requirePermission("finance:view"), async (req, res)
       topEarners,
     });
   } catch (err) {
-    console.error("❌ Finance stats error:", err);
+    logger.error("❌ Finance stats error:", err);
     res.status(500).json({ success: false, error: "finance_stats_failed" });
   }
 });

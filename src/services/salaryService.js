@@ -19,6 +19,7 @@ const Transaction = require("../models/Transaction");
 const LiveStream = require("../models/LiveStream");
 const SalaryPayment = require("../models/SalaryPayment");
 const { COIN_TO_USD_RATE } = require("../config/env");
+const { logger } = require("../utils/logger");
 
 const HOST_SALARY_LEVELS = [
   {
@@ -516,9 +517,9 @@ async function processUserWeeklySalary(userId, weekStart, weekEnd) {
 async function processAllWeeklySalaries(referenceDate) {
   const { weekStart, weekEnd } = getLastWeekRange(referenceDate);
 
-  console.log(`[SALARY] ═══════════════════════════════════════════════`);
-  console.log(`[SALARY] Haftalık maaş işleme başlıyor`);
-  console.log(
+  logger.info(`[SALARY] ═══════════════════════════════════════════════`);
+  logger.info(`[SALARY] Haftalık maaş işleme başlıyor`);
+  logger.info(
     `[SALARY] Hafta: ${weekStart.toISOString()} → ${weekEnd.toISOString()}`,
   );
 
@@ -528,7 +529,7 @@ async function processAllWeeklySalaries(referenceDate) {
     "broadcasterContract.signed": true,
   }).select("_id name username");
 
-  console.log(`[SALARY] ${broadcasters.length} aktif yayıncı bulundu`);
+  logger.info(`[SALARY] ${broadcasters.length} aktif yayıncı bulundu`);
 
   const results = {
     total: broadcasters.length,
@@ -560,7 +561,7 @@ async function processAllWeeklySalaries(referenceDate) {
           salaryUSD: result.salaryUSD,
           salaryCoins: result.salaryCoins,
         });
-        console.log(
+        logger.info(
           `[SALARY] ✓ ${broadcaster.username}: Seviye ${result.level}, $${result.salaryUSD} (${result.salaryCoins} coin)`,
         );
       } else if (result.skipped) {
@@ -571,7 +572,7 @@ async function processAllWeeklySalaries(referenceDate) {
           status: "skipped",
           reason: result.reason,
         });
-        console.log(
+        logger.info(
           `[SALARY] ○ ${broadcaster.username}: Atlandı (${result.reason})`,
         );
       } else if (result.error) {
@@ -582,7 +583,7 @@ async function processAllWeeklySalaries(referenceDate) {
           status: "failed",
           reason: result.reason,
         });
-        console.log(
+        logger.info(
           `[SALARY] ✗ ${broadcaster.username}: Hata (${result.reason})`,
         );
       }
@@ -594,21 +595,21 @@ async function processAllWeeklySalaries(referenceDate) {
         status: "error",
         reason: err.message,
       });
-      console.error(
+      logger.error(
         `[SALARY] ✗ ${broadcaster.username}: Exception`,
         err.message,
       );
     }
   }
 
-  console.log(`[SALARY] ───────────────────────────────────────────────`);
-  console.log(
+  logger.info(`[SALARY] ───────────────────────────────────────────────`);
+  logger.info(
     `[SALARY] Sonuç: ${results.paid} ödendi, ${results.skipped} atlandı, ${results.failed} başarısız`,
   );
-  console.log(
+  logger.info(
     `[SALARY] Toplam: $${results.totalUSD} (${results.totalCoins} coin)`,
   );
-  console.log(`[SALARY] ═══════════════════════════════════════════════`);
+  logger.info(`[SALARY] ═══════════════════════════════════════════════`);
 
   return results;
 }

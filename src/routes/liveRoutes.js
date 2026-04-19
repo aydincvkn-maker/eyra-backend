@@ -9,6 +9,7 @@ const {
   chatLimiter,
   reportLimiter,
 } = require("../middleware/rateLimit");
+const { logger } = require("../utils/logger");
 
 // ============ DEBUG ROUTES (Admin only, non-production) ============
 // Token kontrolü (authentication debug)
@@ -39,10 +40,10 @@ router.post(
       const roomId = `test_room_${Date.now()}`;
       const userId = req.user.id;
 
-      console.log("🔵 [DEBUG] Generating test token...");
-      console.log("   API_KEY:", process.env.LIVEKIT_API_KEY ? "✓" : "✗");
-      console.log("   API_SECRET:", process.env.LIVEKIT_API_SECRET ? "✓" : "✗");
-      console.log("   URL:", process.env.LIVEKIT_URL);
+      logger.info("🔵 [DEBUG] Generating test token...");
+      logger.info("   API_KEY:", process.env.LIVEKIT_API_KEY ? "✓" : "✗");
+      logger.info("   API_SECRET:", process.env.LIVEKIT_API_SECRET ? "✓" : "✗");
+      logger.info("   URL:", process.env.LIVEKIT_URL);
 
       const at = new AccessToken(
         process.env.LIVEKIT_API_KEY,
@@ -82,7 +83,7 @@ router.post(
         livekitUrl: process.env.LIVEKIT_URL,
       });
     } catch (err) {
-      console.error("❌ Test token generation failed:", err.message);
+      logger.error("❌ Test token generation failed:", err.message);
       res.status(500).json({
         ok: false,
         error: "token_generation_failed",

@@ -6,6 +6,7 @@ const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth");
 const translationService = require("../services/translationService");
+const { logger } = require("../utils/logger");
 
 const MAX_BATCH_ITEMS = 1000;
 const MAX_TEXT_LENGTH = 5000;
@@ -88,7 +89,7 @@ router.post("/batch", async (req, res) => {
       translations,
     });
   } catch (err) {
-    console.error("translate/batch error:", err.message);
+    logger.error("translate/batch error:", err.message);
     res.status(500).json({ ok: false, error: "translation_failed" });
   }
 });
@@ -123,7 +124,7 @@ router.post("/text", auth, async (req, res) => {
       detectedLanguage: result.detectedLanguage,
     });
   } catch (err) {
-    console.error("translate/text error:", err.message);
+    logger.error("translate/text error:", err.message);
     res.status(500).json({ ok: false, error: "translation_failed" });
   }
 });

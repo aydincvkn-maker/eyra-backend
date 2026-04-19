@@ -5,6 +5,7 @@ const requirePermission = require("../middleware/requirePermission");
 const Report = require("../models/Report");
 const { sendError } = require("../utils/response");
 const adminSocket = require("../socket/adminNamespace");
+const { logger } = require("../utils/logger");
 
 const { reportLimiter } = require("../middleware/rateLimit");
 
@@ -113,7 +114,7 @@ router.get("/", auth, requirePermission("reports:view"), async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("❌ report list error:", err);
+    logger.error("❌ report list error:", err);
     res.status(500).json({ success: false, error: "report_list_failed" });
   }
 });
@@ -152,7 +153,7 @@ router.post("/", auth, reportLimiter, async (req, res) => {
     // Notify admin sockets
     adminSocket.emit("report:created", { reportId: report._id, targetId, reason: report.reason, type: report.type });
   } catch (err) {
-    console.error("❌ create report error:", err);
+    logger.error("❌ create report error:", err);
     res.status(500).json({ success: false, error: "report_create_failed" });
   }
 });
@@ -187,7 +188,7 @@ router.put("/:id", auth, requirePermission("reports:manage"), async (req, res) =
       }
     });
   } catch (err) {
-    console.error("❌ report update error:", err);
+    logger.error("❌ report update error:", err);
     res.status(500).json({ success: false, error: "report_update_failed" });
   }
 });
@@ -200,7 +201,7 @@ router.delete("/:id", auth, requirePermission("reports:manage"), async (req, res
 
     res.json({ success: true, message: "Silindi" });
   } catch (err) {
-    console.error("❌ report delete error:", err);
+    logger.error("❌ report delete error:", err);
     res.status(500).json({ success: false, error: "report_delete_failed" });
   }
 });

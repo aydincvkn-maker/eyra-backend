@@ -11,6 +11,7 @@ const {
   checkGiftReceivedAchievements,
   checkCoinAchievements,
 } = require("../controllers/achievementController");
+const { logger } = require("../utils/logger");
 
 // Rate limiting için memory cache
 const giftRateLimits = new Map(); // `${userId}:${giftId}` -> { count, lastReset }
@@ -180,7 +181,7 @@ exports.sendGift = async ({
     giftValue: gift.valueCoins,
     senderCoins: updatedSender.coins,
     recipientCoins: updatedRecipient.coins,
-  }).catch((err) => console.error("postGiftHooks fire-and-forget error:", err));
+  }).catch((err) => logger.error("postGiftHooks fire-and-forget error:", err));
 
   return {
     success: true,
@@ -257,7 +258,7 @@ exports.postGiftHooks = async ({
     await checkGiftReceivedAchievements(recipientId);
     await checkCoinAchievements(senderId, senderCoins);
   } catch (err) {
-    console.error("postGiftHooks error:", err);
+    logger.error("postGiftHooks error:", err);
   }
 };
 
@@ -363,7 +364,7 @@ exports.deleteGift = async (giftId) => {
 exports.seedDefaultGifts = async () => {
   const existingCount = await Gift.countDocuments();
   if (existingCount > 0) {
-    console.log("Gifts already seeded");
+    logger.info("Gifts already seeded");
     return;
   }
 
@@ -497,7 +498,7 @@ exports.seedDefaultGifts = async () => {
   ];
 
   await Gift.insertMany(defaultGifts);
-  console.log("✅ Default gifts seeded:", defaultGifts.length);
+  logger.info("✅ Default gifts seeded:", defaultGifts.length);
 };
 
 // Rate limit cache temizleme (memory leak önleme)

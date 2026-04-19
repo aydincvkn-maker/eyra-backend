@@ -2,6 +2,7 @@
 const Notification = require("../models/Notification");
 const User = require("../models/User");
 const { sendPushNotification } = require("../config/firebaseAdmin");
+const { logger } = require("../utils/logger");
 
 // =============================================
 // BİLDİRİM TİPİ → AYAR EŞLEME
@@ -109,12 +110,12 @@ exports.createNotification = async ({
       }
     } catch (pushErr) {
       // Push hatası in-app bildirimi engellemez
-      console.error("Push gönderme hatası:", pushErr.message);
+      logger.error("Push gönderme hatası:", pushErr.message);
     }
 
     return notification;
   } catch (err) {
-    console.error("createNotification error:", err);
+    logger.error("createNotification error:", err);
     throw err;
   }
 };
@@ -148,7 +149,7 @@ exports.getNotifications = async (req, res) => {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    console.error("getNotifications error:", err);
+    logger.error("getNotifications error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -163,7 +164,7 @@ exports.getUnreadCount = async (req, res) => {
     });
     res.json({ success: true, count });
   } catch (err) {
-    console.error("getUnreadCount error:", err);
+    logger.error("getUnreadCount error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -181,7 +182,7 @@ exports.markAsRead = async (req, res) => {
 
     res.json({ success: true, message: "Okundu olarak işaretlendi" });
   } catch (err) {
-    console.error("markAsRead error:", err);
+    logger.error("markAsRead error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -197,7 +198,7 @@ exports.markAllAsRead = async (req, res) => {
 
     res.json({ success: true, message: "Tüm bildirimler okundu" });
   } catch (err) {
-    console.error("markAllAsRead error:", err);
+    logger.error("markAllAsRead error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -215,7 +216,7 @@ exports.deleteNotification = async (req, res) => {
 
     res.json({ success: true, message: "Bildirim silindi" });
   } catch (err) {
-    console.error("deleteNotification error:", err);
+    logger.error("deleteNotification error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -238,7 +239,7 @@ exports.updateFcmToken = async (req, res) => {
 
     res.json({ success: true, message: "FCM token güncellendi" });
   } catch (err) {
-    console.error("updateFcmToken error:", err);
+    logger.error("updateFcmToken error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -253,7 +254,7 @@ exports.removeFcmToken = async (req, res) => {
 
     res.json({ success: true, message: "FCM token kaldırıldı" });
   } catch (err) {
-    console.error("removeFcmToken error:", err);
+    logger.error("removeFcmToken error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -288,7 +289,7 @@ exports.adminSendNotification = async (req, res) => {
       recipients = await User.find({}).select("_id");
     }
 
-    console.log(
+    logger.info(
       `📢 Admin bildirim gönderiliyor: ${recipients.length} alıcı, başlık: "${title}"`,
     );
 
@@ -306,7 +307,7 @@ exports.adminSendNotification = async (req, res) => {
         });
         sent++;
       } catch (e) {
-        console.error(
+        logger.error(
           `Bildirim oluşturulamadı (user: ${recipient._id}):`,
           e.message,
         );
@@ -314,7 +315,7 @@ exports.adminSendNotification = async (req, res) => {
       }
     }
 
-    console.log(
+    logger.info(
       `✅ Admin bildirim sonuç: ${sent} başarılı, ${failed} başarısız`,
     );
 
@@ -325,7 +326,7 @@ exports.adminSendNotification = async (req, res) => {
       failed,
     });
   } catch (err) {
-    console.error("adminSendNotification error:", err);
+    logger.error("adminSendNotification error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };

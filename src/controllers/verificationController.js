@@ -6,6 +6,7 @@ const { checkVerificationAchievement } = require("./achievementController");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
+const { logger } = require("../utils/logger");
 
 const saveVerificationUpload = (userId, file, suffix) => {
   const fileName = `verify_${userId}_${suffix}_${crypto.randomBytes(16).toString("hex")}${path.extname(file.originalname || ".jpg")}`;
@@ -109,7 +110,7 @@ exports.requestVerification = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("requestVerification error:", err);
+    logger.error("requestVerification error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -130,7 +131,7 @@ exports.getVerificationStatus = async (req, res) => {
       reviewedAt: user.verificationReviewedAt,
     });
   } catch (err) {
-    console.error("getVerificationStatus error:", err);
+    logger.error("getVerificationStatus error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -162,7 +163,7 @@ exports.adminGetPending = async (req, res) => {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    console.error("adminGetPending error:", err);
+    logger.error("adminGetPending error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -195,7 +196,7 @@ exports.adminGetAll = async (req, res) => {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    console.error("adminGetAll error:", err);
+    logger.error("adminGetAll error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -253,7 +254,7 @@ exports.adminApprove = async (req, res) => {
 
     res.json({ success: true, message: "Doğrulama onaylandı" });
   } catch (err) {
-    console.error("adminApprove error:", err);
+    logger.error("adminApprove error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -308,7 +309,7 @@ exports.adminReject = async (req, res) => {
 
     res.json({ success: true, message: "Doğrulama reddedildi" });
   } catch (err) {
-    console.error("adminReject error:", err);
+    logger.error("adminReject error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };

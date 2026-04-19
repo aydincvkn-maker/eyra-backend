@@ -3,6 +3,7 @@ const router = express.Router();
 const auth = require("../middleware/auth");
 const requirePermission = require("../middleware/requirePermission");
 const SystemSettings = require("../models/SystemSettings");
+const { logger } = require("../utils/logger");
 
 const getOrCreateSettings = async () => {
   let settings = await SystemSettings.findOne().lean();
@@ -18,7 +19,7 @@ router.get("/", auth, requirePermission("system:settings"), async (req, res) => 
     const settings = await getOrCreateSettings();
     res.json({ success: true, settings });
   } catch (err) {
-    console.error("❌ settings get error:", err);
+    logger.error("❌ settings get error:", err);
     res.status(500).json({ success: false, error: "settings_fetch_failed" });
   }
 });
@@ -67,7 +68,7 @@ router.put("/", auth, requirePermission("system:settings"), async (req, res) => 
 
     res.json({ success: true, settings });
   } catch (err) {
-    console.error("❌ settings update error:", err);
+    logger.error("❌ settings update error:", err);
     res.status(500).json({ success: false, error: "settings_update_failed" });
   }
 });

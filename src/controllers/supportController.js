@@ -1,6 +1,7 @@
 // src/controllers/supportController.js
 const SupportTicket = require("../models/SupportTicket");
 const User = require("../models/User");
+const { logger } = require("../utils/logger");
 
 // =============================================
 // KULLANICI ENDPOINT'LERİ
@@ -23,7 +24,7 @@ exports.createTicket = async (req, res) => {
 
     res.status(201).json({ success: true, ticket });
   } catch (err) {
-    console.error("createTicket error:", err);
+    logger.error("createTicket error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -37,7 +38,7 @@ exports.getMyTickets = async (req, res) => {
 
     res.json({ success: true, tickets });
   } catch (err) {
-    console.error("getMyTickets error:", err);
+    logger.error("getMyTickets error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -79,7 +80,7 @@ exports.userReply = async (req, res) => {
 
     res.json({ success: true, ticket });
   } catch (err) {
-    console.error("userReply error:", err);
+    logger.error("userReply error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -117,7 +118,7 @@ exports.getAdminTickets = async (req, res) => {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    console.error("getAdminTickets error:", err);
+    logger.error("getAdminTickets error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -136,7 +137,7 @@ exports.getTicketById = async (req, res) => {
 
     res.json({ success: true, ticket });
   } catch (err) {
-    console.error("getTicketById error:", err);
+    logger.error("getTicketById error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -170,11 +171,11 @@ exports.adminReply = async (req, res) => {
       .populate("replies.from", "username name role")
       .lean();
 
-    console.log(`💬 Admin ${req.user.username || req.user.id} destek talebine yanıt verdi: ${ticketId}`);
+    logger.info(`💬 Admin ${req.user.username || req.user.id} destek talebine yanıt verdi: ${ticketId}`);
 
     res.json({ success: true, ticket: updated });
   } catch (err) {
-    console.error("adminReply error:", err);
+    logger.error("adminReply error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -217,10 +218,10 @@ exports.adminSendToUser = async (req, res) => {
     ticket.assignedTo = req.user.id;
     await ticket.save();
 
-    console.log(`💬 Admin ${req.user.username || req.user.id} kullaniciya mesaj gonderdi: ${userId}`);
+    logger.info(`💬 Admin ${req.user.username || req.user.id} kullaniciya mesaj gonderdi: ${userId}`);
     res.json({ success: true, ticketId: ticket._id });
   } catch (err) {
-    console.error("adminSendToUser error:", err);
+    logger.error("adminSendToUser error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatasi" });
   }
 };
@@ -252,7 +253,7 @@ exports.updateTicketStatus = async (req, res) => {
 
     res.json({ success: true, ticket });
   } catch (err) {
-    console.error("updateTicketStatus error:", err);
+    logger.error("updateTicketStatus error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -272,7 +273,7 @@ exports.deleteTicket = async (req, res) => {
 
     res.json({ success: true, message: "Talep panelden kaldırıldı" });
   } catch (err) {
-    console.error("deleteTicket error:", err);
+    logger.error("deleteTicket error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };

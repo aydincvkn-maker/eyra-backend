@@ -2,6 +2,7 @@
 // Anlık mesaj çeviri servisi - Google Translate API ile
 
 const axios = require("axios");
+const { logger } = require("../utils/logger");
 
 // Google Translate ücretsiz endpoint (unofficial - production için resmi API kullanın)
 const TRANSLATE_ENDPOINT =
@@ -107,7 +108,7 @@ exports.translateText = async (text, targetLang, sourceLang = "auto") => {
 
     return result;
   } catch (err) {
-    console.error("❌ Translation error:", err.message);
+    logger.error("❌ Translation error:", err.message);
     // Hata durumunda orijinal metni döndür
     return {
       translatedText: text,

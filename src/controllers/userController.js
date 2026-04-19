@@ -27,7 +27,7 @@ const ensureFollowIndexes = async (force = false) => {
     await Follow.syncIndexes();
     _followIndexesSynced = true;
   } catch (e) {
-    console.warn("âš ï¸ Follow.syncIndexes warning:", e?.message || e);
+    logger.warn("âš ï¸ Follow.syncIndexes warning:", e?.message || e);
   }
 };
 
@@ -766,7 +766,7 @@ exports.adminDeleteUser = async (req, res) => {
     try {
       await LiveStream.deleteMany({ host: userId });
     } catch (e) {
-      console.warn("LiveStream cleanup warning:", e.message);
+      logger.warn("LiveStream cleanup warning:", e.message);
     }
 
     logger.info("Admin deleted user", {
@@ -1968,7 +1968,7 @@ exports.changeEmail = async (req, res) => {
 
     res.json({ success: true, message: "E-posta adresi güncellendi" });
   } catch (err) {
-    console.error("changeEmail error:", err);
+    logger.error("changeEmail error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -1990,7 +1990,7 @@ exports.changePhone = async (req, res) => {
 
     res.json({ success: true, message: "Telefon numarası güncellendi" });
   } catch (err) {
-    console.error("changePhone error:", err);
+    logger.error("changePhone error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -2012,7 +2012,7 @@ exports.getLoginHistory = async (req, res) => {
 
     res.json({ success: true, history });
   } catch (err) {
-    console.error("getLoginHistory error:", err);
+    logger.error("getLoginHistory error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };

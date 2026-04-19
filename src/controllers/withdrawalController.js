@@ -8,6 +8,7 @@ const {
   MIN_WITHDRAWAL_COINS,
   MAX_WITHDRAWAL_COINS,
 } = require("../config/env");
+const { logger } = require("../utils/logger");
 
 // Seviye sabitleri ve fonksiyonu salaryService'ten alınır (tek kaynak)
 const { HOST_SALARY_LEVELS, calculateHostLevel } = salaryService;
@@ -324,7 +325,7 @@ exports.getBroadcasterInfo = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("getBroadcasterInfo error:", err);
+    logger.error("getBroadcasterInfo error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -362,7 +363,7 @@ exports.signContract = async (req, res) => {
 
     res.json({ success: true, message: "Sözleşme başarıyla imzalandı" });
   } catch (err) {
-    console.error("signContract error:", err);
+    logger.error("signContract error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -422,7 +423,7 @@ exports.updateBankInfo = async (req, res) => {
     await User.findByIdAndUpdate(userId, { $set: updateData });
     res.json({ success: true, message: 'Ödeme bilgileri güncellendi' });
   } catch (err) {
-    console.error('updateBankInfo error:', err);
+    logger.error('updateBankInfo error:', err);
     res.status(500).json({ success: false, message: 'Sunucu hatası' });
   }
 };
@@ -534,7 +535,7 @@ exports.createWithdrawalRequest = async (req, res) => {
       balanceAfter: user.coins - amountCoins,
     });
 
-    console.log(`💰 Çekim talebi oluşturuldu: ${user.username} - ${amountCoins} coin ($${amountUSD.toFixed(2)})`);
+    logger.info(`💰 Çekim talebi oluşturuldu: ${user.username} - ${amountCoins} coin ($${amountUSD.toFixed(2)})`);
 
     res.status(201).json({
       success: true,
@@ -548,7 +549,7 @@ exports.createWithdrawalRequest = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("createWithdrawalRequest error:", err);
+    logger.error("createWithdrawalRequest error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -573,7 +574,7 @@ exports.getMyWithdrawals = async (req, res) => {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    console.error("getMyWithdrawals error:", err);
+    logger.error("getMyWithdrawals error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -616,7 +617,7 @@ exports.adminListWithdrawals = async (req, res) => {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    console.error("adminListWithdrawals error:", err);
+    logger.error("adminListWithdrawals error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -673,11 +674,11 @@ exports.adminApproveWithdrawal = async (req, res) => {
     withdrawal.balanceAfter = user.coins;
     await withdrawal.save();
 
-    console.log(`✅ Çekim onaylandı: ${user.username} - ${withdrawal.amountCoins} coin`);
+    logger.info(`✅ Çekim onaylandı: ${user.username} - ${withdrawal.amountCoins} coin`);
 
     res.json({ success: true, message: "Çekim talebi onaylandı", withdrawal });
   } catch (err) {
-    console.error("adminApproveWithdrawal error:", err);
+    logger.error("adminApproveWithdrawal error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -703,11 +704,11 @@ exports.adminRejectWithdrawal = async (req, res) => {
     withdrawal.rejectionReason = reason || "Belirtilmedi";
     await withdrawal.save();
 
-    console.log(`❌ Çekim reddedildi: withdrawal ${id}`);
+    logger.info(`❌ Çekim reddedildi: withdrawal ${id}`);
 
     res.json({ success: true, message: "Çekim talebi reddedildi", withdrawal });
   } catch (err) {
-    console.error("adminRejectWithdrawal error:", err);
+    logger.error("adminRejectWithdrawal error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -732,11 +733,11 @@ exports.adminMarkPaid = async (req, res) => {
     withdrawal.paymentReference = paymentReference || withdrawal.paymentReference;
     await withdrawal.save();
 
-    console.log(`💸 Ödeme yapıldı: withdrawal ${id}`);
+    logger.info(`💸 Ödeme yapıldı: withdrawal ${id}`);
 
     res.json({ success: true, message: "Ödeme yapıldı olarak işaretlendi", withdrawal });
   } catch (err) {
-    console.error("adminMarkPaid error:", err);
+    logger.error("adminMarkPaid error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -781,7 +782,7 @@ exports.getSalaryHistory = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("getSalaryHistory error:", err);
+    logger.error("getSalaryHistory error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -802,7 +803,7 @@ exports.adminProcessSalaries = async (req, res) => {
       results: result.results,
     });
   } catch (err) {
-    console.error("adminProcessSalaries error:", err);
+    logger.error("adminProcessSalaries error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -839,7 +840,7 @@ exports.adminListSalaries = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("adminListSalaries error:", err);
+    logger.error("adminListSalaries error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -886,7 +887,7 @@ exports.adminAddViolation = async (req, res) => {
 
     const addedViolation = user.violations[user.violations.length - 1];
 
-    console.log(`[VIOLATION] Admin ${req.user.username} added violation to ${user.username}: ${reason} (${severity}, -%${penalty})`);
+    logger.info(`[VIOLATION] Admin ${req.user.username} added violation to ${user.username}: ${reason} (${severity}, -%${penalty})`);
 
     res.json({
       success: true,
@@ -894,7 +895,7 @@ exports.adminAddViolation = async (req, res) => {
       violation: addedViolation,
     });
   } catch (err) {
-    console.error("adminAddViolation error:", err);
+    logger.error("adminAddViolation error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -932,7 +933,7 @@ exports.adminGetViolations = async (req, res) => {
       totalPenalty,
     });
   } catch (err) {
-    console.error("adminGetViolations error:", err);
+    logger.error("adminGetViolations error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -962,7 +963,7 @@ exports.adminUpdateViolation = async (req, res) => {
 
     await user.save();
 
-    console.log(`[VIOLATION] Admin ${req.user.username} updated violation ${violationId} for ${user.username}: active=${violation.active}`);
+    logger.info(`[VIOLATION] Admin ${req.user.username} updated violation ${violationId} for ${user.username}: active=${violation.active}`);
 
     res.json({
       success: true,
@@ -970,7 +971,7 @@ exports.adminUpdateViolation = async (req, res) => {
       violation,
     });
   } catch (err) {
-    console.error("adminUpdateViolation error:", err);
+    logger.error("adminUpdateViolation error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -993,11 +994,11 @@ exports.adminDeleteViolation = async (req, res) => {
     violation.deleteOne();
     await user.save();
 
-    console.log(`[VIOLATION] Admin ${req.user.username} deleted violation ${violationId} for ${user.username}`);
+    logger.info(`[VIOLATION] Admin ${req.user.username} deleted violation ${violationId} for ${user.username}`);
 
     res.json({ success: true, message: "İhlal silindi" });
   } catch (err) {
-    console.error("adminDeleteViolation error:", err);
+    logger.error("adminDeleteViolation error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -1032,7 +1033,7 @@ exports.getMyViolations = async (req, res) => {
 
     res.json({ success: true, violations, activeCount, totalPenalty });
   } catch (err) {
-    console.error("getMyViolations error:", err);
+    logger.error("getMyViolations error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -1147,7 +1148,7 @@ exports.adminWeeklyReport = async (req, res) => {
       rows,
     });
   } catch (err) {
-    console.error("adminWeeklyReport error:", err);
+    logger.error("adminWeeklyReport error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };

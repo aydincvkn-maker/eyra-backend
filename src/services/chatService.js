@@ -140,7 +140,7 @@ exports.deleteConversation = async (userId, otherUserId) => {
  */
 exports.sendMessage = async (fromUserId, toUserId, data) => {
   try {
-    console.log(
+    logger.info(
       `📨 chatService.sendMessage: from=${fromUserId}, to=${toUserId}`,
     );
 
@@ -176,7 +176,7 @@ exports.sendMessage = async (fromUserId, toUserId, data) => {
       );
 
       if (!fromUser || !toUser) {
-        console.log(
+        logger.info(
           `❌ User not found: fromUser=${!!fromUser}, toUser=${!!toUser}`,
         );
         throw new Error("USER_NOT_FOUND");
@@ -201,7 +201,7 @@ exports.sendMessage = async (fromUserId, toUserId, data) => {
       // Admin: only verify target user exists
       const toUser = await User.findById(toUserId).select("_id");
       if (!toUser) {
-        console.log(`❌ Target user not found: ${toUserId}`);
+        logger.info(`❌ Target user not found: ${toUserId}`);
         throw new Error("USER_NOT_FOUND");
       }
     }
@@ -250,7 +250,7 @@ exports.sendMessage = async (fromUserId, toUserId, data) => {
     });
 
     await message.save();
-    console.log(`✅ Message saved: ${message._id}`);
+    logger.info(`✅ Message saved: ${message._id}`);
 
     // ✅ Mission tracking for sending messages
     try {

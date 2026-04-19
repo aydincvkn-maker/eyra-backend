@@ -11,6 +11,7 @@ const CallHistory = require("../models/CallHistory");
 const User = require("../models/User");
 const { sendError } = require("../utils/response");
 const { createNotification } = require("../controllers/notificationController");
+const { logger } = require("../utils/logger");
 
 // Cevaplanmayan aramalar için timeout (60 saniye)
 const CALL_ANSWER_TIMEOUT_MS = 60000;
@@ -54,7 +55,7 @@ async function handleCallTimeout(roomName) {
   if (!callInfo) return;
 
   const { callerId, targetUserId } = callInfo;
-  console.log(
+  logger.info(
     `⏰ Call timeout (${CALL_ANSWER_TIMEOUT_MS / 1000}s): ${roomName}`,
   );
 
@@ -109,7 +110,7 @@ async function handleCallTimeout(roomName) {
       });
     } catch (_) {}
   } catch (err) {
-    console.error("❌ Call timeout handler error:", err);
+    logger.error("❌ Call timeout handler error:", err);
   }
 }
 
@@ -206,20 +207,20 @@ router.post("/initiate", auth, async (req, res) => {
         startedAt: new Date(),
       });
     } catch (histErr) {
-      console.error("❌ CallHistory create error:", histErr);
+      logger.error("❌ CallHistory create error:", histErr);
     }
 
     // Notify target user via socket
     if (global.io && global.userSockets) {
       const targetKey = String(targetUserId);
-      console.log(`📞 Looking for target user: ${targetKey}`);
-      console.log(
+      logger.info(`📞 Looking for target user: ${targetKey}`);
+      logger.info(
         `📞 Active user sockets: ${Array.from(global.userSockets.keys()).join(", ")}`,
       );
 
       const targetSockets = global.userSockets.get(targetKey);
       if (targetSockets && targetSockets.size > 0) {
-        console.log(
+        logger.info(
           `✅ Found ${targetSockets.size} socket(s) for ${targetKey}`,
         );
         const callerData = await require("../models/User")
@@ -227,7 +228,7 @@ router.post("/initiate", auth, async (req, res) => {
           .select("username profileImage");
 
         targetSockets.forEach((socketId) => {
-          console.log(`📡 Sending incoming_call to socket ${socketId}`);
+          logger.info(`📡 Sending incoming_call to socket ${socketId}`);
           global.io.to(socketId).emit("incoming_call", {
             callerId: String(callerId),
             callerName: callerData?.username || "Unknown",
@@ -237,7 +238,7 @@ router.post("/initiate", auth, async (req, res) => {
           });
         });
       } else {
-        console.log(`❌ No sockets found for target user ${targetKey}`);
+        logger.info(`❌ No sockets found for target user ${targetKey}`);
       }
     }
 
@@ -249,7 +250,7 @@ router.post("/initiate", auth, async (req, res) => {
       message: "Arama başlatıldı",
     });
   } catch (error) {
-    console.error("❌ Call initiate error:", error);
+    logger.error("❌ Call initiate error:", error);
     sendError(res, 500, "Sunucu hatası");
   }
 });
@@ -291,7 +292,7 @@ router.post("/end", auth, async (req, res) => {
           { $set: { status: "completed", durationSec, endedAt: new Date() } },
         );
       } catch (histErr) {
-        console.error("❌ CallHistory update error:", histErr);
+        logger.error("❌ CallHistory update error:", histErr);
       }
 
       // Remove from active calls
@@ -312,7 +313,7 @@ router.post("/end", auth, async (req, res) => {
       message: "Arama sonlandırıldı",
     });
   } catch (error) {
-    console.error("❌ Call end error:", error);
+    logger.error("❌ Call end error:", error);
     sendError(res, 500, "Sunucu hatası");
   }
 });
@@ -352,7 +353,7 @@ router.post("/reject", auth, async (req, res) => {
           { $set: { status: "rejected", endedAt: new Date() } },
         );
       } catch (histErr) {
-        console.error("❌ CallHistory reject update error:", histErr);
+        logger.error("❌ CallHistory reject update error:", histErr);
       }
 
       // Remove from active calls
@@ -391,7 +392,7 @@ router.post("/reject", auth, async (req, res) => {
           relatedType: "call",
         });
       } catch (notifErr) {
-        console.error("❌ Cevapsız arama bildirimi hatası:", notifErr.message);
+        logger.error("❌ Cevapsız arama bildirimi hatası:", notifErr.message);
       }
     }
 
@@ -400,7 +401,7 @@ router.post("/reject", auth, async (req, res) => {
       message: "Arama reddedildi",
     });
   } catch (error) {
-    console.error("❌ Call reject error:", error);
+    logger.error("❌ Call reject error:", error);
     sendError(res, 500, "Sunucu hatası");
   }
 });
@@ -432,7 +433,7 @@ router.post("/token", auth, async (req, res) => {
       livekitUrl: LIVEKIT_URL,
     });
   } catch (error) {
-    console.error("❌ Call token error:", error);
+    logger.error("❌ Call token error:", error);
     return res.status(500).json({ ok: false, message: "Sunucu hatası" });
   }
 });
@@ -455,7 +456,7 @@ router.get("/active", auth, async (req, res) => {
       calls: activeCalls,
     });
   } catch (error) {
-    console.error("❌ Get active calls error:", error);
+    logger.error("❌ Get active calls error:", error);
     sendError(res, 500, "Sunucu hatası");
   }
 });
@@ -513,7 +514,7 @@ router.get("/history", auth, async (req, res) => {
 
     res.json({ success: true, calls: result });
   } catch (error) {
-    console.error("❌ Call history error:", error);
+    logger.error("❌ Call history error:", error);
     sendError(res, 500, "Sunucu hatası");
   }
 });

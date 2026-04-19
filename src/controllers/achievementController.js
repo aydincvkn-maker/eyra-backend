@@ -2,6 +2,7 @@
 const User = require("../models/User");
 const Transaction = require("../models/Transaction");
 const { createNotification } = require("./notificationController");
+const { logger } = require("../utils/logger");
 
 // =============================================
 // ACHIEVEMENT DEFINITIONS
@@ -135,7 +136,7 @@ const tryUnlockAchievement = async (userId, achievementId) => {
 
     return achievementEntry;
   } catch (err) {
-    console.error("tryUnlockAchievement error:", err);
+    logger.error("tryUnlockAchievement error:", err);
     return null;
   }
 };
@@ -238,7 +239,7 @@ exports.getAchievements = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("getAchievements error:", err);
+    logger.error("getAchievements error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -255,7 +256,7 @@ exports.getRecentAchievements = async (req, res) => {
 
     res.json({ success: true, achievements: recent });
   } catch (err) {
-    console.error("getRecentAchievements error:", err);
+    logger.error("getRecentAchievements error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };

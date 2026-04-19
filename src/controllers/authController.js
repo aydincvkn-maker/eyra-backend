@@ -7,6 +7,7 @@ const { JWT_SECRET, NODE_ENV, JWT_EXPIRES_IN } = require("../config/env");
 const presenceService = require("../services/presenceService");
 const SystemSettings = require("../models/SystemSettings");
 const Transaction = require("../models/Transaction");
+const { logger } = require("../utils/logger");
 
 const PANEL_ROLES = ["admin", "super_admin", "moderator"];
 
@@ -104,7 +105,7 @@ const sendLoginResponse = async (
   try {
     await updateLoginTracking(req, user);
   } catch (e) {
-    console.warn("⚠️ Login: lastSeen/history update başarısız:", e.message);
+    logger.warn("⚠️ Login: lastSeen/history update başarısız:", e.message);
   }
 
   const token = createToken(user);
@@ -164,7 +165,7 @@ const handleEmailPasswordLogin = async (
       user.password = String(password);
       await user.save();
     } catch (e) {
-      console.warn("Password upgrade failed:", e.message);
+      logger.warn("Password upgrade failed:", e.message);
     }
   }
 
@@ -340,7 +341,7 @@ const checkDailyLoginBonus = async (user) => {
       streakBonus: streakMultiplier > 1,
     };
   } catch (err) {
-    console.error("Daily login bonus error:", err);
+    logger.error("Daily login bonus error:", err);
     return { granted: false, reason: "error" };
   }
 };
@@ -349,7 +350,7 @@ exports.login = async (req, res) => {
   try {
     return await handleEmailPasswordLogin(req, res, { panelLogin: false });
   } catch (err) {
-    console.error("Login error:", err);
+    logger.error("Login error:", err);
     res.status(500).json({
       success: false,
       message: "Sunucu hatası",
@@ -362,7 +363,7 @@ exports.panelLogin = async (req, res) => {
   try {
     return await handleEmailPasswordLogin(req, res, { panelLogin: true });
   } catch (err) {
-    console.error("Panel login error:", err);
+    logger.error("Panel login error:", err);
     res.status(500).json({
       success: false,
       message: "Sunucu hatası",
@@ -432,7 +433,7 @@ exports.register = async (req, res) => {
       user: buildUserPayload(user),
     });
   } catch (err) {
-    console.error("Register error:", err);
+    logger.error("Register error:", err);
     res.status(500).json({
       success: false,
       message: "Kay─▒t ba┼şar─▒s─▒z",
@@ -485,7 +486,7 @@ exports.guestLogin = async (req, res) => {
       user: buildUserPayload(user),
     });
   } catch (err) {
-    console.error("Guest login error:", err);
+    logger.error("Guest login error:", err);
     res.status(500).json({
       success: false,
       message: "Misafir giri┼şi ba┼şar─▒s─▒z",
@@ -497,7 +498,7 @@ exports.guestLogin = async (req, res) => {
 // ­şöÆ DEPRECATED: Token do─şrulamas─▒ olmayan Google login g├╝venlik a├ğ─▒─ş─▒ olu┼şturur.
 // T├╝m istemciler /google-login-token endpoint'ini kullanmal─▒d─▒r.
 exports.googleLogin = async (req, res) => {
-  console.warn(
+  logger.warn(
     "ÔÜá´©Å DEPRECATED: /google-login ├ğa─şr─▒ld─▒ (token do─şrulamas─▒ yok). ─░stemci g├╝ncellenmeli.",
   );
   return res.status(403).json({
@@ -530,7 +531,7 @@ exports.googleLoginWithToken = async (req, res) => {
 
     // ­şöÆ GOOGLE_CLIENT_ID kontrol ÔÇö ayarlanmam─▒┼şsa token do─şrulama imkans─▒z
     if (googleAudiences.length === 0) {
-      console.error(
+      logger.error(
         "ÔØî Google client ID tan─▒ml─▒ de─şil ÔÇö Google login kullan─▒lamaz",
       );
       return res.status(500).json({
@@ -557,7 +558,7 @@ exports.googleLoginWithToken = async (req, res) => {
       // ­şöÆ Token'daki email ile g├Ânderilen email e┼şle┼şmeli
       const tokenEmail = (payload?.email || "").trim().toLowerCase();
       if (tokenEmail && tokenEmail !== normalizedEmail) {
-        console.warn(
+        logger.warn(
           `ÔÜá´©Å Google token email uyu┼şmazl─▒─ş─▒: token=${tokenEmail}, istek=${normalizedEmail}`,
         );
         return res.status(401).json({
@@ -573,7 +574,7 @@ exports.googleLoginWithToken = async (req, res) => {
       payloadPhoto = payload?.picture || null;
     } catch (verifyErr) {
       // ­şöÆ Token do─şrulama ba┼şar─▒s─▒zsa G─░R─░┼Ş REDDED─░L─░R ÔÇö fallback yok
-      console.error(
+      logger.error(
         "ÔØî Google token do─şrulama ba┼şar─▒s─▒z:",
         verifyErr.message || verifyErr,
       );
@@ -665,7 +666,7 @@ exports.googleLoginWithToken = async (req, res) => {
       dailyBonus: dailyBonus.granted ? dailyBonus : undefined,
     });
   } catch (err) {
-    console.error("Google token login error:", err);
+    logger.error("Google token login error:", err);
     res.status(500).json({
       success: false,
       message: "Google giri┼şi ba┼şar─▒s─▒z",
@@ -725,7 +726,7 @@ exports.appleLogin = async (req, res) => {
           : null) || appleEmail;
     } catch (verifyErr) {
       // 🛡️ Token doğrulama başarısızsa GİRİŞ REDDEDİLİR — fallback yok
-      console.error(
+      logger.error(
         "❌ Apple token doğrulama başarısız:",
         verifyErr.message || verifyErr,
       );
@@ -824,7 +825,7 @@ exports.appleLogin = async (req, res) => {
       dailyBonus: dailyBonus.granted ? dailyBonus : undefined,
     });
   } catch (err) {
-    console.error("Apple login error:", err);
+    logger.error("Apple login error:", err);
     res.status(500).json({
       success: false,
       message: "Apple giri┼şi ba┼şar─▒s─▒z",
@@ -852,7 +853,7 @@ exports.logout = async (req, res) => {
         },
       );
     } catch (e) {
-      console.warn("ÔÜá´©Å Logout: isOnline update ba┼şar─▒s─▒z:", e.message);
+      logger.warn("ÔÜá´©Å Logout: isOnline update ba┼şar─▒s─▒z:", e.message);
       // Non-fatal: devam et
     }
 
@@ -873,7 +874,7 @@ exports.logout = async (req, res) => {
       }
       await presenceService.setOffline(String(userId), meta);
     } catch (e) {
-      console.warn(`ÔÜá´©Å Logout presence update failed: ${e.message}`);
+      logger.warn(`ÔÜá´©Å Logout presence update failed: ${e.message}`);
     }
 
     // 3. Disconnect sockets
@@ -896,7 +897,7 @@ exports.logout = async (req, res) => {
       message: "├ç─▒k─▒┼ş yap─▒ld─▒",
     });
   } catch (err) {
-    console.error("Logout error:", err);
+    logger.error("Logout error:", err);
     res.status(500).json({
       success: false,
       message: "├ç─▒k─▒┼ş ba┼şar─▒s─▒z",
@@ -922,7 +923,7 @@ exports.me = async (req, res) => {
       user: buildUserPayload(user),
     });
   } catch (err) {
-    console.error("Me error:", err);
+    logger.error("Me error:", err);
     res.status(500).json({
       success: false,
       message: "Sunucu hatas─▒",
@@ -964,7 +965,7 @@ exports.refreshToken = async (req, res) => {
       user: buildUserPayload(user),
     });
   } catch (err) {
-    console.error("Refresh token error:", err);
+    logger.error("Refresh token error:", err);
     res.status(500).json({
       success: false,
       message: "Sunucu hatas─▒",
@@ -1015,7 +1016,7 @@ exports.changePassword = async (req, res) => {
 
     res.json({ success: true, message: "Şifre başarıyla değiştirildi", token });
   } catch (err) {
-    console.error("Change password error:", err);
+    logger.error("Change password error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -1053,7 +1054,7 @@ exports.forgotPassword = async (req, res) => {
       const admin = require("firebase-admin");
       // firebase-admin başlatılmamışsa atlayıp eski davranışa fallback yap
       if (!admin.apps.length) {
-        console.warn(
+        logger.warn(
           "⚠️ firebase-admin not initialized, skipping token verification for forgot-password",
         );
       } else {
@@ -1066,7 +1067,7 @@ exports.forgotPassword = async (req, res) => {
         }
       }
     } catch (verifyErr) {
-      console.error("❌ Firebase token doğrulama hatası:", verifyErr.message);
+      logger.error("❌ Firebase token doğrulama hatası:", verifyErr.message);
       return res
         .status(401)
         .json({ success: false, error: "Kimlik doğrulama başarısız" });
@@ -1091,7 +1092,7 @@ exports.forgotPassword = async (req, res) => {
       user: buildUserPayload(user),
     });
   } catch (err) {
-    console.error("Forgot password error:", err);
+    logger.error("Forgot password error:", err);
     res.status(500).json({ success: false, error: "Sunucu hatası" });
   }
 };
@@ -1124,7 +1125,7 @@ exports.phoneLogin = async (req, res) => {
       firebaseUid = decoded.uid;
       verifiedPhone = decoded.phone_number || phoneNumber || "";
     } catch (verifyErr) {
-      console.error(
+      logger.error(
         "❌ Phone login token doğrulama hatası:",
         verifyErr.message,
       );
@@ -1232,7 +1233,7 @@ exports.phoneLogin = async (req, res) => {
       dailyBonus: dailyBonus.granted ? dailyBonus : undefined,
     });
   } catch (err) {
-    console.error("Phone login error:", err);
+    logger.error("Phone login error:", err);
     res.status(500).json({ success: false, error: "Telefon girişi başarısız" });
   }
 };

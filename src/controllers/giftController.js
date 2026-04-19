@@ -1,6 +1,7 @@
 // src/controllers/giftController.js
 const giftService = require("../services/giftService");
 const Gift = require("../models/Gift");
+const { logger } = require("../utils/logger");
 
 /**
  * Tüm aktif hediyeleri getir
@@ -16,7 +17,7 @@ exports.getGifts = async (req, res) => {
       categories: ["basic", "premium", "vip", "special"]
     });
   } catch (err) {
-    console.error("getGifts error:", err);
+    logger.error("getGifts error:", err);
     res.status(500).json({ ok: false, error: "Sunucu hatası" });
   }
 };
@@ -53,7 +54,7 @@ exports.sendGift = async (req, res) => {
       giftValue: result.gift?.valueCoins || 0,
       senderCoins: result.senderCoins || 0,
       recipientCoins: 0,
-    }).catch(err => console.error("postGiftHooks error (non-blocking):", err));
+    }).catch(err => logger.error("postGiftHooks error (non-blocking):", err));
 
     res.json({
       ok: true,
@@ -61,7 +62,7 @@ exports.sendGift = async (req, res) => {
       data: result
     });
   } catch (err) {
-    console.error("sendGift error:", err);
+    logger.error("sendGift error:", err);
     
     // Bilinen hataları kontrol et
     if (err.message === "Yetersiz coin") {
@@ -90,7 +91,7 @@ exports.getMyGiftHistory = async (req, res) => {
     
     res.json({ ok: true, gifts });
   } catch (err) {
-    console.error("getMyGiftHistory error:", err);
+    logger.error("getMyGiftHistory error:", err);
     res.status(500).json({ ok: false, error: "Sunucu hatası" });
   }
 };
@@ -107,7 +108,7 @@ exports.getReceivedGifts = async (req, res) => {
     
     res.json({ ok: true, gifts });
   } catch (err) {
-    console.error("getReceivedGifts error:", err);
+    logger.error("getReceivedGifts error:", err);
     res.status(500).json({ ok: false, error: "Sunucu hatası" });
   }
 };
@@ -127,7 +128,7 @@ exports.getLiveGiftStats = async (req, res) => {
     
     res.json({ ok: true, stats });
   } catch (err) {
-    console.error("getLiveGiftStats error:", err);
+    logger.error("getLiveGiftStats error:", err);
     res.status(500).json({ ok: false, error: "Sunucu hatası" });
   }
 };
@@ -149,7 +150,7 @@ exports.createGift = async (req, res) => {
     
     res.status(201).json({ ok: true, gift });
   } catch (err) {
-    console.error("createGift error:", err);
+    logger.error("createGift error:", err);
     res.status(500).json({ ok: false, error: "Sunucu hatası" });
   }
 };
@@ -170,7 +171,7 @@ exports.updateGift = async (req, res) => {
     
     res.json({ ok: true, gift });
   } catch (err) {
-    console.error("updateGift error:", err);
+    logger.error("updateGift error:", err);
     res.status(500).json({ ok: false, error: "Sunucu hatası" });
   }
 };
@@ -190,7 +191,7 @@ exports.deleteGift = async (req, res) => {
     
     res.json({ ok: true, message: "Hediye silindi" });
   } catch (err) {
-    console.error("deleteGift error:", err);
+    logger.error("deleteGift error:", err);
     res.status(500).json({ ok: false, error: "Sunucu hatası" });
   }
 };
@@ -203,7 +204,7 @@ exports.seedGifts = async (req, res) => {
     await giftService.seedDefaultGifts();
     res.json({ ok: true, message: "Default hediyeler oluşturuldu" });
   } catch (err) {
-    console.error("seedGifts error:", err);
+    logger.error("seedGifts error:", err);
     res.status(500).json({ ok: false, error: "Sunucu hatası" });
   }
 };

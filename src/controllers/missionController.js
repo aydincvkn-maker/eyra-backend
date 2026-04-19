@@ -4,6 +4,7 @@ const MissionProgress = require("../models/MissionProgress");
 const User = require("../models/User");
 const Transaction = require("../models/Transaction");
 const { createNotification } = require("./notificationController");
+const { logger } = require("../utils/logger");
 
 // =============================================
 // HELPER FUNCTIONS
@@ -113,7 +114,7 @@ exports.trackMissionProgress = async (userId, missionKey, incrementBy = 1) => {
       }
     }
   } catch (err) {
-    console.error("trackMissionProgress error:", err);
+    logger.error("trackMissionProgress error:", err);
   }
 };
 
@@ -169,7 +170,7 @@ exports.getMissions = async (req, res) => {
 
     res.json({ success: true, missions: missionsWithProgress });
   } catch (err) {
-    console.error("getMissions error:", err);
+    logger.error("getMissions error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -265,7 +266,7 @@ exports.claimReward = async (req, res) => {
       newBalance: updatedUser?.coins || 0,
     });
   } catch (err) {
-    console.error("claimReward error:", err);
+    logger.error("claimReward error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -280,7 +281,7 @@ exports.adminGetMissions = async (req, res) => {
     const missions = await Mission.find().sort({ type: 1, order: 1 }).lean();
     res.json({ success: true, missions });
   } catch (err) {
-    console.error("adminGetMissions error:", err);
+    logger.error("adminGetMissions error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -291,7 +292,7 @@ exports.adminCreateMission = async (req, res) => {
     const mission = await Mission.create(req.body);
     res.json({ success: true, mission });
   } catch (err) {
-    console.error("adminCreateMission error:", err);
+    logger.error("adminCreateMission error:", err);
     res.status(500).json({ success: false, message: "Görev oluşturulamadı" });
   }
 };
@@ -310,7 +311,7 @@ exports.adminUpdateMission = async (req, res) => {
     }
     res.json({ success: true, mission });
   } catch (err) {
-    console.error("adminUpdateMission error:", err);
+    logger.error("adminUpdateMission error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -323,7 +324,7 @@ exports.adminDeleteMission = async (req, res) => {
     await MissionProgress.deleteMany({ mission: missionId });
     res.json({ success: true, message: "Görev silindi" });
   } catch (err) {
-    console.error("adminDeleteMission error:", err);
+    logger.error("adminDeleteMission error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -363,7 +364,7 @@ exports.seedMissions = async (req, res) => {
     await Mission.insertMany(defaultMissions);
     res.json({ success: true, message: `${defaultMissions.length} görev oluşturuldu`, count: defaultMissions.length });
   } catch (err) {
-    console.error("seedMissions error:", err);
+    logger.error("seedMissions error:", err);
     res.status(500).json({ success: false, message: "Seed başarısız" });
   }
 };

@@ -8,6 +8,7 @@ const {
   PAYMENT_CANCEL_URL,
   BACKEND_URL,
 } = require("../config/env");
+const { logger } = require("../utils/logger");
 
 const trimTrailingSlashes = (value) => String(value || "").replace(/\/+$/, "");
 
@@ -24,7 +25,7 @@ exports.getCatalog = async (req, res) => {
     });
     res.json({ success: true, catalog });
   } catch (err) {
-    console.error("getCatalog error:", err);
+    logger.error("getCatalog error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -45,7 +46,7 @@ exports.createIntent = async (req, res) => {
 
     res.status(201).json({ success: true, payment });
   } catch (err) {
-    console.error("createIntent error:", err);
+    logger.error("createIntent error:", err);
     res
       .status(err.statusCode || 500)
       .json({ success: false, message: err.message || "Sunucu hatası" });
@@ -64,7 +65,7 @@ exports.getMyPayments = async (req, res) => {
 
     res.json({ success: true, ...result });
   } catch (err) {
-    console.error("getMyPayments error:", err);
+    logger.error("getMyPayments error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -83,7 +84,7 @@ exports.getMyPaymentByOrderId = async (req, res) => {
 
     res.json({ success: true, payment });
   } catch (err) {
-    console.error("getMyPaymentByOrderId error:", err);
+    logger.error("getMyPaymentByOrderId error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -97,7 +98,7 @@ exports.confirmMyPaymentByOrderId = async (req, res) => {
 
     res.json({ success: true, payment });
   } catch (err) {
-    console.error("confirmMyPaymentByOrderId error:", err);
+    logger.error("confirmMyPaymentByOrderId error:", err);
     res
       .status(err.statusCode || 500)
       .json({ success: false, message: err.message || "Sunucu hatası" });
@@ -172,7 +173,7 @@ exports.webhook = async (req, res) => {
       payment: result.payment,
     });
   } catch (err) {
-    console.error("payment webhook error:", err);
+    logger.error("payment webhook error:", err);
     res
       .status(err.statusCode || 500)
       .json({ success: false, message: err.message || "Sunucu hatası" });
@@ -186,7 +187,7 @@ exports.refundPayment = async (req, res) => {
     });
     res.json({ success: true, payment });
   } catch (err) {
-    console.error("refundPayment error:", err);
+    logger.error("refundPayment error:", err);
     res
       .status(err.statusCode || 500)
       .json({ success: false, message: err.message || "Sunucu hatası" });
@@ -223,7 +224,7 @@ exports.mockCheckout = async (req, res) => {
 </body>
 </html>`);
   } catch (err) {
-    console.error("mockCheckout error:", err);
+    logger.error("mockCheckout error:", err);
     return sendError(res, 500, "Sunucu hatası");
   }
 };
@@ -258,7 +259,7 @@ exports.adminGetPayments = async (req, res) => {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    console.error("adminGetPayments error:", err);
+    logger.error("adminGetPayments error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -310,7 +311,7 @@ exports.adminGetStats = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("adminGetStats error:", err);
+    logger.error("adminGetStats error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
@@ -343,12 +344,12 @@ async function verifyIapWithRevenueCat(userId, transactionId, productId) {
   if (!REVENUECAT_API_KEY) {
     // API key yoksa doğrulama yapılamaz — production'da zorunlu olmalı
     if (NODE_ENV === "production") {
-      console.error(
+      logger.error(
         "❌ REVENUECAT_API_KEY tanımlı değil — IAP doğrulama imkansız",
       );
       return { valid: false, reason: "Server configuration error" };
     }
-    console.warn(
+    logger.warn(
       "⚠️ REVENUECAT_API_KEY tanımlı değil — development modunda doğrulama atlanıyor",
     );
     return { valid: true, reason: "dev_skip" };
@@ -391,7 +392,7 @@ async function verifyIapWithRevenueCat(userId, transactionId, productId) {
 
       if (foundAnywhere) {
         // Transaction var ama productId eşleşmiyor — muhtemelen manipülasyon
-        console.warn(
+        logger.warn(
           `⚠️ IAP productId uyuşmazlığı: ${productId}, txId=${transactionId}`,
         );
         return { valid: false, reason: "Product ID mismatch" };
@@ -402,7 +403,7 @@ async function verifyIapWithRevenueCat(userId, transactionId, productId) {
 
     return { valid: true };
   } catch (err) {
-    console.error("RevenueCat doğrulama hatası:", err.message || err);
+    logger.error("RevenueCat doğrulama hatası:", err.message || err);
     // Network hatası — güvenli tarafta kal, reddet
     return { valid: false, reason: `Verification failed: ${err.message}` };
   }
@@ -449,7 +450,7 @@ exports.iapPurchase = async (req, res) => {
       productId,
     );
     if (!verification.valid) {
-      console.warn(
+      logger.warn(
         `❌ IAP doğrulama başarısız: userId=${userId}, txId=${transactionId}, reason=${verification.reason}`,
       );
       return res.status(403).json({
@@ -497,7 +498,7 @@ exports.iapPurchase = async (req, res) => {
       payment: { orderId: payment.orderId, status: "paid" },
     });
   } catch (err) {
-    console.error("iapPurchase error:", err);
+    logger.error("iapPurchase error:", err);
     return res
       .status(500)
       .json({ success: false, message: err.message || "Sunucu hatası" });
@@ -576,7 +577,7 @@ exports.mockComplete = async (req, res) => {
       payment: result.payment,
     });
   } catch (err) {
-    console.error("mockComplete error:", err);
+    logger.error("mockComplete error:", err);
     return res
       .status(err.statusCode || 500)
       .json({ success: false, message: err.message || "Sunucu hatası" });

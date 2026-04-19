@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("../config/env");
 const User = require("../models/User");
 const { sendError } = require("../utils/response");
+const { logger } = require("../utils/logger");
 
 async function auth(req, res, next) {
   try {
@@ -70,7 +71,7 @@ async function auth(req, res, next) {
     
     next();
   } catch (err) {
-    console.error("Auth middleware error:", err.message);
+    logger.error("Auth middleware error:", err.message);
     
     if (err.name === 'JsonWebTokenError') {
       return sendError(res, 401, "Geçersiz token");
