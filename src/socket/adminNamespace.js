@@ -6,6 +6,8 @@
 const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("../config/env");
 const User = require("../models/User");
+const { sanitizeSocketPayload } = require("../middleware/validate");
+const { logger } = require("../utils/logger");
 
 let adminNsp = null;
 
@@ -109,7 +111,7 @@ function setup(io) {
 
   // ── Connection handler ──
   adminNsp.on("connection", async (socket) => {
-    console.log(`🛡️  Admin socket connected: ${socket.data.username} (${socket.data.role})`);
+    logger.info('Admin socket connected', { username: socket.data.username, role: socket.data.role });
 
     const adminRoom = getAdminUserRoom(socket.data.userId);
     if (adminRoom) {
@@ -122,7 +124,8 @@ function setup(io) {
     }
 
     // Admin chat: yazıyor göstergesi
-    socket.on("admin-chat:typing", async (data = {}) => {
+    socket.on("admin-chat:typing", async (rawData = {}) => {
+      const data = sanitizeSocketPayload(rawData);
       const rawRecipientId = String(data.recipientId || "").trim();
       const threadType = rawRecipientId ? "direct" : "group";
       const payload = {
@@ -142,7 +145,8 @@ function setup(io) {
       socket.broadcast.emit("admin-chat:typing", payload);
     });
 
-    socket.on("admin-call:initiate", async ({ targetUserId, callId, offer }) => {
+    socket.on("admin-call:initiate", async (rawData) => {
+      const { targetUserId, callId, offer } = sanitizeSocketPayload(rawData);
       const targetId = String(targetUserId || "").trim();
       if (!targetId || targetId === socket.data.userId || !callId || !offer) return;
 
@@ -162,7 +166,8 @@ function setup(io) {
       }
     });
 
-    socket.on("admin-call:answer", async ({ targetUserId, callId, answer }) => {
+    socket.on("admin-call:answer", async (rawData) => {
+      const { targetUserId, callId, answer } = sanitizeSocketPayload(rawData);
       const targetId = String(targetUserId || "").trim();
       if (!targetId || !callId || !answer) return;
       await emitToAdminUser(targetId, "admin-call:answered", {
@@ -173,7 +178,8 @@ function setup(io) {
       });
     });
 
-    socket.on("admin-call:ice-candidate", async ({ targetUserId, callId, candidate }) => {
+    socket.on("admin-call:ice-candidate", async (rawData) => {
+      const { targetUserId, callId, candidate } = sanitizeSocketPayload(rawData);
       const targetId = String(targetUserId || "").trim();
       if (!targetId || !callId || !candidate) return;
       await emitToAdminUser(targetId, "admin-call:ice-candidate", {
@@ -183,7 +189,8 @@ function setup(io) {
       });
     });
 
-    socket.on("admin-call:reject", async ({ targetUserId, callId }) => {
+    socket.on("admin-call:reject", async (rawData) => {
+      const { targetUserId, callId } = sanitizeSocketPayload(rawData);
       const targetId = String(targetUserId || "").trim();
       if (!targetId || !callId) return;
       await emitToAdminUser(targetId, "admin-call:rejected", {
@@ -193,7 +200,8 @@ function setup(io) {
       });
     });
 
-    socket.on("admin-call:end", async ({ targetUserId, callId, reason }) => {
+    socket.on("admin-call:end", async (rawData) => {
+      const { targetUserId, callId, reason } = sanitizeSocketPayload(rawData);
       const targetId = String(targetUserId || "").trim();
       if (!targetId || !callId) return;
       await emitToAdminUser(targetId, "admin-call:ended", {
@@ -207,11 +215,11 @@ function setup(io) {
       if ((await getAdminSocketCount(socket.data.userId)) === 0) {
         broadcastAdminPresenceUpdate(socket.data.userId, false);
       }
-      console.log(`🛡️  Admin socket disconnected: ${socket.data.username}`);
+      logger.info('Admin socket disconnected', { username: socket.data.username });
     });
   });
 
-  console.log("🛡️  Admin socket namespace /admin ready");
+  logger.info('Admin socket namespace /admin ready');
   return adminNsp;
 }
 
