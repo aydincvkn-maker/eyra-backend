@@ -5,11 +5,10 @@ const path = require("path");
 const SRC = path.join(__dirname, "..", "src");
 
 const files = [
-  "cron/cleanup.js",
-  "cron/presenceSync.js",
-  "cron/salaryCron.js",
-  "socket/helpers.js",
-  "socket/presenceBroadcast.js",
+  "jobs/cleanup.js",
+  "jobs/presenceSync.js",
+  "jobs/salaryCron.js",
+  "models/User.js",
 ];
 
 let total = 0;
