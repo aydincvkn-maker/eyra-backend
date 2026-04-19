@@ -9,6 +9,7 @@ const { emitToUserSockets } = require('./helpers');
 const { emitAllVisiblePresenceToSocket } = require('./presenceBroadcast');
 const presenceService = require('../services/presenceService');
 const { logger } = require('../utils/logger');
+const { sanitizeSocketPayload } = require('../middleware/validate');
 
 const liveHandlers = require('./liveHandlers');
 const callHandlers = require('./callHandlers');
@@ -22,24 +23,24 @@ const disconnectHandler = require('./disconnectHandler');
 function setup(io) {
   // Debug hooks
   io.engine.on('connection_error', (err) => {
-    console.log('❌ Socket connection error:', err.req?.url, err.code, err.message, err.context);
+    logger.error('Socket connection error', { url: err.req?.url, code: err.code, err: err.message });
   });
 
   io.engine.on('initial_headers', (headers, req) => {
     if (process.env.DEBUG_SOCKET_HANDSHAKE === 'true') {
-      console.log('📡 New socket handshake request:', req.url);
+      logger.debug('New socket handshake request', { url: req.url });
     }
   });
 
   io.on('connection', (socket) => {
     const userId = socket.data?.userId || 'unknown';
     const gender = socket.data?.gender || 'other';
-    console.log(`✅ Socket connected: userId=${userId}, socketId=${socket.id}, gender=${gender}`);
+    logger.info('Socket connected', { userId, socketId: socket.id, gender });
 
     // Join gender-based room for efficient broadcasting
     const roomName = `viewer-${gender}`;
     socket.join(roomName);
-    console.log(`📡 Socket ${socket.id} joined room: ${roomName}`);
+    logger.debug(`Socket ${socket.id} joined room: ${roomName}`);
 
     // ---- Per-socket heartbeat timer ----
     let serverHeartbeatTimer = null;
@@ -121,7 +122,7 @@ function setup(io) {
                     reason: 'new_user_same_ip',
                   });
                 } catch (e) {
-                  console.warn(`⚠️ Old user offline failed: ${e.message}`);
+                  logger.warn(`Old user offline failed: ${e.message}`);
                 }
 
                 existingSocket.disconnect(true);
@@ -148,16 +149,7 @@ function setup(io) {
         const onlyThis = new Set([socket.id]);
         userSockets.set(uid, onlyThis);
 
-        console.log(`\n✅ SOCKET REGISTERED`);
-        console.log(`   userId: "${uid}" (type: ${typeof uid}, length: ${uid.length})`);
-        console.log(`   socketId: ${socket.id}`);
-        console.log(`   Old sockets to cleanup: ${oldSocketIds.length}`);
-        console.log(`   Total users in map: ${userSockets.size}`);
-        console.log(
-          `   Map keys: ${Array.from(userSockets.keys())
-            .map((k) => `"${k}"`)
-            .join(', ')}\n`,
-        );
+        logger.info('Socket registered', { userId: uid, socketId: socket.id, oldSockets: oldSocketIds.length, totalUsers: userSockets.size });
 
         await presenceService.setOnline(uid, {
           socketId: socket.id,
@@ -168,10 +160,10 @@ function setup(io) {
         registrationInProgress = false;
 
         if (oldSocketIds.length > 0) {
-          console.log(`ℹ️ Old sockets removed from map (will timeout): ${oldSocketIds.join(', ')}`);
+          logger.debug('Old sockets removed from map', { sockets: oldSocketIds });
         }
       } catch (err) {
-        console.error('❌ presence setOnline error:', err.message);
+        logger.error('presence setOnline error', { err: err.message });
         registrationInProgress = false;
         throw err;
       }
@@ -196,7 +188,7 @@ function setup(io) {
           pendingCalls.delete(uid);
         }
       } catch (e) {
-        console.error('❌ Pending call delivery error:', e);
+        logger.error('Pending call delivery error', { err: String(e) });
       }
     };
 
@@ -223,10 +215,11 @@ function setup(io) {
     socket.on('presence:ping', onHeartbeat);
 
     // Status changes (live / in_call / online)
-    socket.on('user:set_status', async (status) => {
+    socket.on('user:set_status', async (rawStatus) => {
       try {
         const uid = socket.data.userId;
         if (!uid) return;
+        const status = typeof rawStatus === 'string' ? rawStatus : String(rawStatus || '');
         await presenceService.setStatus(uid, status, {
           socketId: socket.id,
           gender: socket.data.gender,
