@@ -4,22 +4,7 @@ const { MONGO_URI } = require("./env");
 
 function normalizeMongoUri(uri) {
   if (!uri || typeof uri !== "string") return uri;
-
-  if (!uri.startsWith("mongodb+srv://")) {
-    return uri;
-  }
-
-  try {
-    const parsed = new URL(uri);
-    if (!parsed.username || parsed.searchParams.has("authSource")) {
-      return uri;
-    }
-
-    parsed.searchParams.set("authSource", "admin");
-    return parsed.toString();
-  } catch (_) {
-    return uri;
-  }
+  return uri;
 }
 
 async function connectDB() {
