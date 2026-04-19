@@ -16,8 +16,10 @@ function formatEntry(level, message, meta) {
       ts: new Date().toISOString(),
     });
   }
-  const prefix = { info: "ℹ️ ", error: "❌", warn: "⚠️ ", debug: "🐛" }[level] || "";
-  const metaStr = meta && Object.keys(meta).length ? " " + JSON.stringify(meta) : "";
+  const prefix =
+    { info: "ℹ️ ", error: "❌", warn: "⚠️ ", debug: "🐛" }[level] || "";
+  const metaStr =
+    meta && Object.keys(meta).length ? " " + JSON.stringify(meta) : "";
   return `${prefix} [${level.toUpperCase()}] ${message}${metaStr}`;
 }
 
