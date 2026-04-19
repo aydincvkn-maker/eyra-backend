@@ -21,22 +21,27 @@ function formatEntry(level, message, meta) {
   return `${prefix} [${level.toUpperCase()}] ${message}${metaStr}`;
 }
 
+/** Normalize meta arg — accepts object, Error, string, or primitive. */
+function normalizeMeta(meta) {
+  if (meta instanceof Error) return { err: meta.message, stack: meta.stack };
+  if (meta === null || meta === undefined) return {};
+  if (typeof meta !== "object") return { detail: meta };
+  return meta;
+}
+
 const logger = {
   info(message, meta = {}) {
-    console.log(formatEntry("info", message, meta));
+    console.log(formatEntry("info", message, normalizeMeta(meta)));
   },
   error(message, meta = {}) {
-    if (meta instanceof Error) {
-      meta = { err: meta.message, stack: meta.stack };
-    }
-    console.error(formatEntry("error", message, meta));
+    console.error(formatEntry("error", message, normalizeMeta(meta)));
   },
   warn(message, meta = {}) {
-    console.warn(formatEntry("warn", message, meta));
+    console.warn(formatEntry("warn", message, normalizeMeta(meta)));
   },
   debug(message, meta = {}) {
     if (!IS_PROD) {
-      console.log(formatEntry("debug", message, meta));
+      console.log(formatEntry("debug", message, normalizeMeta(meta)));
     }
   },
 };
