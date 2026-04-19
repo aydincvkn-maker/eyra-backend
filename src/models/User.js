@@ -2,7 +2,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
-const { logger } = require("../../utils/logger");
+const { logger } = require("../utils/logger");
 
 const BCRYPT_ROUNDS = 10;
 const PANEL_ROLES = ["admin", "super_admin", "moderator"];
