@@ -10,7 +10,7 @@ function normalizeMongoUri(uri) {
 async function connectDB() {
   try {
     await mongoose.connect(normalizeMongoUri(MONGO_URI), {
-      serverSelectionTimeoutMS: 15000,
+      serverSelectionTimeoutMS: 30000,
     });
     console.log("✅ MongoDB bağlantısı başarılı");
   } catch (err) {
