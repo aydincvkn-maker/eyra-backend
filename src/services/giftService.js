@@ -19,14 +19,17 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 dakika
 const RATE_LIMIT_MAX_GIFTS = 10; // 1 dakikada max 10 aynı hediye
 
 // Periyodik temizlik — expired rate limit kayıtlarını sil (her 2 dakika)
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, record] of giftRateLimits.entries()) {
-    if (now - record.lastReset > RATE_LIMIT_WINDOW_MS * 2) {
-      giftRateLimits.delete(key);
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [key, record] of giftRateLimits.entries()) {
+      if (now - record.lastReset > RATE_LIMIT_WINDOW_MS * 2) {
+        giftRateLimits.delete(key);
+      }
     }
-  }
-}, 2 * 60 * 1000).unref();
+  },
+  2 * 60 * 1000,
+).unref();
 
 /**
  * Hediye gönderimini rate limit ile kontrol et
@@ -174,14 +177,16 @@ exports.sendGift = async ({
 
   // 10. Post-gift hooks: Transaction kaydet, mission ilerlet, achievement kontrol
   //     Fire-and-forget — hediye gönderimini yavaşlatmaz
-  exports.postGiftHooks({
-    senderId,
-    recipientId: actualRecipientId,
-    giftId: gift._id,
-    giftValue: gift.valueCoins,
-    senderCoins: updatedSender.coins,
-    recipientCoins: updatedRecipient.coins,
-  }).catch((err) => logger.error("postGiftHooks fire-and-forget error:", err));
+  exports
+    .postGiftHooks({
+      senderId,
+      recipientId: actualRecipientId,
+      giftId: gift._id,
+      giftValue: gift.valueCoins,
+      senderCoins: updatedSender.coins,
+      recipientCoins: updatedRecipient.coins,
+    })
+    .catch((err) => logger.error("postGiftHooks fire-and-forget error:", err));
 
   return {
     success: true,

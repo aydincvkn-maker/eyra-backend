@@ -8,21 +8,21 @@ const giftSchema = new mongoose.Schema(
     imageUrl: { type: String, default: "" },
     animationUrl: { type: String },
     valueCoins: { type: Number, required: true, min: 1 },
-    
+
     // Yönetim
     isActive: { type: Boolean, default: true },
-    category: { 
-      type: String, 
+    category: {
+      type: String,
       enum: ["basic", "premium", "vip", "special"],
-      default: "basic" 
+      default: "basic",
     },
     order: { type: Number, default: 0 },
-    
+
     // İstatistikler
     totalSent: { type: Number, default: 0 },
     totalCoinsSpent: { type: Number, default: 0 },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Index for faster queries
