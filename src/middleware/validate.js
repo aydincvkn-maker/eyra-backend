@@ -269,27 +269,40 @@ const validatePagination = [
 // ========================================
 
 /**
- * Middleware to strip MongoDB operators from request body
+ * Recursively strip MongoDB operators ($gt, $ne, $where, etc.) from an object.
+ * Reusable by both HTTP middleware and socket event handlers.
+ */
+function sanitize(obj) {
+  if (typeof obj !== "object" || obj === null) return obj;
+  for (const key of Object.keys(obj)) {
+    if (key.startsWith("$")) {
+      delete obj[key];
+    } else if (typeof obj[key] === "object") {
+      obj[key] = sanitize(obj[key]);
+    }
+  }
+  return obj;
+}
+
+/**
+ * Middleware to strip MongoDB operators from request body.
  * Prevents NoSQL injection via $gt, $ne, $where, etc.
  */
 const sanitizeMongoQuery = (req, res, next) => {
-  const sanitize = (obj) => {
-    if (typeof obj !== "object" || obj === null) return obj;
-    for (const key of Object.keys(obj)) {
-      if (key.startsWith("$")) {
-        delete obj[key];
-      } else if (typeof obj[key] === "object") {
-        obj[key] = sanitize(obj[key]);
-      }
-    }
-    return obj;
-  };
-
   if (req.body) req.body = sanitize(req.body);
   if (req.query) req.query = sanitize(req.query);
   if (req.params) req.params = sanitize(req.params);
   next();
 };
+
+/**
+ * Sanitize a socket event payload (plain object or primitive).
+ * Use at the top of every socket event handler that touches the DB.
+ */
+function sanitizeSocketPayload(data) {
+  if (typeof data !== "object" || data === null) return data;
+  return sanitize({ ...data });
+}
 
 module.exports = {
   handleValidationErrors,
