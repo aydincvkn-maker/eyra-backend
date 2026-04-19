@@ -18,7 +18,7 @@ function register(socket, io, stopServerHeartbeat) {
   socket.on('disconnect', async (reason) => {
     const userId = socket.data?.userId || 'unknown';
     const gender = socket.data?.gender || 'other';
-    console.log(`🔌 Socket disconnected: userId=${userId}, socketId=${socket.id}, reason=${reason}`);
+    logger.info('Socket disconnected', { userId, socketId: socket.id, reason });
 
     // Leave gender room
     const roomName = `viewer-${gender}`;
@@ -60,10 +60,10 @@ function register(socket, io, stopServerHeartbeat) {
             timestamp: Date.now(),
           });
 
-          console.log(`📺 User ${userId} removed from live room ${liveRoomId} on disconnect (viewerCount: ${Math.max(0, updatedStream.viewerCount)})`);
+          logger.debug('User removed from live room on disconnect', { userId, roomId: liveRoomId, viewerCount: Math.max(0, updatedStream.viewerCount) });
         }
       } catch (e) {
-        console.error(`⚠️ Live room cleanup error for ${liveRoomId}:`, e.message);
+        logger.error(`Live room cleanup error for ${liveRoomId}`, { err: e.message });
       }
     }
 
@@ -79,7 +79,7 @@ function register(socket, io, stopServerHeartbeat) {
 
     // Ignore stale disconnect from old socket
     if (!set || !set.has(socket.id)) {
-      console.log(`🔒 Ignoring stale disconnect for ${userId} (socket ${socket.id} not in active set)`);
+      logger.debug('Ignoring stale disconnect', { userId, socketId: socket.id });
       return;
     }
 
@@ -94,16 +94,16 @@ function register(socket, io, stopServerHeartbeat) {
           socketId: socket.id,
           reason: reason || 'disconnect',
         });
-        console.log(`✅ User ${userId} marked offline immediately (reason: ${reason})`);
+        logger.info('User marked offline', { userId, reason });
 
         // Close any active live streams
         const now = new Date();
         await LiveStream.updateMany(
           { host: userId, isLive: true, status: 'live' },
           { $set: { isLive: false, status: 'ended', endedAt: now } },
-        ).catch((err) => console.error('⚠️ LiveStream cleanup failed:', err));
+        ).catch((err) => logger.error('LiveStream cleanup failed', { err: err.message }));
       } catch (err) {
-        console.error('❌ Disconnect cleanup error:', err);
+        logger.error('Disconnect cleanup error', { err: String(err) });
       }
     } else {
       userSockets.set(key, set);
