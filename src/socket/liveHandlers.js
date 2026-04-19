@@ -8,6 +8,8 @@ const Message = require("../models/Message");
 const User = require("../models/User");
 const { emitToUserSockets } = require("./helpers");
 const { userSockets } = require("./state");
+const { sanitizeSocketPayload } = require("../middleware/validate");
+const { logger } = require("../utils/logger");
 const {
   containsPaymentRedirect,
 } = require("../utils/paymentRedirectModeration");
@@ -53,35 +55,37 @@ function clearMute(roomId, userId) {
  */
 function register(socket, io) {
   // İzleyici yayın odasına katılıyor
-  socket.on("live:join_room", async ({ roomId }) => {
+  socket.on("live:join_room", async (rawData) => {
+    const { roomId } = sanitizeSocketPayload(rawData);
     const userId = socket.data.userId;
-    if (!roomId || !userId) {
-      console.log(`⚠️ live:join_room - missing roomId or userId`);
+    if (!roomId || typeof roomId !== 'string' || !userId) {
+      logger.debug('live:join_room - missing roomId or userId');
       return;
     }
 
     try {
       socket.join(roomId);
-      console.log(`📺 User ${userId} joined live room: ${roomId}`);
+      logger.debug(`User ${userId} joined live room: ${roomId}`);
       // NOT: viewer_joined event'i joinAsViewer HTTP endpoint'inde emit ediliyor.
       // Burada tekrar emit etmiyoruz, double event önlenir.
     } catch (e) {
-      console.error("❌ live:join_room error:", e.message);
+      logger.error('live:join_room error', { err: e.message });
       socket.emit("error", { message: "join_room_failed" });
     }
   });
 
   // İzleyici yayın odasından ayrılıyor
-  socket.on("live:leave_room", async ({ roomId }) => {
+  socket.on("live:leave_room", async (rawData) => {
+    const { roomId } = sanitizeSocketPayload(rawData);
     const userId = socket.data.userId;
-    if (!roomId || !userId) {
-      console.log(`⚠️ live:leave_room - missing roomId or userId`);
+    if (!roomId || typeof roomId !== 'string' || !userId) {
+      logger.debug('live:leave_room - missing roomId or userId');
       return;
     }
 
     try {
       socket.leave(roomId);
-      console.log(`📺 User ${userId} left live room: ${roomId}`);
+      logger.debug(`User ${userId} left live room: ${roomId}`);
 
       // NOT: viewerCount azaltma leaveAsViewer HTTP endpoint'inde yapılıyor.
       // Socket sadece room'dan leave olur, double count önlenir.
@@ -98,16 +102,17 @@ function register(socket, io) {
         });
       }
     } catch (e) {
-      console.error("❌ live:leave_room error:", e.message);
+      logger.error('live:leave_room error', { err: e.message });
       socket.emit("error", { message: "leave_room_failed" });
     }
   });
 
   // Yayın içi chat mesajı (real-time)
-  socket.on("live:chat_message", async ({ roomId, message, type = "text" }) => {
+  socket.on("live:chat_message", async (rawData) => {
+    const { roomId, message, type = "text" } = sanitizeSocketPayload(rawData);
     const userId = socket.data.userId;
-    if (!roomId || !userId || !message) {
-      console.log(`⚠️ live:chat_message - missing required fields`);
+    if (!roomId || typeof roomId !== 'string' || !userId || !message) {
+      logger.debug('live:chat_message - missing required fields');
       return;
     }
 
@@ -178,13 +183,14 @@ function register(socket, io) {
         timestamp: msg.createdAt,
       });
     } catch (e) {
-      console.error("❌ live:chat_message error:", e.message);
+      logger.error('live:chat_message error', { err: e.message });
       socket.emit("error", { message: "chat_send_failed" });
     }
   });
 
   // Pinned message
-  socket.on("live:pin_message", async ({ roomId, messageId, content }) => {
+  socket.on("live:pin_message", async (rawData) => {
+    const { roomId, messageId, content } = sanitizeSocketPayload(rawData);
     const userId = socket.data.userId;
     if (!roomId || !userId) return;
 
@@ -204,14 +210,15 @@ function register(socket, io) {
         pinnedAt: new Date(),
       });
 
-      console.log(`📌 Message pinned in room ${roomId}`);
+      logger.debug(`Message pinned in room ${roomId}`);
     } catch (e) {
-      console.error("❌ live:pin_message error:", e.message);
+      logger.error('live:pin_message error', { err: e.message });
     }
   });
 
   // Unpin message
-  socket.on("live:unpin_message", async ({ roomId }) => {
+  socket.on("live:unpin_message", async (rawData) => {
+    const { roomId } = sanitizeSocketPayload(rawData);
     const userId = socket.data.userId;
     if (!roomId || !userId) return;
 
@@ -220,18 +227,19 @@ function register(socket, io) {
       if (!stream || stream.host.toString() !== userId) return;
 
       io.to(roomId).emit("message_unpinned", { roomId });
-      console.log(`📌 Message unpinned in room ${roomId}`);
+      logger.debug(`Message unpinned in room ${roomId}`);
     } catch (e) {
-      console.error("❌ live:unpin_message error:", e.message);
+      logger.error('live:unpin_message error', { err: e.message });
     }
   });
 
   // Mute user
   socket.on(
     "live:mute_user",
-    async ({ roomId, targetUserId, duration = 300 }) => {
+    async (rawData) => {
+      const { roomId, targetUserId, duration = 300 } = sanitizeSocketPayload(rawData);
       const userId = socket.data.userId;
-      if (!roomId || !userId || !targetUserId) return;
+      if (!roomId || typeof roomId !== 'string' || !userId || !targetUserId || typeof targetUserId !== 'string') return;
 
       try {
         const stream = await LiveStream.findOne({
@@ -255,19 +263,18 @@ function register(socket, io) {
           duration,
         });
 
-        console.log(
-          `🔇 User ${targetUserId} muted for ${duration}s in room ${roomId}`,
-        );
+        logger.debug(`User ${targetUserId} muted for ${duration}s in room ${roomId}`);
       } catch (e) {
-        console.error("❌ live:mute_user error:", e.message);
+        logger.error('live:mute_user error', { err: e.message });
       }
     },
   );
 
   // Unmute user
-  socket.on("live:unmute_user", async ({ roomId, targetUserId }) => {
+  socket.on("live:unmute_user", async (rawData) => {
+    const { roomId, targetUserId } = sanitizeSocketPayload(rawData);
     const userId = socket.data.userId;
-    if (!roomId || !userId || !targetUserId) return;
+    if (!roomId || typeof roomId !== 'string' || !userId || !targetUserId || typeof targetUserId !== 'string') return;
 
     try {
       const stream = await LiveStream.findOne({ roomId, isLive: true }).lean();
@@ -280,15 +287,16 @@ function register(socket, io) {
         unmutedUserId: targetUserId,
       });
 
-      console.log(`🔊 User ${targetUserId} unmuted in room ${roomId}`);
+      logger.debug(`User ${targetUserId} unmuted in room ${roomId}`);
     } catch (e) {
-      console.error("❌ live:unmute_user error:", e.message);
+      logger.error('live:unmute_user error', { err: e.message });
     }
   });
 
-  socket.on("live:kick_user", async ({ roomId, targetUserId }) => {
+  socket.on("live:kick_user", async (rawData) => {
+    const { roomId, targetUserId } = sanitizeSocketPayload(rawData);
     const userId = socket.data.userId;
-    if (!roomId || !userId || !targetUserId) return;
+    if (!roomId || typeof roomId !== 'string' || !userId || !targetUserId || typeof targetUserId !== 'string') return;
 
     try {
       const stream = await LiveStream.findOne({ roomId, isLive: true }).lean();
@@ -346,11 +354,9 @@ function register(socket, io) {
       });
 
       const targetSocketsForLog = userSockets.get(targetId);
-      console.log(
-        `🚫 User ${targetId} kicked from room ${roomId}, event delivered: ${kickDelivered}, targetSockets: ${targetSocketsForLog ? targetSocketsForLog.size : "NONE"}`,
-      );
+      logger.info(`User ${targetId} kicked from room ${roomId}`, { delivered: kickDelivered, sockets: targetSocketsForLog ? targetSocketsForLog.size : 0 });
     } catch (e) {
-      console.error("❌ live:kick_user error:", e.message);
+      logger.error('live:kick_user error', { err: e.message });
     }
   });
 }
