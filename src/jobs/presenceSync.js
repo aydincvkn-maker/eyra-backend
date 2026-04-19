@@ -18,7 +18,7 @@ const DB_SYNC_DEBOUNCE_MS = 2000;
 const persistPresenceToDatabase = async (payload = {}) => {
   const userId = String(payload.userId || '').trim();
   if (!userId) {
-    console.warn(`⚠️ persistPresenceToDatabase: userId boş`);
+    logger.warn(`⚠️ persistPresenceToDatabase: userId boş`);
     return;
   }
 
@@ -56,7 +56,7 @@ const persistPresenceToDatabase = async (payload = {}) => {
   const timeoutId = setTimeout(async () => {
     try {
       if (!mongoose.Types.ObjectId.isValid(userId)) {
-        console.warn(`⚠️ Invalid userId format for DB sync: ${userId}`);
+        logger.warn(`⚠️ Invalid userId format for DB sync: ${userId}`);
         return;
       }
 
@@ -64,7 +64,7 @@ const persistPresenceToDatabase = async (payload = {}) => {
       const result = await User.updateOne({ _id: objectId }, { $set: update });
 
       if (result.modifiedCount > 0) {
-        console.log(`🔄 Presence DB sync: ${userId} -> ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
+        logger.info(`🔄 Presence DB sync: ${userId} -> ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
       }
     } catch (err) {
       logger.warn(`⚠️ Presence DB sync failed for ${userId}: ${err.message}`);
@@ -132,7 +132,7 @@ async function closeActiveLiveStreamsForHost(userId, reason = 'presence_offline'
     }
   }
 
-  console.log(`📺 Auto-ended stream ${streamRoomId} for host ${uid} (reason=${reason})`);
+  logger.info(`📺 Auto-ended stream ${streamRoomId} for host ${uid} (reason=${reason})`);
 }
 
 /**
@@ -146,7 +146,7 @@ function setup(io) {
     const presence = payload.presence || {};
     const status = presence.status || 'unknown';
 
-    console.log(`📡 Presence changed: ${userId} -> ${status}`);
+    logger.info(`📡 Presence changed: ${userId} -> ${status}`);
 
     // 1. Persist to database (async, non-blocking)
     persistPresenceToDatabase(payload).catch((err) => {

@@ -2,6 +2,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
+const { logger } = require("../../utils/logger");
 
 const BCRYPT_ROUNDS = 10;
 const PANEL_ROLES = ["admin", "super_admin", "moderator"];
@@ -340,7 +341,7 @@ userSchema.methods.addXP = async function (amount) {
       } = require("../controllers/achievementController");
       await checkLevelAchievements(this._id, this.level);
     } catch (e) {
-      console.warn("⚠️ Level achievement check failed:", e.message);
+      logger.warn("⚠️ Level achievement check failed:", e.message);
     }
   }
 };

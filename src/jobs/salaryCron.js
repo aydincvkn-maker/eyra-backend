@@ -7,6 +7,7 @@
  *
  * Kullanım:
  *   const salaryCron = require('./jobs/salaryCron');
+const { logger } = require("../../utils/logger");
  *   salaryCron.start();   // Cron'u başlat
  *   salaryCron.stop();    // Cron'u durdur (graceful shutdown için)
  *   salaryCron.runNow();  // Manuel tetikle (test/admin için)
@@ -25,25 +26,25 @@ let isRunning = false;
  */
 function start() {
   if (scheduledTask) {
-    console.log("[SALARY-CRON] Zaten çalışıyor, tekrar başlatılmadı");
+    logger.info("[SALARY-CRON] Zaten çalışıyor, tekrar başlatılmadı");
     return;
   }
 
   // Her Pazartesi 00:05 UTC
   scheduledTask = cron.schedule("5 0 * * 1", async () => {
     if (isRunning) {
-      console.log("[SALARY-CRON] Önceki işlem hâlâ devam ediyor, atlanıyor");
+      logger.info("[SALARY-CRON] Önceki işlem hâlâ devam ediyor, atlanıyor");
       return;
     }
 
     isRunning = true;
-    console.log(`[SALARY-CRON] Haftalık maaş işleme tetiklendi — ${new Date().toISOString()}`);
+    logger.info(`[SALARY-CRON] Haftalık maaş işleme tetiklendi — ${new Date().toISOString()}`);
 
     try {
       const results = await processAllWeeklySalaries();
-      console.log(`[SALARY-CRON] Tamamlandı — ${results.paid} ödeme, $${results.totalUSD} toplam`);
+      logger.info(`[SALARY-CRON] Tamamlandı — ${results.paid} ödeme, $${results.totalUSD} toplam`);
     } catch (err) {
-      console.error("[SALARY-CRON] HATA:", err);
+      logger.error("[SALARY-CRON] HATA:", err);
     } finally {
       isRunning = false;
     }
@@ -52,7 +53,7 @@ function start() {
     scheduled: true,
   });
 
-  console.log("[SALARY-CRON] Haftalık maaş cron başlatıldı (Her Pazartesi 00:05 UTC)");
+  logger.info("[SALARY-CRON] Haftalık maaş cron başlatıldı (Her Pazartesi 00:05 UTC)");
 }
 
 /**
@@ -62,7 +63,7 @@ function stop() {
   if (scheduledTask) {
     scheduledTask.stop();
     scheduledTask = null;
-    console.log("[SALARY-CRON] Durduruldu");
+    logger.info("[SALARY-CRON] Durduruldu");
   }
 }
 
@@ -76,13 +77,13 @@ async function runNow(referenceDate) {
   }
 
   isRunning = true;
-  console.log(`[SALARY-CRON] Manuel tetikleme — ${new Date().toISOString()}`);
+  logger.info(`[SALARY-CRON] Manuel tetikleme — ${new Date().toISOString()}`);
 
   try {
     const results = await processAllWeeklySalaries(referenceDate);
     return { success: true, results };
   } catch (err) {
-    console.error("[SALARY-CRON] Manuel tetikleme HATA:", err);
+    logger.error("[SALARY-CRON] Manuel tetikleme HATA:", err);
     return { error: true, message: err.message };
   } finally {
     isRunning = false;

@@ -36,7 +36,7 @@ function cleanupStaleCalls(io) {
     if (now - createdAt > STALE_CALL_TIMEOUT_MS) {
       activeCalls.delete(roomName);
       cleanedCalls++;
-      console.log(
+      logger.info(
         `🧹 Stale call cleaned: ${roomName} (created ${Math.round((now - createdAt) / 60000)} minutes ago)`,
       );
     }
@@ -87,7 +87,7 @@ function cleanupStaleCalls(io) {
   }
 
   if (cleanedCalls > 0 || cleanedPending > 0 || cleanedCacheEntries > 0 || cleanedRateLimitEntries > 0) {
-    console.log(
+    logger.info(
       `🧹 Stale cleanup: ${cleanedCalls} calls, ${cleanedPending} pending, ${cleanedCacheEntries} cache, ${cleanedRateLimitEntries} rate-limit entries removed`,
     );
   }
@@ -126,7 +126,7 @@ async function cleanupStaleLiveStreams(closeActiveLiveStreamsForHost) {
     }
 
     if (closed > 0) {
-      console.log(`🧹 Stale live cleanup: ${closed} streams auto-ended`);
+      logger.info(`🧹 Stale live cleanup: ${closed} streams auto-ended`);
     }
   } catch (e) {
     logger.warn(`⚠️ cleanupStaleLiveStreams failed: ${e.message}`);
@@ -142,7 +142,7 @@ async function cleanupExpiredVip() {
       { $set: { isVip: false, vipTier: 'none' } },
     );
     if (result.modifiedCount > 0) {
-      console.log(`🧹 VIP expiry cleanup: ${result.modifiedCount} VIP üyelik sona erdi`);
+      logger.info(`🧹 VIP expiry cleanup: ${result.modifiedCount} VIP üyelik sona erdi`);
     }
   } catch (e) {
     logger.warn(`⚠️ cleanupExpiredVip failed: ${e.message}`);
