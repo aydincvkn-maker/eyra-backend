@@ -499,7 +499,9 @@ exports.seedDefaultGifts = async () => {
   const existingCount = await Gift.countDocuments({ isActive: true });
   if (existingCount > 0) {
     const synced = await syncDefaultGifts();
-    logger.info(synced > 0 ? "Missing default gifts added" : "Gifts already seeded");
+    logger.info(
+      synced > 0 ? "Missing default gifts added" : "Gifts already seeded",
+    );
     return;
   }
 
