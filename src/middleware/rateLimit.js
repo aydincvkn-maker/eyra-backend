@@ -8,14 +8,17 @@
 const rateLimitStore = new Map();
 
 // Cleanup old entries every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, data] of rateLimitStore.entries()) {
-    if (now - data.windowStart > data.windowMs * 2) {
-      rateLimitStore.delete(key);
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [key, data] of rateLimitStore.entries()) {
+      if (now - data.windowStart > data.windowMs * 2) {
+        rateLimitStore.delete(key);
+      }
     }
-  }
-}, 5 * 60 * 1000);
+  },
+  5 * 60 * 1000,
+);
 
 /**
  * Create a rate limiter middleware
@@ -38,21 +41,25 @@ const createRateLimiter = (options = {}) => {
   } = options;
 
   return (req, res, next) => {
-    if (typeof skip === 'function' && skip(req)) {
+    if (typeof skip === "function" && skip(req)) {
       return next();
     }
 
     // Admin ve super_admin rate limit'ten muaf
     const userRole = req.user?.role;
-    if (userRole === 'admin' || userRole === 'super_admin') {
+    if (userRole === "admin" || userRole === "super_admin") {
       return next();
     }
 
     // Get identifier (userId if authenticated, IP otherwise)
     const userId = req.user?.id;
-    const ip = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
+    const ip =
+      req.ip ||
+      req.headers["x-forwarded-for"] ||
+      req.connection?.remoteAddress ||
+      "unknown";
     const identifier = userId || ip;
-    
+
     const key = `${keyPrefix}:${identifier}`;
     const now = Date.now();
 
@@ -63,47 +70,53 @@ const createRateLimiter = (options = {}) => {
       data = {
         count: 1,
         windowStart: now,
-        windowMs
+        windowMs,
       };
       rateLimitStore.set(key, data);
-      
+
       // Set rate limit headers
-      res.setHeader('X-RateLimit-Limit', max);
-      res.setHeader('X-RateLimit-Remaining', max - 1);
-      res.setHeader('X-RateLimit-Reset', Math.ceil((now + windowMs) / 1000));
-      
+      res.setHeader("X-RateLimit-Limit", max);
+      res.setHeader("X-RateLimit-Remaining", max - 1);
+      res.setHeader("X-RateLimit-Reset", Math.ceil((now + windowMs) / 1000));
+
       return next();
     }
 
     if (data.count >= max) {
       // Rate limit exceeded
       const retryAfter = Math.ceil((data.windowStart + windowMs - now) / 1000);
-      
-      res.setHeader('X-RateLimit-Limit', max);
-      res.setHeader('X-RateLimit-Remaining', 0);
-      res.setHeader('X-RateLimit-Reset', Math.ceil((data.windowStart + windowMs) / 1000));
-      res.setHeader('Retry-After', retryAfter);
-      
+
+      res.setHeader("X-RateLimit-Limit", max);
+      res.setHeader("X-RateLimit-Remaining", 0);
+      res.setHeader(
+        "X-RateLimit-Reset",
+        Math.ceil((data.windowStart + windowMs) / 1000),
+      );
+      res.setHeader("Retry-After", retryAfter);
+
       return res.status(429).json({
         ok: false,
-        error: 'rate_limited',
+        error: "rate_limited",
         message,
-        retryAfter
+        retryAfter,
       });
     }
 
     // Increment count
     data.count++;
     rateLimitStore.set(key, data);
-    
-    res.setHeader('X-RateLimit-Limit', max);
-    res.setHeader('X-RateLimit-Remaining', max - data.count);
-    res.setHeader('X-RateLimit-Reset', Math.ceil((data.windowStart + windowMs) / 1000));
+
+    res.setHeader("X-RateLimit-Limit", max);
+    res.setHeader("X-RateLimit-Remaining", max - data.count);
+    res.setHeader(
+      "X-RateLimit-Reset",
+      Math.ceil((data.windowStart + windowMs) / 1000),
+    );
 
     // Handle skipSuccessfulRequests
     if (skipSuccessfulRequests) {
       const originalSend = res.send;
-      res.send = function(body) {
+      res.send = function (body) {
         if (res.statusCode < 400) {
           // Decrement count for successful requests
           const currentData = rateLimitStore.get(key);
@@ -131,7 +144,7 @@ const generalLimiter = createRateLimiter({
   max: 100,
   message: "Çok fazla istek gönderdiniz. Lütfen bekleyin.",
   keyPrefix: "general",
-  skip: (req) => req.method === 'GET' && req.path.startsWith('/gifts'),
+  skip: (req) => req.method === "GET" && req.path.startsWith("/gifts"),
 });
 
 /**
@@ -142,7 +155,7 @@ const authLimiter = createRateLimiter({
   windowMs: 5 * 60 * 1000,
   max: 5,
   message: "Çok fazla giriş denemesi. Lütfen 5 dakika bekleyin.",
-  keyPrefix: "auth"
+  keyPrefix: "auth",
 });
 
 /**
@@ -153,7 +166,7 @@ const chatLimiter = createRateLimiter({
   windowMs: 60 * 1000,
   max: 30,
   message: "Çok hızlı mesaj gönderiyorsunuz. Lütfen yavaşlayın.",
-  keyPrefix: "chat"
+  keyPrefix: "chat",
 });
 
 /**
@@ -164,7 +177,7 @@ const giftLimiter = createRateLimiter({
   windowMs: 60 * 1000,
   max: 20,
   message: "Çok hızlı hediye gönderiyorsunuz. Lütfen bekleyin.",
-  keyPrefix: "gift"
+  keyPrefix: "gift",
 });
 
 /**
@@ -175,7 +188,7 @@ const liveStartLimiter = createRateLimiter({
   windowMs: 5 * 60 * 1000,
   max: 5,
   message: "Çok fazla yayın başlatma denemesi. Lütfen 5 dakika bekleyin.",
-  keyPrefix: "live_start"
+  keyPrefix: "live_start",
 });
 
 /**
@@ -186,7 +199,7 @@ const reportLimiter = createRateLimiter({
   windowMs: 60 * 60 * 1000,
   max: 10,
   message: "Çok fazla şikayet gönderdiniz. Lütfen 1 saat bekleyin.",
-  keyPrefix: "report"
+  keyPrefix: "report",
 });
 
 /**
@@ -197,7 +210,7 @@ const panelAdminLimiter = createRateLimiter({
   windowMs: 60 * 1000,
   max: 500,
   message: "Çok fazla istek. Lütfen bekleyin.",
-  keyPrefix: "panel_admin"
+  keyPrefix: "panel_admin",
 });
 
 /**
@@ -208,7 +221,7 @@ const paymentLimiter = createRateLimiter({
   windowMs: 5 * 60 * 1000,
   max: 10,
   message: "Çok fazla ödeme denemesi. Lütfen 5 dakika bekleyin.",
-  keyPrefix: "payment"
+  keyPrefix: "payment",
 });
 
 module.exports = {
