@@ -10,6 +10,7 @@ const Message = require("../models/Message");
 const { emitToUserSockets, getCounterpartyForRoom } = require("./helpers");
 const { logger } = require("../utils/logger");
 const { createNotification } = require("../controllers/notificationController");
+const { sanitizeSocketPayload } = require("../middleware/validate");
 const {
   containsPaymentRedirect,
 } = require("../utils/paymentRedirectModeration");
@@ -24,14 +25,13 @@ const {
  */
 function register(socket, io) {
   // Send private chat message
-  socket.on("chat:send_message", async (data) => {
+  socket.on("chat:send_message", async (rawData) => {
+    const data = sanitizeSocketPayload(rawData);
     const fromUserId = socket.data.userId;
-    console.log(
-      `📩 chat:send_message received - fromUserId: ${fromUserId}, to: ${data.to}, text: ${data.text?.substring(0, 20)}`,
-    );
+    logger.debug('chat:send_message received', { fromUserId, to: data.to });
 
-    if (!fromUserId || !data.to) {
-      console.log("⚠️ chat:send_message - missing userId or recipient");
+    if (!fromUserId || !data.to || typeof data.to !== 'string') {
+      logger.debug('chat:send_message - missing userId or recipient');
       socket.emit("chat:error", {
         tempId: data.tempId,
         error: "Missing userId or recipient",
@@ -40,7 +40,7 @@ function register(socket, io) {
     }
 
     try {
-      console.log(`📩 Calling chatService.sendMessage...`);
+      logger.debug('Calling chatService.sendMessage...');
       const message = await chatService.sendMessage(fromUserId, data.to, {
         text: data.text,
         clientTempId: data.tempId,
@@ -50,7 +50,7 @@ function register(socket, io) {
         durationSec: data.durationSec,
       });
 
-      console.log(`📩 Message saved with id: ${message._id}`);
+      logger.debug('Message saved', { messageId: message._id });
 
       const messageData = {
         messageId: message._id.toString(),
@@ -104,9 +104,9 @@ function register(socket, io) {
         tempId: data.tempId,
       });
 
-      console.log(`💬 Chat message sent: ${fromUserId} -> ${data.to}`);
+      logger.debug('Chat message sent', { from: fromUserId, to: data.to });
     } catch (error) {
-      console.error("❌ chat:send_message error:", error.message);
+      logger.error('chat:send_message error', { err: error.message });
 
       let errorMessage = "Failed to send message";
       if (error.message === "RATE_LIMIT_EXCEEDED")
@@ -123,9 +123,10 @@ function register(socket, io) {
   });
 
   // Typing indicator
-  socket.on("chat:typing", (data) => {
+  socket.on("chat:typing", (rawData) => {
+    const data = sanitizeSocketPayload(rawData);
     const fromUserId = socket.data.userId;
-    if (!fromUserId || !data.to) return;
+    if (!fromUserId || !data.to || typeof data.to !== 'string') return;
 
     emitToUserSockets(data.to, "chat:typing", {
       from: fromUserId,
@@ -135,9 +136,10 @@ function register(socket, io) {
   });
 
   // Mark messages as read
-  socket.on("chat:mark_read", (data) => {
+  socket.on("chat:mark_read", (rawData) => {
+    const data = sanitizeSocketPayload(rawData);
     const userId = socket.data.userId;
-    if (!userId || !data.from) return;
+    if (!userId || !data.from || typeof data.from !== 'string') return;
 
     emitToUserSockets(data.from, "chat:messages_read", {
       by: userId,
@@ -148,16 +150,15 @@ function register(socket, io) {
   // In-call messaging with auto-translation
   socket.on(
     "call:message",
-    async ({ roomName, content, targetLanguage, tempId }) => {
+    async (rawData) => {
+      const { roomName, content, targetLanguage, tempId } = sanitizeSocketPayload(rawData);
       const senderId = socket.data.userId;
-      if (!senderId || !roomName || !content) {
-        console.log(`⚠️ call:message - missing required fields`);
+      if (!senderId || !roomName || typeof roomName !== 'string' || !content) {
+        logger.debug('call:message - missing required fields');
         return;
       }
 
-      console.log(
-        `💬 call:message received sender=${senderId} room=${roomName} tempId=${tempId || "-"}`,
-      );
+      logger.debug('call:message received', { senderId, roomName });
 
       try {
         if (String(content).length > 500) {
@@ -199,9 +200,7 @@ function register(socket, io) {
 
         const receiverId = getCounterpartyForRoom(roomName, senderId);
         if (!receiverId) {
-          console.log(
-            `⚠️ call:message - counterparty not found for room=${roomName} sender=${senderId}`,
-          );
+          logger.debug('call:message - counterparty not found', { roomName, senderId });
           socket.emit("call:message_error", {
             error: "call_not_found",
             tempId,
@@ -236,7 +235,7 @@ function register(socket, io) {
             translations[originalLanguage] = String(content);
             translations[receiverLang] = translatedContent;
           } catch (translateErr) {
-            console.error("❌ Translation error:", translateErr.message);
+            logger.error('Translation error', { err: translateErr.message });
             translatedContent = String(content);
           }
         }
@@ -280,11 +279,9 @@ function register(socket, io) {
           displayContent: translatedContent,
         });
 
-        console.log(
-          `💬 Call message: ${senderId} -> ${receiverId} in ${roomName} (${originalLanguage} -> ${receiverLang})`,
-        );
+        logger.debug('Call message sent', { from: senderId, to: receiverId, roomName });
       } catch (e) {
-        console.error("❌ call:message error:", e.message);
+        logger.error('call:message error', { err: e.message });
         socket.emit("call:message_error", {
           error: "send_failed",
           details: e.message,
