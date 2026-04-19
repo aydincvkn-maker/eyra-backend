@@ -5,7 +5,7 @@ const giftSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     description: { type: String },
-    imageUrl: { type: String, required: true },
+    imageUrl: { type: String, default: "" },
     animationUrl: { type: String },
     valueCoins: { type: Number, required: true, min: 1 },
     
