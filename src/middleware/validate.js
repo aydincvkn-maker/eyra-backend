@@ -318,4 +318,5 @@ module.exports = {
   validateMongoId,
   validatePagination,
   sanitizeMongoQuery,
+  sanitizeSocketPayload,
 };
