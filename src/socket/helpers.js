@@ -3,7 +3,7 @@
  * Call init(io) once before use.
  */
 
-const { userSockets, activeCalls } = require('./state');
+const { userSockets, activeCalls } = require("./state");
 const { logger } = require("../utils/logger");
 
 let _io = null;
@@ -21,9 +21,9 @@ function init(io) {
  *  - female/other viewers see everyone
  */
 const canSeeTarget = (viewerGender, targetGender) => {
-  const viewer = String(viewerGender || '').toLowerCase();
-  const target = String(targetGender || '').toLowerCase();
-  if (viewer === 'male') return target === 'female';
+  const viewer = String(viewerGender || "").toLowerCase();
+  const target = String(targetGender || "").toLowerCase();
+  if (viewer === "male") return target === "female";
   return true;
 };
 
@@ -31,12 +31,14 @@ const canSeeTarget = (viewerGender, targetGender) => {
  * Emit an event to ALL sockets belonging to a specific user.
  */
 const emitToUserSockets = (userId, eventName, payload) => {
-  const key = String(userId || '').trim();
+  const key = String(userId || "").trim();
   if (!key) return false;
 
   const targetSockets = userSockets.get(key);
   if (!targetSockets || targetSockets.size === 0) {
-    logger.info(`⚠️ emitToUserSockets - no sockets for user ${key} (event ${eventName})`);
+    logger.info(
+      `⚠️ emitToUserSockets - no sockets for user ${key} (event ${eventName})`,
+    );
     return false;
   }
 
@@ -58,8 +60,8 @@ const emitToUserSockets = (userId, eventName, payload) => {
  */
 const parseCallRoomName = (roomName) => {
   if (!roomName) return null;
-  const parts = String(roomName).split('_');
-  if (parts.length < 4 || parts[0] !== 'call') return null;
+  const parts = String(roomName).split("_");
+  if (parts.length < 4 || parts[0] !== "call") return null;
   const callerId = parts[1];
   const targetUserId = parts[2];
   if (!callerId || !targetUserId) return null;
@@ -71,7 +73,7 @@ const parseCallRoomName = (roomName) => {
  * Checks activeCalls map, global.callRequests (paid calls), and room name parsing.
  */
 const getCounterpartyForRoom = (roomName, senderId) => {
-  const senderStr = String(senderId || '').trim();
+  const senderStr = String(senderId || "").trim();
   if (!senderStr) return null;
 
   // 1) activeCalls map (normal + paid calls)
@@ -96,8 +98,10 @@ const getCounterpartyForRoom = (roomName, senderId) => {
   // 3) Parse from room name format: call_CALLERID_TARGETID_TIMESTAMP
   const parsed = parseCallRoomName(roomName);
   if (parsed) {
-    if (senderStr === String(parsed.callerId)) return String(parsed.targetUserId);
-    if (senderStr === String(parsed.targetUserId)) return String(parsed.callerId);
+    if (senderStr === String(parsed.callerId))
+      return String(parsed.targetUserId);
+    if (senderStr === String(parsed.targetUserId))
+      return String(parsed.callerId);
   }
 
   return null;

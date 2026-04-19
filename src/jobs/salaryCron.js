@@ -31,29 +31,39 @@ function start() {
   }
 
   // Her Pazartesi 00:05 UTC
-  scheduledTask = cron.schedule("5 0 * * 1", async () => {
-    if (isRunning) {
-      logger.info("[SALARY-CRON] Önceki işlem hâlâ devam ediyor, atlanıyor");
-      return;
-    }
+  scheduledTask = cron.schedule(
+    "5 0 * * 1",
+    async () => {
+      if (isRunning) {
+        logger.info("[SALARY-CRON] Önceki işlem hâlâ devam ediyor, atlanıyor");
+        return;
+      }
 
-    isRunning = true;
-    logger.info(`[SALARY-CRON] Haftalık maaş işleme tetiklendi — ${new Date().toISOString()}`);
+      isRunning = true;
+      logger.info(
+        `[SALARY-CRON] Haftalık maaş işleme tetiklendi — ${new Date().toISOString()}`,
+      );
 
-    try {
-      const results = await processAllWeeklySalaries();
-      logger.info(`[SALARY-CRON] Tamamlandı — ${results.paid} ödeme, $${results.totalUSD} toplam`);
-    } catch (err) {
-      logger.error("[SALARY-CRON] HATA:", err);
-    } finally {
-      isRunning = false;
-    }
-  }, {
-    timezone: "UTC",
-    scheduled: true,
-  });
+      try {
+        const results = await processAllWeeklySalaries();
+        logger.info(
+          `[SALARY-CRON] Tamamlandı — ${results.paid} ödeme, $${results.totalUSD} toplam`,
+        );
+      } catch (err) {
+        logger.error("[SALARY-CRON] HATA:", err);
+      } finally {
+        isRunning = false;
+      }
+    },
+    {
+      timezone: "UTC",
+      scheduled: true,
+    },
+  );
 
-  logger.info("[SALARY-CRON] Haftalık maaş cron başlatıldı (Her Pazartesi 00:05 UTC)");
+  logger.info(
+    "[SALARY-CRON] Haftalık maaş cron başlatıldı (Her Pazartesi 00:05 UTC)",
+  );
 }
 
 /**
