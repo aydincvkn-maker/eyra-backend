@@ -4,6 +4,7 @@
  */
 
 const { userSockets, activeCalls } = require('./state');
+const { logger } = require("../../utils/logger");
 
 let _io = null;
 
@@ -35,7 +36,7 @@ const emitToUserSockets = (userId, eventName, payload) => {
 
   const targetSockets = userSockets.get(key);
   if (!targetSockets || targetSockets.size === 0) {
-    console.log(`⚠️ emitToUserSockets - no sockets for user ${key} (event ${eventName})`);
+    logger.info(`⚠️ emitToUserSockets - no sockets for user ${key} (event ${eventName})`);
     return false;
   }
 

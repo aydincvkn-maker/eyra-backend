@@ -58,7 +58,7 @@ const emitPresenceUpdateToVisibleSockets = (targetPresence) => {
 
     // DEBUG log (only in dev, sampled)
     if (process.env.NODE_ENV === "development" && Math.random() < 0.01) {
-      console.log(
+      logger.info(
         `📡 Presence broadcast: ${userId} -> ${status} (rooms: ${targetGender === "female" ? "all" : "female+other"})`,
       );
     }
