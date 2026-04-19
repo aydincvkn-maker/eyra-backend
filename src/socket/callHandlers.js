@@ -7,6 +7,8 @@ const { activeCalls } = require("./state");
 const { emitToUserSockets, getCounterpartyForRoom } = require("./helpers");
 const presenceService = require("../services/presenceService");
 const User = require("../models/User");
+const { sanitizeSocketPayload } = require("../middleware/validate");
+const { logger } = require("../utils/logger");
 
 /**
  * Register call signaling events on a connected socket.
@@ -17,25 +19,21 @@ function register(socket, io) {
   const forwardCallEvent = async (eventName, roomName) => {
     const senderId = socket.data.userId;
     if (!senderId) {
-      console.log(`⚠️ ${eventName} received but senderId missing`);
+      logger.debug(`${eventName} received but senderId missing`);
       return;
     }
-    if (!roomName) {
-      console.log(`⚠️ ${eventName} received but roomName missing`);
+    if (!roomName || typeof roomName !== 'string') {
+      logger.debug(`${eventName} received but roomName missing`);
       return;
     }
 
     const counterpartyId = getCounterpartyForRoom(roomName, senderId);
     if (!counterpartyId) {
-      console.log(
-        `⚠️ ${eventName} - no counterparty found for room ${roomName}`,
-      );
+      logger.debug(`${eventName} - no counterparty found`, { roomName });
       return;
     }
 
-    console.log(
-      `📞 Forwarding ${eventName} from ${senderId} to ${counterpartyId} for room ${roomName}`,
-    );
+    logger.debug(`Forwarding ${eventName}`, { from: senderId, to: counterpartyId, roomName });
     emitToUserSockets(counterpartyId, eventName, {
       roomName,
       fromUserId: String(senderId),
@@ -49,25 +47,21 @@ function register(socket, io) {
           await presenceService
             .setBusy(callInfo.callerId, false)
             .catch((e) =>
-              console.error(
-                `⚠️ setBusy cleanup for ${callInfo.callerId} failed: ${e}`,
-              ),
+              logger.error(`setBusy cleanup for ${callInfo.callerId} failed`, { err: String(e) }),
             );
           await presenceService
             .setBusy(callInfo.targetUserId, false)
             .catch((e) =>
-              console.error(
-                `⚠️ setBusy cleanup for ${callInfo.targetUserId} failed: ${e}`,
-              ),
+              logger.error(`setBusy cleanup for ${callInfo.targetUserId} failed`, { err: String(e) }),
             );
-          console.log(`✅ Both users set as not busy for room: ${roomName}`);
+          logger.debug(`Both users set as not busy for room: ${roomName}`);
         } catch (e) {
-          console.error(`⚠️ setBusy cleanup error: ${e}`);
+          logger.error('setBusy cleanup error', { err: String(e) });
         }
       }
 
       activeCalls.delete(roomName);
-      console.log(`🧹 Cleaned up call: ${roomName}`);
+      logger.debug(`Cleaned up call: ${roomName}`);
 
       // Yayın odasına host'un döndüğünü bildir (pembe overlay kapatılsın)
       if (eventName === "call:ended" && global.callRequests && global.io) {
@@ -78,7 +72,7 @@ function register(socket, io) {
               hostName: req.hostName || "Yayıncı",
               callerName: req.callerName || "Kullanıcı",
             });
-            console.log(`📺 host_returned_from_call emitted to room ${req.roomId}`);
+            logger.debug(`host_returned_from_call emitted to room ${req.roomId}`);
             global.callRequests.delete(reqId);
             break;
           }
@@ -87,25 +81,30 @@ function register(socket, io) {
     }
   };
 
-  socket.on("call:accept", ({ roomName }) =>
-    forwardCallEvent("call:accepted", roomName),
-  );
-  socket.on("call:reject", ({ roomName }) =>
-    forwardCallEvent("call:rejected", roomName),
-  );
-  socket.on("call:end", ({ roomName }) =>
-    forwardCallEvent("call:ended", roomName),
-  );
-  socket.on("call:cancel", ({ roomName }) =>
-    forwardCallEvent("call:cancelled", roomName),
-  );
+  socket.on("call:accept", (rawData) => {
+    const { roomName } = sanitizeSocketPayload(rawData);
+    forwardCallEvent("call:accepted", roomName);
+  });
+  socket.on("call:reject", (rawData) => {
+    const { roomName } = sanitizeSocketPayload(rawData);
+    forwardCallEvent("call:rejected", roomName);
+  });
+  socket.on("call:end", (rawData) => {
+    const { roomName } = sanitizeSocketPayload(rawData);
+    forwardCallEvent("call:ended", roomName);
+  });
+  socket.on("call:cancel", (rawData) => {
+    const { roomName } = sanitizeSocketPayload(rawData);
+    forwardCallEvent("call:cancelled", roomName);
+  });
 
   // Paid call coin tick (dakikalık ücretlendirme)
   // ✅ FIX: Server-side timer ile destekle — client tick gelirse kabul et,
   // gelmezse server kendi timer'ı ile ücretlendir
-  socket.on("call:coin_tick", async ({ roomName, requestId, minuteIndex }) => {
+  socket.on("call:coin_tick", async (rawData) => {
+    const { roomName, requestId, minuteIndex } = sanitizeSocketPayload(rawData);
     const senderId = socket.data.userId;
-    if (!senderId || !roomName) return;
+    if (!senderId || !roomName || typeof roomName !== 'string') return;
 
     try {
       let callInfo = null;
@@ -119,9 +118,7 @@ function register(socket, io) {
       }
 
       if (!callInfo) {
-        console.log(
-          `⚠️ call:coin_tick - call info not found for room ${roomName}`,
-        );
+        logger.debug('call:coin_tick - call info not found', { roomName });
         return;
       }
 
@@ -138,7 +135,7 @@ function register(socket, io) {
 
       _processCallTick(callInfo, minuteIndex);
     } catch (e) {
-      console.error("❌ call:coin_tick error:", e.message);
+      logger.error('call:coin_tick error', { err: e.message });
     }
   });
 }
@@ -203,9 +200,7 @@ async function _processCallTick(callInfo, minuteIndex) {
       emitToUserSockets(callInfo.hostId, "call:insufficient_coins", {
         roomName: callInfo.callRoomName,
       });
-      console.log(
-        `💰 Insufficient coins for call ${callInfo.callRoomName}, ending call`,
-      );
+      logger.info('Insufficient coins for call, ending', { roomName: callInfo.callRoomName });
       // Stop server timer
       if (callInfo._serverTickTimer) clearInterval(callInfo._serverTickTimer);
       return;
@@ -229,11 +224,9 @@ async function _processCallTick(callInfo, minuteIndex) {
       minute: minuteIndex + 1,
     });
 
-    console.log(
-      `💰 Call tick: ${callInfo.callerId} charged ${pricePerMinute} coins (minute ${minuteIndex + 1}), host earned ${hostShare}`,
-    );
+    logger.debug('Call tick processed', { caller: callInfo.callerId, amount: pricePerMinute, minute: minuteIndex + 1, hostShare });
   } catch (e) {
-    console.error("❌ _processCallTick error:", e.message);
+    logger.error('_processCallTick error', { err: e.message });
   }
 }
 
