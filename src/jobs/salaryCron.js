@@ -7,7 +7,7 @@
  *
  * Kullanım:
  *   const salaryCron = require('./jobs/salaryCron');
-const { logger } = require("../../utils/logger");
+const { logger } = require("../utils/logger");
  *   salaryCron.start();   // Cron'u başlat
  *   salaryCron.stop();    // Cron'u durdur (graceful shutdown için)
  *   salaryCron.runNow();  // Manuel tetikle (test/admin için)

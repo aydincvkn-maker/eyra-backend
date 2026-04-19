@@ -4,7 +4,7 @@
  */
 
 const { userSockets, activeCalls } = require('./state');
-const { logger } = require("../../utils/logger");
+const { logger } = require("../utils/logger");
 
 let _io = null;
 
