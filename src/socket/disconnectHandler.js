@@ -3,10 +3,10 @@
  * Cleans up live rooms, presence, user socket map, and heartbeat timer.
  */
 
-const { userSockets, socketGenderCache } = require('./state');
-const LiveStream = require('../models/LiveStream');
-const presenceService = require('../services/presenceService');
-const { logger } = require('../utils/logger');
+const { userSockets, socketGenderCache } = require("./state");
+const LiveStream = require("../models/LiveStream");
+const presenceService = require("../services/presenceService");
+const { logger } = require("../utils/logger");
 
 /**
  * Register the disconnect handler on a connected socket.
@@ -15,10 +15,10 @@ const { logger } = require('../utils/logger');
  * @param {Function} stopServerHeartbeat - Cleanup function for the per-socket heartbeat timer
  */
 function register(socket, io, stopServerHeartbeat) {
-  socket.on('disconnect', async (reason) => {
-    const userId = socket.data?.userId || 'unknown';
-    const gender = socket.data?.gender || 'other';
-    logger.info('Socket disconnected', { userId, socketId: socket.id, reason });
+  socket.on("disconnect", async (reason) => {
+    const userId = socket.data?.userId || "unknown";
+    const gender = socket.data?.gender || "other";
+    logger.info("Socket disconnected", { userId, socketId: socket.id, reason });
 
     // Leave gender room
     const roomName = `viewer-${gender}`;
@@ -29,7 +29,7 @@ function register(socket, io, stopServerHeartbeat) {
 
     // Live room cleanup: update viewerCount for any live rooms this socket was in
     const socketRooms = Array.from(socket.rooms || []);
-    const liveRooms = socketRooms.filter((r) => r.startsWith('room_'));
+    const liveRooms = socketRooms.filter((r) => r.startsWith("room_"));
 
     for (const liveRoomId of liveRooms) {
       try {
@@ -42,7 +42,7 @@ function register(socket, io, stopServerHeartbeat) {
             $pull: { viewers: userId },
           },
           { new: true },
-        ).select('viewerCount host');
+        ).select("viewerCount host");
 
         if (updatedStream) {
           if (updatedStream.viewerCount < 0) {
@@ -52,25 +52,31 @@ function register(socket, io, stopServerHeartbeat) {
             );
           }
 
-          io.to(liveRoomId).emit('viewer_left', {
+          io.to(liveRoomId).emit("viewer_left", {
             roomId: liveRoomId,
             userId,
             viewerCount: Math.max(0, updatedStream.viewerCount),
-            reason: 'disconnect',
+            reason: "disconnect",
             timestamp: Date.now(),
           });
 
-          logger.debug('User removed from live room on disconnect', { userId, roomId: liveRoomId, viewerCount: Math.max(0, updatedStream.viewerCount) });
+          logger.debug("User removed from live room on disconnect", {
+            userId,
+            roomId: liveRoomId,
+            viewerCount: Math.max(0, updatedStream.viewerCount),
+          });
         }
       } catch (e) {
-        logger.error(`Live room cleanup error for ${liveRoomId}`, { err: e.message });
+        logger.error(`Live room cleanup error for ${liveRoomId}`, {
+          err: e.message,
+        });
       }
     }
 
     // Stop per-socket heartbeat
     stopServerHeartbeat();
 
-    if (!userId || userId === 'unknown') {
+    if (!userId || userId === "unknown") {
       return;
     }
 
@@ -79,7 +85,10 @@ function register(socket, io, stopServerHeartbeat) {
 
     // Ignore stale disconnect from old socket
     if (!set || !set.has(socket.id)) {
-      logger.debug('Ignoring stale disconnect', { userId, socketId: socket.id });
+      logger.debug("Ignoring stale disconnect", {
+        userId,
+        socketId: socket.id,
+      });
       return;
     }
 
@@ -92,18 +101,20 @@ function register(socket, io, stopServerHeartbeat) {
       try {
         await presenceService.setOffline(userId, {
           socketId: socket.id,
-          reason: reason || 'disconnect',
+          reason: reason || "disconnect",
         });
-        logger.info('User marked offline', { userId, reason });
+        logger.info("User marked offline", { userId, reason });
 
         // Close any active live streams
         const now = new Date();
         await LiveStream.updateMany(
-          { host: userId, isLive: true, status: 'live' },
-          { $set: { isLive: false, status: 'ended', endedAt: now } },
-        ).catch((err) => logger.error('LiveStream cleanup failed', { err: err.message }));
+          { host: userId, isLive: true, status: "live" },
+          { $set: { isLive: false, status: "ended", endedAt: now } },
+        ).catch((err) =>
+          logger.error("LiveStream cleanup failed", { err: err.message }),
+        );
       } catch (err) {
-        logger.error('Disconnect cleanup error', { err: String(err) });
+        logger.error("Disconnect cleanup error", { err: String(err) });
       }
     } else {
       userSockets.set(key, set);

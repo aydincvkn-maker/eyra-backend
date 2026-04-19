@@ -59,7 +59,11 @@ async function emitAdminPresenceSnapshot(socket) {
   });
 }
 
-function broadcastAdminPresenceUpdate(userId, isOnline, excludedSocketId = null) {
+function broadcastAdminPresenceUpdate(
+  userId,
+  isOnline,
+  excludedSocketId = null,
+) {
   if (!adminNsp) return;
 
   const payload = {
@@ -87,7 +91,10 @@ function setup(io) {
     try {
       const token =
         socket.handshake?.auth?.token ||
-        (socket.handshake?.headers?.authorization || "").replace(/^bearer\s+/i, "") ||
+        (socket.handshake?.headers?.authorization || "").replace(
+          /^bearer\s+/i,
+          "",
+        ) ||
         socket.handshake?.query?.token;
 
       if (!token) return next(new Error("Missing token"));
@@ -96,9 +103,12 @@ function setup(io) {
       const userId = String(decoded?.id || "").trim();
       if (!userId) return next(new Error("Invalid token"));
 
-      const user = await User.findById(userId).select("_id role username isBanned").lean();
+      const user = await User.findById(userId)
+        .select("_id role username isBanned")
+        .lean();
       if (!user || user.isBanned) return next(new Error("Unauthorized"));
-      if (!["admin", "super_admin", "moderator"].includes(user.role)) return next(new Error("Forbidden"));
+      if (!["admin", "super_admin", "moderator"].includes(user.role))
+        return next(new Error("Forbidden"));
 
       socket.data.userId = String(user._id);
       socket.data.role = user.role;
@@ -111,7 +121,10 @@ function setup(io) {
 
   // ── Connection handler ──
   adminNsp.on("connection", async (socket) => {
-    logger.info('Admin socket connected', { username: socket.data.username, role: socket.data.role });
+    logger.info("Admin socket connected", {
+      username: socket.data.username,
+      role: socket.data.role,
+    });
 
     const adminRoom = getAdminUserRoom(socket.data.userId);
     if (adminRoom) {
@@ -148,7 +161,8 @@ function setup(io) {
     socket.on("admin-call:initiate", async (rawData) => {
       const { targetUserId, callId, offer } = sanitizeSocketPayload(rawData);
       const targetId = String(targetUserId || "").trim();
-      if (!targetId || targetId === socket.data.userId || !callId || !offer) return;
+      if (!targetId || targetId === socket.data.userId || !callId || !offer)
+        return;
 
       const delivered = await emitToAdminUser(targetId, "admin-call:incoming", {
         callId,
@@ -179,7 +193,8 @@ function setup(io) {
     });
 
     socket.on("admin-call:ice-candidate", async (rawData) => {
-      const { targetUserId, callId, candidate } = sanitizeSocketPayload(rawData);
+      const { targetUserId, callId, candidate } =
+        sanitizeSocketPayload(rawData);
       const targetId = String(targetUserId || "").trim();
       if (!targetId || !callId || !candidate) return;
       await emitToAdminUser(targetId, "admin-call:ice-candidate", {
@@ -215,11 +230,13 @@ function setup(io) {
       if ((await getAdminSocketCount(socket.data.userId)) === 0) {
         broadcastAdminPresenceUpdate(socket.data.userId, false);
       }
-      logger.info('Admin socket disconnected', { username: socket.data.username });
+      logger.info("Admin socket disconnected", {
+        username: socket.data.username,
+      });
     });
   });
 
-  logger.info('Admin socket namespace /admin ready');
+  logger.info("Admin socket namespace /admin ready");
   return adminNsp;
 }
 
