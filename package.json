@@ -14,6 +14,9 @@
     "stripe:setup-webhook": "node scripts/stripe-setup-webhook.js",
     "deploy:check": "node scripts/post-deploy-check.js"
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
