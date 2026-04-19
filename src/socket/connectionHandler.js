@@ -112,9 +112,7 @@ function setup(io) {
                 existingSocket.request?.connection?.remoteAddress ||
                 '';
               if (existingIP === clientIP && clientIP !== '') {
-                console.log(
-                  `🔄 Same IP different user: ${existingUserId} -> ${uid}. Disconnecting old socket (opt-in).`,
-                );
+                logger.info('Same IP different user, disconnecting old socket', { old: existingUserId, new: uid });
 
                 try {
                   await presenceService.setOffline(existingUserId, {
