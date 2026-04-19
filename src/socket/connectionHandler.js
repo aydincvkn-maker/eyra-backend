@@ -4,17 +4,17 @@
  * and delegates to feature-specific handler modules.
  */
 
-const { userSockets, pendingCalls } = require('./state');
-const { emitToUserSockets } = require('./helpers');
-const { emitAllVisiblePresenceToSocket } = require('./presenceBroadcast');
-const presenceService = require('../services/presenceService');
-const { logger } = require('../utils/logger');
-const { sanitizeSocketPayload } = require('../middleware/validate');
+const { userSockets, pendingCalls } = require("./state");
+const { emitToUserSockets } = require("./helpers");
+const { emitAllVisiblePresenceToSocket } = require("./presenceBroadcast");
+const presenceService = require("../services/presenceService");
+const { logger } = require("../utils/logger");
+const { sanitizeSocketPayload } = require("../middleware/validate");
 
-const liveHandlers = require('./liveHandlers');
-const callHandlers = require('./callHandlers');
-const chatHandlers = require('./chatHandlers');
-const disconnectHandler = require('./disconnectHandler');
+const liveHandlers = require("./liveHandlers");
+const callHandlers = require("./callHandlers");
+const chatHandlers = require("./chatHandlers");
+const disconnectHandler = require("./disconnectHandler");
 
 /**
  * Attach the main connection handler to the Socket.io server.
@@ -22,20 +22,24 @@ const disconnectHandler = require('./disconnectHandler');
  */
 function setup(io) {
   // Debug hooks
-  io.engine.on('connection_error', (err) => {
-    logger.error('Socket connection error', { url: err.req?.url, code: err.code, err: err.message });
+  io.engine.on("connection_error", (err) => {
+    logger.error("Socket connection error", {
+      url: err.req?.url,
+      code: err.code,
+      err: err.message,
+    });
   });
 
-  io.engine.on('initial_headers', (headers, req) => {
-    if (process.env.DEBUG_SOCKET_HANDSHAKE === 'true') {
-      logger.debug('New socket handshake request', { url: req.url });
+  io.engine.on("initial_headers", (headers, req) => {
+    if (process.env.DEBUG_SOCKET_HANDSHAKE === "true") {
+      logger.debug("New socket handshake request", { url: req.url });
     }
   });
 
-  io.on('connection', (socket) => {
-    const userId = socket.data?.userId || 'unknown';
-    const gender = socket.data?.gender || 'other';
-    logger.info('Socket connected', { userId, socketId: socket.id, gender });
+  io.on("connection", (socket) => {
+    const userId = socket.data?.userId || "unknown";
+    const gender = socket.data?.gender || "other";
+    logger.info("Socket connected", { userId, socketId: socket.id, gender });
 
     // Join gender-based room for efficient broadcasting
     const roomName = `viewer-${gender}`;
@@ -56,14 +60,19 @@ function setup(io) {
       stopServerHeartbeat();
 
       const enableServerHeartbeat =
-        String(process.env.PRESENCE_ENABLE_SERVER_HEARTBEAT || 'false').toLowerCase() === 'true';
+        String(
+          process.env.PRESENCE_ENABLE_SERVER_HEARTBEAT || "false",
+        ).toLowerCase() === "true";
       if (!enableServerHeartbeat) return;
 
-      const uid = String(socket.data.userId || '').trim();
+      const uid = String(socket.data.userId || "").trim();
       if (!uid) return;
 
-      const intervalMs = Number(process.env.PRESENCE_SERVER_HEARTBEAT_INTERVAL_MS || 10_000);
-      const safeIntervalMs = Number.isFinite(intervalMs) && intervalMs > 1_000 ? intervalMs : 10_000;
+      const intervalMs = Number(
+        process.env.PRESENCE_SERVER_HEARTBEAT_INTERVAL_MS || 10_000,
+      );
+      const safeIntervalMs =
+        Number.isFinite(intervalMs) && intervalMs > 1_000 ? intervalMs : 10_000;
 
       serverHeartbeatTimer = setInterval(() => {
         try {
@@ -73,7 +82,7 @@ function setup(io) {
         }
       }, safeIntervalMs);
 
-      if (typeof serverHeartbeatTimer.unref === 'function') {
+      if (typeof serverHeartbeatTimer.unref === "function") {
         serverHeartbeatTimer.unref();
       }
     };
@@ -83,11 +92,13 @@ function setup(io) {
     let registrationInProgress = false;
 
     const registerUser = async () => {
-      const uid = String(socket.data.userId || '').trim();
+      const uid = String(socket.data.userId || "").trim();
       if (!uid) return;
 
       if (isRegistered || registrationInProgress) {
-        logger.info(`🔄 User ${uid} already registered or registration in progress, skipping`);
+        logger.info(
+          `🔄 User ${uid} already registered or registration in progress, skipping`,
+        );
         return;
       }
 
@@ -96,10 +107,14 @@ function setup(io) {
       try {
         // Opt-in: kick different user on same IP
         const kickDifferentUserSameIP =
-          String(process.env.SOCKET_KICK_DIFFERENT_USER_SAME_IP || 'false').toLowerCase() === 'true';
+          String(
+            process.env.SOCKET_KICK_DIFFERENT_USER_SAME_IP || "false",
+          ).toLowerCase() === "true";
         if (kickDifferentUserSameIP) {
           const clientIP =
-            socket.handshake?.address || socket.request?.connection?.remoteAddress || '';
+            socket.handshake?.address ||
+            socket.request?.connection?.remoteAddress ||
+            "";
           for (const [existingUserId, socketSet] of userSockets.entries()) {
             if (existingUserId === uid) continue;
 
@@ -110,14 +125,17 @@ function setup(io) {
               const existingIP =
                 existingSocket.handshake?.address ||
                 existingSocket.request?.connection?.remoteAddress ||
-                '';
-              if (existingIP === clientIP && clientIP !== '') {
-                logger.info('Same IP different user, disconnecting old socket', { old: existingUserId, new: uid });
+                "";
+              if (existingIP === clientIP && clientIP !== "") {
+                logger.info(
+                  "Same IP different user, disconnecting old socket",
+                  { old: existingUserId, new: uid },
+                );
 
                 try {
                   await presenceService.setOffline(existingUserId, {
                     socketId: sid,
-                    reason: 'new_user_same_ip',
+                    reason: "new_user_same_ip",
                   });
                 } catch (e) {
                   logger.warn(`Old user offline failed: ${e.message}`);
@@ -147,7 +165,12 @@ function setup(io) {
         const onlyThis = new Set([socket.id]);
         userSockets.set(uid, onlyThis);
 
-        logger.info('Socket registered', { userId: uid, socketId: socket.id, oldSockets: oldSocketIds.length, totalUsers: userSockets.size });
+        logger.info("Socket registered", {
+          userId: uid,
+          socketId: socket.id,
+          oldSockets: oldSocketIds.length,
+          totalUsers: userSockets.size,
+        });
 
         await presenceService.setOnline(uid, {
           socketId: socket.id,
@@ -158,10 +181,12 @@ function setup(io) {
         registrationInProgress = false;
 
         if (oldSocketIds.length > 0) {
-          logger.debug('Old sockets removed from map', { sockets: oldSocketIds });
+          logger.debug("Old sockets removed from map", {
+            sockets: oldSocketIds,
+          });
         }
       } catch (err) {
-        logger.error('presence setOnline error', { err: err.message });
+        logger.error("presence setOnline error", { err: err.message });
         registrationInProgress = false;
         throw err;
       }
@@ -177,7 +202,7 @@ function setup(io) {
         const queued = pendingCalls.get(uid);
         if (queued && Array.isArray(queued) && queued.length > 0) {
           queued.forEach((c) => {
-            emitToUserSockets(uid, 'incoming_call', {
+            emitToUserSockets(uid, "incoming_call", {
               callerId: c.callerId,
               callerName: c.callerName,
               roomName: c.roomName,
@@ -186,7 +211,7 @@ function setup(io) {
           pendingCalls.delete(uid);
         }
       } catch (e) {
-        logger.error('Pending call delivery error', { err: String(e) });
+        logger.error("Pending call delivery error", { err: String(e) });
       }
     };
 
@@ -194,7 +219,7 @@ function setup(io) {
     registerUser();
 
     // Backward compatible: ignore userId argument, just ensure registration
-    socket.on('register', async () => {
+    socket.on("register", async () => {
       await registerUser();
     });
 
@@ -203,21 +228,25 @@ function setup(io) {
       try {
         const uid = socket.data.userId;
         if (!uid) return;
-        await presenceService.heartbeat(uid, { socketId: socket.id, gender: socket.data.gender });
+        await presenceService.heartbeat(uid, {
+          socketId: socket.id,
+          gender: socket.data.gender,
+        });
       } catch (e) {
         logger.error(`❌ Heartbeat error for socket ${socket.id}:`, e);
       }
     };
 
-    socket.on('user:heartbeat', onHeartbeat);
-    socket.on('presence:ping', onHeartbeat);
+    socket.on("user:heartbeat", onHeartbeat);
+    socket.on("presence:ping", onHeartbeat);
 
     // Status changes (live / in_call / online)
-    socket.on('user:set_status', async (rawStatus) => {
+    socket.on("user:set_status", async (rawStatus) => {
       try {
         const uid = socket.data.userId;
         if (!uid) return;
-        const status = typeof rawStatus === 'string' ? rawStatus : String(rawStatus || '');
+        const status =
+          typeof rawStatus === "string" ? rawStatus : String(rawStatus || "");
         await presenceService.setStatus(uid, status, {
           socketId: socket.id,
           gender: socket.data.gender,

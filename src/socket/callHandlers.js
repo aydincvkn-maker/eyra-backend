@@ -22,7 +22,7 @@ function register(socket, io) {
       logger.debug(`${eventName} received but senderId missing`);
       return;
     }
-    if (!roomName || typeof roomName !== 'string') {
+    if (!roomName || typeof roomName !== "string") {
       logger.debug(`${eventName} received but roomName missing`);
       return;
     }
@@ -33,7 +33,11 @@ function register(socket, io) {
       return;
     }
 
-    logger.debug(`Forwarding ${eventName}`, { from: senderId, to: counterpartyId, roomName });
+    logger.debug(`Forwarding ${eventName}`, {
+      from: senderId,
+      to: counterpartyId,
+      roomName,
+    });
     emitToUserSockets(counterpartyId, eventName, {
       roomName,
       fromUserId: String(senderId),
@@ -47,16 +51,21 @@ function register(socket, io) {
           await presenceService
             .setBusy(callInfo.callerId, false)
             .catch((e) =>
-              logger.error(`setBusy cleanup for ${callInfo.callerId} failed`, { err: String(e) }),
+              logger.error(`setBusy cleanup for ${callInfo.callerId} failed`, {
+                err: String(e),
+              }),
             );
           await presenceService
             .setBusy(callInfo.targetUserId, false)
             .catch((e) =>
-              logger.error(`setBusy cleanup for ${callInfo.targetUserId} failed`, { err: String(e) }),
+              logger.error(
+                `setBusy cleanup for ${callInfo.targetUserId} failed`,
+                { err: String(e) },
+              ),
             );
           logger.debug(`Both users set as not busy for room: ${roomName}`);
         } catch (e) {
-          logger.error('setBusy cleanup error', { err: String(e) });
+          logger.error("setBusy cleanup error", { err: String(e) });
         }
       }
 
@@ -72,7 +81,9 @@ function register(socket, io) {
               hostName: req.hostName || "Yayıncı",
               callerName: req.callerName || "Kullanıcı",
             });
-            logger.debug(`host_returned_from_call emitted to room ${req.roomId}`);
+            logger.debug(
+              `host_returned_from_call emitted to room ${req.roomId}`,
+            );
             global.callRequests.delete(reqId);
             break;
           }
@@ -104,7 +115,7 @@ function register(socket, io) {
   socket.on("call:coin_tick", async (rawData) => {
     const { roomName, requestId, minuteIndex } = sanitizeSocketPayload(rawData);
     const senderId = socket.data.userId;
-    if (!senderId || !roomName || typeof roomName !== 'string') return;
+    if (!senderId || !roomName || typeof roomName !== "string") return;
 
     try {
       let callInfo = null;
@@ -118,7 +129,7 @@ function register(socket, io) {
       }
 
       if (!callInfo) {
-        logger.debug('call:coin_tick - call info not found', { roomName });
+        logger.debug("call:coin_tick - call info not found", { roomName });
         return;
       }
 
@@ -135,7 +146,7 @@ function register(socket, io) {
 
       _processCallTick(callInfo, minuteIndex);
     } catch (e) {
-      logger.error('call:coin_tick error', { err: e.message });
+      logger.error("call:coin_tick error", { err: e.message });
     }
   });
 }
@@ -200,7 +211,9 @@ async function _processCallTick(callInfo, minuteIndex) {
       emitToUserSockets(callInfo.hostId, "call:insufficient_coins", {
         roomName: callInfo.callRoomName,
       });
-      logger.info('Insufficient coins for call, ending', { roomName: callInfo.callRoomName });
+      logger.info("Insufficient coins for call, ending", {
+        roomName: callInfo.callRoomName,
+      });
       // Stop server timer
       if (callInfo._serverTickTimer) clearInterval(callInfo._serverTickTimer);
       return;
@@ -224,9 +237,14 @@ async function _processCallTick(callInfo, minuteIndex) {
       minute: minuteIndex + 1,
     });
 
-    logger.debug('Call tick processed', { caller: callInfo.callerId, amount: pricePerMinute, minute: minuteIndex + 1, hostShare });
+    logger.debug("Call tick processed", {
+      caller: callInfo.callerId,
+      amount: pricePerMinute,
+      minute: minuteIndex + 1,
+      hostShare,
+    });
   } catch (e) {
-    logger.error('_processCallTick error', { err: e.message });
+    logger.error("_processCallTick error", { err: e.message });
   }
 }
 
