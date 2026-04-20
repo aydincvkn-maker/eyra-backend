@@ -20,33 +20,102 @@ const RATE_LIMIT_MAX_GIFTS = 10; // 1 dakikada max 10 aynı hediye
 
 const GIFT_MEDIA_BY_KEY = {
   rose: { imageUrl: "/gifts/hrt.jpg", animationUrl: "/videos/gifts/rose.mp4" },
-  fireworks: { imageUrl: "/gifts/red.jpg", animationUrl: "/videos/gifts/fire.mp4" },
-  heart: { imageUrl: "/gifts/hrt.jpg", animationUrl: "/videos/gifts/heart.mp4" },
+  fireworks: {
+    imageUrl: "/gifts/red.jpg",
+    animationUrl: "/videos/gifts/fire.mp4",
+  },
+  heart: {
+    imageUrl: "/gifts/hrt.jpg",
+    animationUrl: "/videos/gifts/heart.mp4",
+  },
   boxes: { imageUrl: "/gifts/box.webp", animationUrl: "/videos/gifts/box.mp4" },
-  teddy: { imageUrl: "/gifts/red.jpg", animationUrl: "/videos/gifts/teddy.mp4" },
-  perfume: { imageUrl: "/gifts/red.jpg", animationUrl: "/videos/gifts/perf.mp4" },
-  chest: { imageUrl: "/gifts/chest.jpg", animationUrl: "/videos/gifts/chest.mp4" },
+  teddy: {
+    imageUrl: "/gifts/red.jpg",
+    animationUrl: "/videos/gifts/teddy.mp4",
+  },
+  perfume: {
+    imageUrl: "/gifts/red.jpg",
+    animationUrl: "/videos/gifts/perf.mp4",
+  },
+  chest: {
+    imageUrl: "/gifts/chest.jpg",
+    animationUrl: "/videos/gifts/chest.mp4",
+  },
   ring: { imageUrl: "/gifts/chb.jpg", animationUrl: "/videos/gifts/ring.mp4" },
-  diamond: { imageUrl: "/gifts/elf.jpg", animationUrl: "/videos/gifts/diamond.mp4" },
-  castle: { imageUrl: "/gifts/box.webp", animationUrl: "/videos/gifts/castle.mp4" },
-  angel: { imageUrl: "/gifts/ang.jpg", animationUrl: "/videos/gifts/angel.mp4" },
+  diamond: {
+    imageUrl: "/gifts/elf.jpg",
+    animationUrl: "/videos/gifts/diamond.mp4",
+  },
+  castle: {
+    imageUrl: "/gifts/box.webp",
+    animationUrl: "/videos/gifts/castle.mp4",
+  },
+  angel: {
+    imageUrl: "/gifts/ang.jpg",
+    animationUrl: "/videos/gifts/angel.mp4",
+  },
 };
 
 const normalizeGiftKey = (gift) => {
   const image = (gift?.imageUrl || "").toLowerCase();
   const name = (gift?.name || "").toLowerCase();
 
-  if (image.includes("rose") || name.includes("gül") || name.includes("rose")) return "rose";
-  if (image.includes("fire") || name.includes("havai") || name.includes("fişek")) return "fireworks";
-  if (image.includes("heart") || name.includes("kalp") || name.includes("heart")) return "heart";
-  if (image.includes("gift_boxes") || image.includes("box") || name.includes("kutu") || name.includes("box")) return "boxes";
-  if (image.includes("teddy") || name.includes("ayı") || name.includes("teddy")) return "teddy";
-  if (image.includes("perfume") || name.includes("parfüm") || name.includes("perfume")) return "perfume";
-  if (image.includes("magic_chest") || image.includes("chest") || name.includes("sandık") || name.includes("chest")) return "chest";
-  if (image.includes("ring") || name.includes("yüzük") || name.includes("ring")) return "ring";
-  if (image.includes("diamond") || name.includes("elmas") || name.includes("diamond")) return "diamond";
-  if (image.includes("castle") || name.includes("kale") || name.includes("castle")) return "castle";
-  if (image.includes("angel") || name.includes("melek") || name.includes("angel")) return "angel";
+  if (image.includes("rose") || name.includes("gül") || name.includes("rose"))
+    return "rose";
+  if (
+    image.includes("fire") ||
+    name.includes("havai") ||
+    name.includes("fişek")
+  )
+    return "fireworks";
+  if (
+    image.includes("heart") ||
+    name.includes("kalp") ||
+    name.includes("heart")
+  )
+    return "heart";
+  if (
+    image.includes("gift_boxes") ||
+    image.includes("box") ||
+    name.includes("kutu") ||
+    name.includes("box")
+  )
+    return "boxes";
+  if (image.includes("teddy") || name.includes("ayı") || name.includes("teddy"))
+    return "teddy";
+  if (
+    image.includes("perfume") ||
+    name.includes("parfüm") ||
+    name.includes("perfume")
+  )
+    return "perfume";
+  if (
+    image.includes("magic_chest") ||
+    image.includes("chest") ||
+    name.includes("sandık") ||
+    name.includes("chest")
+  )
+    return "chest";
+  if (image.includes("ring") || name.includes("yüzük") || name.includes("ring"))
+    return "ring";
+  if (
+    image.includes("diamond") ||
+    name.includes("elmas") ||
+    name.includes("diamond")
+  )
+    return "diamond";
+  if (
+    image.includes("castle") ||
+    name.includes("kale") ||
+    name.includes("castle")
+  )
+    return "castle";
+  if (
+    image.includes("angel") ||
+    name.includes("melek") ||
+    name.includes("angel")
+  )
+    return "angel";
   return null;
 };
 
