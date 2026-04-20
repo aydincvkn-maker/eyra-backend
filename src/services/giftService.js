@@ -18,11 +18,55 @@ const giftRateLimits = new Map(); // `${userId}:${giftId}` -> { count, lastReset
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 dakika
 const RATE_LIMIT_MAX_GIFTS = 10; // 1 dakikada max 10 aynı hediye
 
+const GIFT_MEDIA_BY_KEY = {
+  rose: { imageUrl: "/gifts/hrt.jpg", animationUrl: "/videos/gifts/rose.mp4" },
+  fireworks: { imageUrl: "/gifts/red.jpg", animationUrl: "/videos/gifts/fire.mp4" },
+  heart: { imageUrl: "/gifts/hrt.jpg", animationUrl: "/videos/gifts/heart.mp4" },
+  boxes: { imageUrl: "/gifts/box.webp", animationUrl: "/videos/gifts/box.mp4" },
+  teddy: { imageUrl: "/gifts/red.jpg", animationUrl: "/videos/gifts/teddy.mp4" },
+  perfume: { imageUrl: "/gifts/red.jpg", animationUrl: "/videos/gifts/perf.mp4" },
+  chest: { imageUrl: "/gifts/chest.jpg", animationUrl: "/videos/gifts/chest.mp4" },
+  ring: { imageUrl: "/gifts/chb.jpg", animationUrl: "/videos/gifts/ring.mp4" },
+  diamond: { imageUrl: "/gifts/elf.jpg", animationUrl: "/videos/gifts/diamond.mp4" },
+  castle: { imageUrl: "/gifts/box.webp", animationUrl: "/videos/gifts/castle.mp4" },
+  angel: { imageUrl: "/gifts/ang.jpg", animationUrl: "/videos/gifts/angel.mp4" },
+};
+
+const normalizeGiftKey = (gift) => {
+  const image = (gift?.imageUrl || "").toLowerCase();
+  const name = (gift?.name || "").toLowerCase();
+
+  if (image.includes("rose") || name.includes("gül") || name.includes("rose")) return "rose";
+  if (image.includes("fire") || name.includes("havai") || name.includes("fişek")) return "fireworks";
+  if (image.includes("heart") || name.includes("kalp") || name.includes("heart")) return "heart";
+  if (image.includes("gift_boxes") || image.includes("box") || name.includes("kutu") || name.includes("box")) return "boxes";
+  if (image.includes("teddy") || name.includes("ayı") || name.includes("teddy")) return "teddy";
+  if (image.includes("perfume") || name.includes("parfüm") || name.includes("perfume")) return "perfume";
+  if (image.includes("magic_chest") || image.includes("chest") || name.includes("sandık") || name.includes("chest")) return "chest";
+  if (image.includes("ring") || name.includes("yüzük") || name.includes("ring")) return "ring";
+  if (image.includes("diamond") || name.includes("elmas") || name.includes("diamond")) return "diamond";
+  if (image.includes("castle") || name.includes("kale") || name.includes("castle")) return "castle";
+  if (image.includes("angel") || name.includes("melek") || name.includes("angel")) return "angel";
+  return null;
+};
+
+const resolveGiftMedia = (gift) => {
+  const key = normalizeGiftKey(gift);
+  if (!key) {
+    return {
+      imageUrl: gift?.imageUrl,
+      animationUrl: gift?.animationUrl,
+    };
+  }
+  return GIFT_MEDIA_BY_KEY[key];
+};
+
 const DEFAULT_GIFTS = [
   {
     name: "Gül",
     description: "Sevimli bir gül hediyesi",
-    imageUrl: "/gifts/rose.png",
+    imageUrl: "/gifts/hrt.jpg",
+    animationUrl: "/videos/gifts/rose.mp4",
     valueCoins: 10,
     category: "basic",
     order: 1,
@@ -30,7 +74,8 @@ const DEFAULT_GIFTS = [
   {
     name: "Havai Fişek",
     description: "Ateşli bir hediye",
-    imageUrl: "/gifts/fireworks.png",
+    imageUrl: "/gifts/red.jpg",
+    animationUrl: "/videos/gifts/fire.mp4",
     valueCoins: 50,
     category: "basic",
     order: 2,
@@ -38,7 +83,8 @@ const DEFAULT_GIFTS = [
   {
     name: "Kalp",
     description: "Tatlı kalp hediyesi",
-    imageUrl: "/gifts/heart.jpeg",
+    imageUrl: "/gifts/hrt.jpg",
+    animationUrl: "/videos/gifts/heart.mp4",
     valueCoins: 25,
     category: "basic",
     order: 3,
@@ -46,7 +92,8 @@ const DEFAULT_GIFTS = [
   {
     name: "Kutular",
     description: "Pembe hediye kutuları",
-    imageUrl: "/gifts/gift_boxes.webp",
+    imageUrl: "/gifts/box.webp",
+    animationUrl: "/videos/gifts/box.mp4",
     valueCoins: 75,
     category: "basic",
     order: 4,
@@ -54,7 +101,8 @@ const DEFAULT_GIFTS = [
   {
     name: "Ayıcık",
     description: "Sevimli peluş ayıcık",
-    imageUrl: "/gifts/teddy.png",
+    imageUrl: "/gifts/red.jpg",
+    animationUrl: "/videos/gifts/teddy.mp4",
     valueCoins: 200,
     category: "premium",
     order: 1,
@@ -62,7 +110,8 @@ const DEFAULT_GIFTS = [
   {
     name: "Parfüm",
     description: "Lüks bir parfüm",
-    imageUrl: "/gifts/perfume.png",
+    imageUrl: "/gifts/red.jpg",
+    animationUrl: "/videos/gifts/perf.mp4",
     valueCoins: 500,
     category: "premium",
     order: 2,
@@ -70,16 +119,17 @@ const DEFAULT_GIFTS = [
   {
     name: "Sandık",
     description: "Mavi sihirli sandık",
-    imageUrl: "/gifts/magic_chest.jpeg",
+    imageUrl: "/gifts/chest.jpg",
     valueCoins: 1200,
     category: "premium",
     order: 3,
-    animationUrl: "/videos/gift_animations/gift_box_open.webm",
+    animationUrl: "/videos/gifts/chest.mp4",
   },
   {
     name: "Yüzük",
     description: "Altın yüzük",
-    imageUrl: "/gifts/ring.png",
+    imageUrl: "/gifts/chb.jpg",
+    animationUrl: "/videos/gifts/ring.mp4",
     valueCoins: 2000,
     category: "vip",
     order: 1,
@@ -87,25 +137,26 @@ const DEFAULT_GIFTS = [
   {
     name: "Elmas",
     description: "Pırlanta elmas",
-    imageUrl: "/gifts/diamond.png",
+    imageUrl: "/gifts/elf.jpg",
     valueCoins: 5000,
     category: "vip",
     order: 2,
-    animationUrl: "/animations/diamond.json",
+    animationUrl: "/videos/gifts/diamond.mp4",
   },
   {
     name: "Kale",
     description: "Muhteşem bir kale",
-    imageUrl: "/gifts/castle.png",
+    imageUrl: "/gifts/box.webp",
     valueCoins: 50000,
     category: "special",
     order: 1,
-    animationUrl: "/animations/castle.json",
+    animationUrl: "/videos/gifts/castle.mp4",
   },
   {
     name: "Melek",
     description: "Parlayan melek hediyesi",
-    imageUrl: "/gifts/angel.jpeg",
+    imageUrl: "/gifts/ang.jpg",
+    animationUrl: "/videos/gifts/angel.mp4",
     valueCoins: 15000,
     category: "special",
     order: 2,
@@ -190,7 +241,14 @@ exports.getAllGifts = async (category = null) => {
     }
   }
 
-  return gifts;
+  return gifts.map((gift) => {
+    const media = resolveGiftMedia(gift);
+    return {
+      ...gift.toObject(),
+      imageUrl: media.imageUrl || gift.imageUrl,
+      animationUrl: media.animationUrl || gift.animationUrl,
+    };
+  });
 };
 
 /**
@@ -269,6 +327,10 @@ exports.sendGift = async ({
     $inc: { totalSent: 1, totalCoinsSpent: gift.valueCoins },
   });
 
+  const media = resolveGiftMedia(gift);
+  const resolvedImageUrl = media.imageUrl || gift.imageUrl;
+  const resolvedAnimationUrl = media.animationUrl || gift.animationUrl;
+
   // 5. Mesaj olarak kaydet (chat'te görünsün)
   const message = await Message.create({
     roomId: live.roomId,
@@ -278,8 +340,8 @@ exports.sendGift = async ({
     content: JSON.stringify({
       giftId: gift._id,
       giftName: gift.name,
-      giftImage: gift.imageUrl,
-      giftAnimation: gift.animationUrl,
+      giftImage: resolvedImageUrl,
+      giftAnimation: resolvedAnimationUrl,
       valueCoins: gift.valueCoins,
       senderName: updatedSender.name || updatedSender.username,
       senderImage: updatedSender.profileImage,
@@ -292,8 +354,8 @@ exports.sendGift = async ({
       messageId: message._id,
       giftId: gift._id,
       giftName: gift.name,
-      giftImage: gift.imageUrl,
-      giftAnimation: gift.animationUrl,
+      giftImage: resolvedImageUrl,
+      giftAnimation: resolvedAnimationUrl,
       valueCoins: gift.valueCoins,
       senderId: senderId,
       senderName: updatedSender.name || updatedSender.username,
@@ -323,8 +385,8 @@ exports.sendGift = async ({
     gift: {
       id: gift._id,
       name: gift.name,
-      imageUrl: gift.imageUrl,
-      animationUrl: gift.animationUrl,
+      imageUrl: resolvedImageUrl,
+      animationUrl: resolvedAnimationUrl,
       valueCoins: gift.valueCoins,
     },
     senderCoins: updatedSender.coins,
