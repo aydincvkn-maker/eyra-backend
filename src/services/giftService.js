@@ -296,7 +296,7 @@ exports.getAllGifts = async (category = null) => {
     description: "En değerli peri hediyesi",
     imageUrl: "/gifts/peri.jpg",
     valueCoins: 999999,
-    category: "special",
+    category: "basic",
     order: 1,
     isActive: true,
   };
