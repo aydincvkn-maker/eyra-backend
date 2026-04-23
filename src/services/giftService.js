@@ -291,8 +291,28 @@ const checkRateLimit = (userId, giftId) => {
  * Tüm aktif hediyeleri getir
  */
 exports.getAllGifts = async (category = null) => {
-  // Gift reset mode: intentionally return an empty catalog until gifts are re-added.
-  return [];
+  const periGiftPayload = {
+    name: "Peri",
+    description: "En değerli peri hediyesi",
+    imageUrl: "/gifts/peri.jpg",
+    valueCoins: 999999,
+    category: "special",
+    order: 1,
+    isActive: true,
+  };
+
+  await Gift.findOneAndUpdate(
+    { name: periGiftPayload.name },
+    { $set: periGiftPayload },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  );
+
+  const query = { isActive: true, name: periGiftPayload.name };
+  if (category) {
+    query.category = category;
+  }
+
+  return Gift.find(query).sort({ valueCoins: -1, order: 1 }).lean();
 };
 
 /**
