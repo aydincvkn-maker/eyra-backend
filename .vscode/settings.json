@@ -1,6 +1,9 @@
 {
   "terminal.integrated.enablePersistentSessions": false,
   "terminal.integrated.persistentSessionReviveProcess": false,
+  "chat.experimental.incrementalRendering.enabled": true,
+  "chat.experimental.incrementalRendering.buffering": "paragraph",
+  "terminal.integrated.tabs.allowAgentCliTitle": true,
   "chat.editing.autoAcceptDelay": 1,
   "chat.editing.confirmEditRequestRemoval": false,
   "chat.editing.confirmEditRequestRetry": false,
