@@ -291,33 +291,8 @@ const checkRateLimit = (userId, giftId) => {
  * Tüm aktif hediyeleri getir
  */
 exports.getAllGifts = async (category = null) => {
-  const query = { isActive: true };
-  if (category) query.category = category;
-
-  let gifts = await Gift.find(query).sort({ order: 1, valueCoins: 1 });
-
-  if (gifts.length === 0) {
-    const activeGiftCount = await Gift.countDocuments({ isActive: true });
-    if (activeGiftCount === 0) {
-      await Gift.insertMany(DEFAULT_GIFTS);
-      logger.info("Default gifts auto-seeded on first catalog request");
-      gifts = await Gift.find(query).sort({ order: 1, valueCoins: 1 });
-    }
-  } else {
-    const insertedCount = await syncDefaultGifts();
-    if (insertedCount > 0) {
-      gifts = await Gift.find(query).sort({ order: 1, valueCoins: 1 });
-    }
-  }
-
-  return gifts.map((gift) => {
-    const media = resolveGiftMedia(gift);
-    return {
-      ...gift.toObject(),
-      imageUrl: media.imageUrl || gift.imageUrl,
-      animationUrl: media.animationUrl || gift.animationUrl,
-    };
-  });
+  // Gift reset mode: intentionally return an empty catalog until gifts are re-added.
+  return [];
 };
 
 /**
