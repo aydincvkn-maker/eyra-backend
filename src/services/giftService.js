@@ -253,8 +253,8 @@ const DEFAULT_GIFTS = [
     description: "Özel hediye",
     imageUrl: "/gifts/new_gift1.jpg",
     valueCoins: 100,
-    category: "basic",
-    order: 5,
+    category: "premium",
+    order: 4,
   },
   {
     name: "Özel Hediye 2",
@@ -262,7 +262,7 @@ const DEFAULT_GIFTS = [
     imageUrl: "/gifts/new_gift2.jpg",
     valueCoins: 300,
     category: "premium",
-    order: 4,
+    order: 5,
   },
   {
     name: "Özel Hediye 3",
@@ -270,27 +270,73 @@ const DEFAULT_GIFTS = [
     imageUrl: "/gifts/new_gift3.jpg",
     valueCoins: 800,
     category: "premium",
-    order: 5,
+    order: 6,
   },
 ];
 
 const syncDefaultGifts = async () => {
-  const existingGifts = await Gift.find({}, "name imageUrl").lean();
-  const existingKeys = new Set(
-    existingGifts.flatMap((gift) => [gift.name, gift.imageUrl].filter(Boolean)),
+  const existingGifts = await Gift.find(
+    {},
+    "name description imageUrl animationUrl valueCoins category order isActive",
+  ).lean();
+  const existingByName = new Map(
+    existingGifts.filter((gift) => gift.name).map((gift) => [gift.name, gift]),
+  );
+  const existingByImage = new Map(
+    existingGifts
+      .filter((gift) => gift.imageUrl)
+      .map((gift) => [gift.imageUrl, gift]),
   );
 
-  const missingGifts = DEFAULT_GIFTS.filter(
-    (gift) => !existingKeys.has(gift.name) && !existingKeys.has(gift.imageUrl),
-  );
+  let insertedCount = 0;
+  let updatedCount = 0;
 
-  if (missingGifts.length === 0) {
-    return 0;
+  for (const defaultGift of DEFAULT_GIFTS) {
+    const existingGift =
+      existingByImage.get(defaultGift.imageUrl) ||
+      existingByName.get(defaultGift.name);
+
+    if (!existingGift) {
+      await Gift.create(defaultGift);
+      insertedCount += 1;
+      continue;
+    }
+
+    const needsUpdate =
+      existingGift.name !== defaultGift.name ||
+      existingGift.description !== defaultGift.description ||
+      existingGift.imageUrl !== defaultGift.imageUrl ||
+      (existingGift.animationUrl || null) !==
+        (defaultGift.animationUrl || null) ||
+      existingGift.valueCoins !== defaultGift.valueCoins ||
+      existingGift.category !== defaultGift.category ||
+      existingGift.order !== defaultGift.order ||
+      existingGift.isActive !== true;
+
+    if (!needsUpdate) {
+      continue;
+    }
+
+    await Gift.updateOne(
+      { _id: existingGift._id },
+      {
+        $set: {
+          name: defaultGift.name,
+          description: defaultGift.description,
+          imageUrl: defaultGift.imageUrl,
+          animationUrl: defaultGift.animationUrl || null,
+          valueCoins: defaultGift.valueCoins,
+          category: defaultGift.category,
+          order: defaultGift.order,
+          isActive: true,
+        },
+      },
+    );
+    updatedCount += 1;
   }
 
-  await Gift.insertMany(missingGifts);
-  logger.info("Default gifts synced:", missingGifts.length);
-  return missingGifts.length;
+  logger.info("Default gifts synced", { insertedCount, updatedCount });
+  return insertedCount;
 };
 
 // Periyodik temizlik — expired rate limit kayıtlarını sil (her 2 dakika)
@@ -349,7 +395,9 @@ exports.getAllGifts = async (category = null) => {
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
 
-  const query = { isActive: true, name: periGiftPayload.name };
+  await syncDefaultGifts();
+
+  const query = { isActive: true };
   if (category) {
     query.category = category;
   }
