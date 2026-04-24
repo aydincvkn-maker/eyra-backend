@@ -1,11 +1,98 @@
 // src/middleware/rateLimit.js
 
+const crypto = require("crypto");
+const { logger } = require("../utils/logger");
+
 /**
  * Simple in-memory rate limiter for API endpoints
  * For production, consider using Redis-based rate limiting
  */
 
 const rateLimitStore = new Map();
+
+const normalizeText = (value) =>
+  typeof value === "string" ? value.trim().toLowerCase() : "";
+
+const hashValue = (value) =>
+  crypto.createHash("sha256").update(String(value)).digest("hex").slice(0, 12);
+
+const getClientIp = (req) => {
+  const forwardedFor = req.headers["x-forwarded-for"];
+  if (typeof forwardedFor === "string" && forwardedFor.trim()) {
+    return forwardedFor.split(",")[0].trim();
+  }
+
+  return req.ip || req.connection?.remoteAddress || "unknown";
+};
+
+const sanitizePathPart = (value) =>
+  String(value || "unknown")
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/[^a-zA-Z0-9_-]+/g, "_") || "root";
+
+const getAuthRequestSubject = (req) => {
+  if (!req.body || typeof req.body !== "object") {
+    return "";
+  }
+
+  return normalizeText(
+    req.body.email ||
+      req.body.phone ||
+      req.body.phoneNumber ||
+      req.body.username ||
+      req.body.uid ||
+      req.body.firebaseUid,
+  );
+};
+
+const attachSuccessfulResponseHandler = ({ key, res, skipSuccessfulRequests }) => {
+  if (!skipSuccessfulRequests) {
+    return;
+  }
+
+  const originalSend = res.send;
+  res.send = function (body) {
+    if (res.statusCode < 400) {
+      const currentData = rateLimitStore.get(key);
+      if (currentData && currentData.count > 0) {
+        currentData.count--;
+        rateLimitStore.set(key, currentData);
+      }
+    }
+    return originalSend.call(this, body);
+  };
+};
+
+const resolveRateLimitKey = ({ keyGenerator, req, context }) => {
+  if (typeof keyGenerator !== "function") {
+    return {
+      key: `${context.keyPrefix}:${context.userId || context.ip}`,
+      scope: context.userId ? "user" : "ip",
+    };
+  }
+
+  const generated = keyGenerator(req, context);
+  if (typeof generated === "string" && generated) {
+    return { key: generated, scope: null };
+  }
+
+  if (
+    generated &&
+    typeof generated === "object" &&
+    typeof generated.key === "string" &&
+    generated.key
+  ) {
+    return {
+      key: generated.key,
+      scope: generated.scope || null,
+    };
+  }
+
+  return {
+    key: `${context.keyPrefix}:${context.userId || context.ip}`,
+    scope: context.userId ? "user" : "ip",
+  };
+};
 
 // Cleanup old entries every 5 minutes
 setInterval(
@@ -28,6 +115,7 @@ setInterval(
  * @param {string} options.message - Error message
  * @param {string} options.keyPrefix - Key prefix for different limiters
  * @param {boolean} options.skipSuccessfulRequests - Don't count successful requests
+ * @param {(req: import('express').Request, context: object) => string | { key: string, scope?: string }} options.keyGenerator - Custom key generator
  * @param {(req: import('express').Request) => boolean} options.skip - Skip limiter for matching requests
  */
 const createRateLimiter = (options = {}) => {
@@ -37,6 +125,7 @@ const createRateLimiter = (options = {}) => {
     message = "Çok fazla istek gönderdiniz. Lütfen bekleyin.",
     keyPrefix = "rl",
     skipSuccessfulRequests = false,
+    keyGenerator = null,
     skip = null,
   } = options;
 
@@ -53,14 +142,20 @@ const createRateLimiter = (options = {}) => {
 
     // Get identifier (userId if authenticated, IP otherwise)
     const userId = req.user?.id;
-    const ip =
-      req.ip ||
-      req.headers["x-forwarded-for"] ||
-      req.connection?.remoteAddress ||
-      "unknown";
-    const identifier = userId || ip;
-
-    const key = `${keyPrefix}:${identifier}`;
+    const ip = getClientIp(req);
+    const context = {
+      keyPrefix,
+      userId,
+      ip,
+      path: req.path,
+      originalUrl: req.originalUrl || req.path,
+      method: req.method,
+    };
+    const { key, scope } = resolveRateLimitKey({
+      keyGenerator,
+      req,
+      context,
+    });
     const now = Date.now();
 
     let data = rateLimitStore.get(key);
@@ -79,6 +174,12 @@ const createRateLimiter = (options = {}) => {
       res.setHeader("X-RateLimit-Remaining", max - 1);
       res.setHeader("X-RateLimit-Reset", Math.ceil((now + windowMs) / 1000));
 
+      attachSuccessfulResponseHandler({
+        key,
+        res,
+        skipSuccessfulRequests,
+      });
+
       return next();
     }
 
@@ -93,6 +194,20 @@ const createRateLimiter = (options = {}) => {
         Math.ceil((data.windowStart + windowMs) / 1000),
       );
       res.setHeader("Retry-After", retryAfter);
+
+      logger.warn("Rate limit exceeded", {
+        keyPrefix,
+        keyHash: hashValue(key),
+        scope,
+        method: req.method,
+        path: req.originalUrl || req.path,
+        userId: userId || null,
+        ip,
+        limit: max,
+        windowMs,
+        currentCount: data.count,
+        retryAfter,
+      });
 
       return res.status(429).json({
         ok: false,
@@ -113,21 +228,11 @@ const createRateLimiter = (options = {}) => {
       Math.ceil((data.windowStart + windowMs) / 1000),
     );
 
-    // Handle skipSuccessfulRequests
-    if (skipSuccessfulRequests) {
-      const originalSend = res.send;
-      res.send = function (body) {
-        if (res.statusCode < 400) {
-          // Decrement count for successful requests
-          const currentData = rateLimitStore.get(key);
-          if (currentData && currentData.count > 0) {
-            currentData.count--;
-            rateLimitStore.set(key, currentData);
-          }
-        }
-        return originalSend.call(this, body);
-      };
-    }
+    attachSuccessfulResponseHandler({
+      key,
+      res,
+      skipSuccessfulRequests,
+    });
 
     next();
   };
@@ -156,6 +261,31 @@ const authLimiter = createRateLimiter({
   max: 5,
   message: "Çok fazla giriş denemesi. Lütfen 5 dakika bekleyin.",
   keyPrefix: "auth",
+  skipSuccessfulRequests: true,
+  keyGenerator: (req, context) => {
+    const routeKey = sanitizePathPart(req.path);
+
+    if (context.userId) {
+      return {
+        key: `${context.keyPrefix}:${routeKey}:user:${context.userId}`,
+        scope: `route:${routeKey}:user`,
+      };
+    }
+
+    const authSubject = getAuthRequestSubject(req);
+    if (authSubject) {
+      const subjectHash = hashValue(authSubject);
+      return {
+        key: `${context.keyPrefix}:${routeKey}:subject:${subjectHash}:ip:${context.ip}`,
+        scope: `route:${routeKey}:subject`,
+      };
+    }
+
+    return {
+      key: `${context.keyPrefix}:${routeKey}:ip:${context.ip}`,
+      scope: `route:${routeKey}:ip`,
+    };
+  },
 });
 
 /**
