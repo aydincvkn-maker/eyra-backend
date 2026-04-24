@@ -45,7 +45,11 @@ const getAuthRequestSubject = (req) => {
   );
 };
 
-const attachSuccessfulResponseHandler = ({ key, res, skipSuccessfulRequests }) => {
+const attachSuccessfulResponseHandler = ({
+  key,
+  res,
+  skipSuccessfulRequests,
+}) => {
   if (!skipSuccessfulRequests) {
     return;
   }
