@@ -54,6 +54,18 @@ const GIFT_MEDIA_BY_KEY = {
     imageUrl: "/gifts/ang.jpg",
     animationUrl: "/videos/gifts/angel.mp4",
   },
+  new_gift1: {
+    imageUrl: "/gifts/new_gift1.jpg",
+    animationUrl: null,
+  },
+  new_gift2: {
+    imageUrl: "/gifts/new_gift2.jpg",
+    animationUrl: null,
+  },
+  new_gift3: {
+    imageUrl: "/gifts/new_gift3.jpg",
+    animationUrl: null,
+  },
 };
 
 const normalizeGiftKey = (gift) => {
@@ -116,6 +128,12 @@ const normalizeGiftKey = (gift) => {
     name.includes("angel")
   )
     return "angel";
+  if (image.includes("new_gift1") || name.includes("new_gift1"))
+    return "new_gift1";
+  if (image.includes("new_gift2") || name.includes("new_gift2"))
+    return "new_gift2";
+  if (image.includes("new_gift3") || name.includes("new_gift3"))
+    return "new_gift3";
   return null;
 };
 
@@ -229,6 +247,30 @@ const DEFAULT_GIFTS = [
     valueCoins: 15000,
     category: "special",
     order: 2,
+  },
+  {
+    name: "Özel Hediye 1",
+    description: "Özel hediye",
+    imageUrl: "/gifts/new_gift1.jpg",
+    valueCoins: 100,
+    category: "basic",
+    order: 5,
+  },
+  {
+    name: "Özel Hediye 2",
+    description: "Özel hediye",
+    imageUrl: "/gifts/new_gift2.jpg",
+    valueCoins: 300,
+    category: "premium",
+    order: 4,
+  },
+  {
+    name: "Özel Hediye 3",
+    description: "Özel hediye",
+    imageUrl: "/gifts/new_gift3.jpg",
+    valueCoins: 800,
+    category: "premium",
+    order: 5,
   },
 ];
 
