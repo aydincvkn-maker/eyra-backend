@@ -58,140 +58,93 @@ const resolveGiftMedia = (gift) => {
   return GIFT_MEDIA_BY_KEY[key];
 };
 
+// Sadece mevcut dosyalar kullanılıyor
 const DEFAULT_GIFTS = [
   {
-    name: "Gül",
-    description: "Sevimli bir gül hediyesi",
-    imageUrl: "/gifts/hrt.jpg",
-    animationUrl: "/videos/gifts/rose.mp4",
+    name: "Aşk",
+    description: "Sevgi dolu bir hediye",
+    imageUrl: "/gifts/new_gift1.jpg",
+    animationUrl: "/videos/gifts/love.mp4",
     valueCoins: 10,
     category: "basic",
     order: 1,
   },
   {
-    name: "Havai Fişek",
-    description: "Ateşli bir hediye",
-    imageUrl: "/gifts/red.jpg",
-    animationUrl: "/videos/gifts/fire.mp4",
-    valueCoins: 50,
+    name: "Öpücük",
+    description: "Tatlı bir öpücük hediyesi",
+    imageUrl: "/gifts/new_gift2.jpg",
+    animationUrl: "/videos/gifts/love_kiss.mp4",
+    valueCoins: 25,
     category: "basic",
     order: 2,
   },
   {
-    name: "Kalp",
-    description: "Tatlı kalp hediyesi",
-    imageUrl: "/gifts/hrt.jpg",
-    animationUrl: "/videos/gifts/heart.mp4",
-    valueCoins: 25,
-    category: "basic",
-    order: 3,
-  },
-  {
-    name: "Kutular",
-    description: "Pembe hediye kutuları",
-    imageUrl: "/gifts/box.webp",
-    animationUrl: "/videos/gifts/box.mp4",
-    valueCoins: 75,
-    category: "basic",
-    order: 4,
-  },
-  {
     name: "Hi",
-    description: "Tam ekran hi hediyesi",
+    description: "Coşkulu bir merhaba",
     imageUrl: "/gifts/box.png",
     animationUrl: "/videos/gifts/hi.mp4",
     valueCoins: 75,
     category: "basic",
-    order: 5,
-  },
-  {
-    name: "Ayıcık",
-    description: "Sevimli peluş ayıcık",
-    imageUrl: "/gifts/red.jpg",
-    animationUrl: "/videos/gifts/teddy.mp4",
-    valueCoins: 200,
-    category: "premium",
-    order: 1,
-  },
-  {
-    name: "Parfüm",
-    description: "Lüks bir parfüm",
-    imageUrl: "/gifts/red.jpg",
-    animationUrl: "/videos/gifts/perf.mp4",
-    valueCoins: 500,
-    category: "premium",
-    order: 2,
-  },
-  {
-    name: "Sandık",
-    description: "Mavi sihirli sandık",
-    imageUrl: "/gifts/chest.jpg",
-    valueCoins: 1200,
-    category: "premium",
     order: 3,
-    animationUrl: "/videos/gifts/chest.mp4",
-  },
-  {
-    name: "Yüzük",
-    description: "Altın yüzük",
-    imageUrl: "/gifts/chb.jpg",
-    animationUrl: "/videos/gifts/ring.mp4",
-    valueCoins: 2000,
-    category: "vip",
-    order: 1,
-  },
-  {
-    name: "Elmas",
-    description: "Pırlanta elmas",
-    imageUrl: "/gifts/elf.jpg",
-    valueCoins: 5000,
-    category: "vip",
-    order: 2,
-    animationUrl: "/videos/gifts/diamond.mp4",
-  },
-  {
-    name: "Kale",
-    description: "Muhteşem bir kale",
-    imageUrl: "/gifts/box.webp",
-    valueCoins: 50000,
-    category: "special",
-    order: 1,
-    animationUrl: "/videos/gifts/castle.mp4",
-  },
-  {
-    name: "Melek",
-    description: "Parlayan melek hediyesi",
-    imageUrl: "/gifts/ang.jpg",
-    animationUrl: "/videos/gifts/angel.mp4",
-    valueCoins: 15000,
-    category: "special",
-    order: 2,
   },
   {
     name: "Özel Hediye 1",
     description: "Özel hediye",
     imageUrl: "/gifts/new_gift1.jpg",
+    animationUrl: null,
     valueCoins: 100,
     category: "premium",
-    order: 4,
+    order: 1,
   },
   {
     name: "Özel Hediye 2",
     description: "Özel hediye",
     imageUrl: "/gifts/new_gift2.jpg",
+    animationUrl: null,
     valueCoins: 300,
     category: "premium",
-    order: 5,
+    order: 2,
+  },
+  {
+    name: "Rolex",
+    description: "Lüks saat hediyesi",
+    imageUrl: "/gifts/new_gift3.jpg",
+    animationUrl: "/videos/gifts/rolex.mp4",
+    valueCoins: 500,
+    category: "premium",
+    order: 3,
   },
   {
     name: "Özel Hediye 3",
     description: "Özel hediye",
     imageUrl: "/gifts/new_gift3.jpg",
+    animationUrl: null,
     valueCoins: 800,
     category: "premium",
-    order: 6,
+    order: 4,
+  },
+  {
+    name: "Yüzen Panda",
+    description: "Sevimli yüzen panda",
+    imageUrl: "/gifts/box.png",
+    animationUrl: "/videos/gifts/yuzen_panda.mp4",
+    valueCoins: 2000,
+    category: "vip",
+    order: 1,
+  },
+  {
+    name: "Peri",
+    description: "En değerli peri hediyesi",
+    imageUrl: "/gifts/peri.jpg",
+    animationUrl: null,
+    valueCoins: 999999,
+    category: "special",
+    order: 1,
   },
 ];
+
+// Geçerli hediye adları seti — eski/eksik hediyeler devre dışı bırakılır
+const DEFAULT_GIFT_NAMES = new Set(DEFAULT_GIFTS.map((g) => g.name));
 
 const syncDefaultGifts = async () => {
   const existingGifts = await Gift.find(
@@ -199,21 +152,24 @@ const syncDefaultGifts = async () => {
     "name description imageUrl animationUrl valueCoins category order isActive",
   ).lean();
   const existingByName = new Map(
-    existingGifts.filter((gift) => gift.name).map((gift) => [gift.name, gift]),
-  );
-  const existingByImage = new Map(
-    existingGifts
-      .filter((gift) => gift.imageUrl)
-      .map((gift) => [gift.imageUrl, gift]),
+    existingGifts.filter((g) => g.name).map((g) => [g.name, g]),
   );
 
   let insertedCount = 0;
   let updatedCount = 0;
+  let deactivatedCount = 0;
 
+  // Eski/geçersiz hediyeleri devre dışı bırak
+  for (const existing of existingGifts) {
+    if (existing.isActive && !DEFAULT_GIFT_NAMES.has(existing.name)) {
+      await Gift.updateOne({ _id: existing._id }, { $set: { isActive: false } });
+      deactivatedCount += 1;
+    }
+  }
+
+  // Yeni/güncel hediyeleri ekle/güncelle
   for (const defaultGift of DEFAULT_GIFTS) {
-    const existingGift =
-      existingByImage.get(defaultGift.imageUrl) ||
-      existingByName.get(defaultGift.name);
+    const existingGift = existingByName.get(defaultGift.name);
 
     if (!existingGift) {
       await Gift.create(defaultGift);
@@ -222,39 +178,34 @@ const syncDefaultGifts = async () => {
     }
 
     const needsUpdate =
-      existingGift.name !== defaultGift.name ||
       existingGift.description !== defaultGift.description ||
       existingGift.imageUrl !== defaultGift.imageUrl ||
-      (existingGift.animationUrl || null) !==
-        (defaultGift.animationUrl || null) ||
+      (existingGift.animationUrl || null) !== (defaultGift.animationUrl || null) ||
       existingGift.valueCoins !== defaultGift.valueCoins ||
       existingGift.category !== defaultGift.category ||
       existingGift.order !== defaultGift.order ||
       existingGift.isActive !== true;
 
-    if (!needsUpdate) {
-      continue;
-    }
-
-    await Gift.updateOne(
-      { _id: existingGift._id },
-      {
-        $set: {
-          name: defaultGift.name,
-          description: defaultGift.description,
-          imageUrl: defaultGift.imageUrl,
-          animationUrl: defaultGift.animationUrl || null,
-          valueCoins: defaultGift.valueCoins,
-          category: defaultGift.category,
-          order: defaultGift.order,
-          isActive: true,
+    if (needsUpdate) {
+      await Gift.updateOne(
+        { _id: existingGift._id },
+        {
+          $set: {
+            description: defaultGift.description,
+            imageUrl: defaultGift.imageUrl,
+            animationUrl: defaultGift.animationUrl || null,
+            valueCoins: defaultGift.valueCoins,
+            category: defaultGift.category,
+            order: defaultGift.order,
+            isActive: true,
+          },
         },
-      },
-    );
-    updatedCount += 1;
+      );
+      updatedCount += 1;
+    }
   }
 
-  logger.info("Default gifts synced", { insertedCount, updatedCount });
+  logger.info("Default gifts synced", { insertedCount, updatedCount, deactivatedCount });
   return insertedCount;
 };
 
