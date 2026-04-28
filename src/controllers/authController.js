@@ -162,10 +162,13 @@ const handleEmailPasswordLogin = async (
 
   // Legacy plaintext password: deny login and require password reset for security
   if (typeof user.isPasswordHashed === "function" && !user.isPasswordHashed()) {
-    logger.warn("Legacy plaintext password login attempt blocked", { userId: user._id });
+    logger.warn("Legacy plaintext password login attempt blocked", {
+      userId: user._id,
+    });
     return res.status(403).json({
       success: false,
-      message: "Güvenlik güncellemesi nedeniyle şifrenizi sıfırlamanız gerekiyor.",
+      message:
+        "Güvenlik güncellemesi nedeniyle şifrenizi sıfırlamanız gerekiyor.",
       error: "password_reset_required",
       requiresPasswordReset: true,
     });
@@ -1127,10 +1130,7 @@ exports.phoneLogin = async (req, res) => {
       firebaseUid = decoded.uid;
       verifiedPhone = decoded.phone_number || phoneNumber || "";
     } catch (verifyErr) {
-      logger.error(
-        "❌ Phone login token doğrulama hatası:",
-        verifyErr.message,
-      );
+      logger.error("❌ Phone login token doğrulama hatası:", verifyErr.message);
       return res
         .status(401)
         .json({ success: false, error: "Token doğrulanamadı" });
