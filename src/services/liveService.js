@@ -18,6 +18,27 @@ const CACHE_TTL = {
   VIEWER_COUNT: 10,     // 10 saniye
 };
 
+const scanKeys = async (redis, pattern) => {
+  let cursor = "0";
+  const keys = [];
+
+  do {
+    const [nextCursor, batch] = await redis.scan(
+      cursor,
+      "MATCH",
+      pattern,
+      "COUNT",
+      100,
+    );
+    cursor = nextCursor;
+    if (Array.isArray(batch) && batch.length > 0) {
+      keys.push(...batch);
+    }
+  } while (cursor !== "0");
+
+  return keys;
+};
+
 // ============ CACHE FUNCTIONS ============
 
 /**
@@ -182,7 +203,7 @@ exports.invalidateStreamCache = async (roomId = null) => {
 
   try {
     // Aktif yayınlar listesini temizle
-    const keys = await redis.keys(`${CACHE_KEYS.ACTIVE_STREAMS}:*`);
+    const keys = await scanKeys(redis, `${CACHE_KEYS.ACTIVE_STREAMS}:*`);
     if (keys.length > 0) {
       await redis.del(...keys);
       logger.info('🧹 [Cache INVALIDATE] Cleared', keys.length, 'active stream cache keys');

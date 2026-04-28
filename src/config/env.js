@@ -1,4 +1,5 @@
 // src/config/env.js
+const crypto = require("crypto");
 const dotenv = require("dotenv");
 const path = require("path");
 
@@ -11,6 +12,8 @@ const isEmpty = (value) => {
   if (typeof value === "string" && value.trim() === "") return true;
   return false;
 };
+
+const devJwtFallback = crypto.randomBytes(32).toString("hex");
 
 const required = (key, fallback) => {
   const raw = process.env[key];
@@ -50,11 +53,10 @@ module.exports = {
       throw new Error("[ENV] JWT_SECRET tanımlı değil (production)");
     }
 
-    const devFallback = "dev_only_change_this_secret";
     console.warn(
-      "[ENV] JWT_SECRET tanımlı değil, development fallback kullanılıyor",
+      "[ENV] JWT_SECRET tanımlı değil, process-ephemeral development fallback kullanılıyor",
     );
-    return devFallback;
+    return devJwtFallback;
   })(),
   CLIENT_ORIGIN: required("CLIENT_ORIGIN", "http://localhost:3000"),
   MOBILE_ORIGIN: required("MOBILE_ORIGIN", ""),

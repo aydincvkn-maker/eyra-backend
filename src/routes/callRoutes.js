@@ -9,6 +9,7 @@ const { LIVEKIT_URL } = require("../config/env");
 const { generateLiveKitToken } = require("../services/liveService");
 const CallHistory = require("../models/CallHistory");
 const User = require("../models/User");
+const { emitToUserSockets } = require("../socket/helpers");
 const { sendError } = require("../utils/response");
 const { createNotification } = require("../controllers/notificationController");
 const { logger } = require("../utils/logger");
@@ -298,14 +299,14 @@ router.post("/end", auth, async (req, res) => {
       // Remove from active calls
       global.activeCalls.delete(roomName);
 
-      // Notify via socket
-      if (global.io) {
-        global.io.emit("call:ended", {
-          roomName,
-          endedBy: String(userId),
-          timestamp: Date.now(),
-        });
-      }
+      emitToUserSockets(callerId, "call:ended", {
+        roomName,
+        endedBy: String(userId),
+      });
+      emitToUserSockets(targetUserId, "call:ended", {
+        roomName,
+        endedBy: String(userId),
+      });
     }
 
     res.json({
