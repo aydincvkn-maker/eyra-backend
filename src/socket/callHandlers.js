@@ -73,13 +73,11 @@ function register(socket, io) {
       clearServerSideTickTimer(roomName);
       if (callInfo) {
         try {
-          await presenceService
-            .setBusy(callInfo.callerId, false)
-            .catch((e) =>
-              logger.error(`setBusy cleanup for ${callInfo.callerId} failed`, {
-                err: String(e),
-              }),
-            );
+          await presenceService.setBusy(callInfo.callerId, false).catch((e) =>
+            logger.error(`setBusy cleanup for ${callInfo.callerId} failed`, {
+              err: String(e),
+            }),
+          );
           await presenceService
             .setBusy(callInfo.targetUserId, false)
             .catch((e) =>
