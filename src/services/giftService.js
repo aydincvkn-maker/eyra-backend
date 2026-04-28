@@ -608,16 +608,3 @@ exports.seedDefaultGifts = async () => {
   await Gift.insertMany(DEFAULT_GIFTS);
   logger.info("✅ Default gifts seeded:", DEFAULT_GIFTS.length);
 };
-
-// Rate limit cache temizleme (memory leak önleme)
-setInterval(
-  () => {
-    const now = Date.now();
-    for (const [key, record] of giftRateLimits.entries()) {
-      if (now - record.lastReset > RATE_LIMIT_WINDOW_MS * 2) {
-        giftRateLimits.delete(key);
-      }
-    }
-  },
-  5 * 60 * 1000,
-); // Her 5 dakikada temizle
