@@ -47,15 +47,22 @@ const getCacheKey = (text, sourceLang, targetLang) => {
 };
 
 /**
- * Cache'i temizle (eski girdileri sil)
+ * Cache'e girdi ekle — MAX_CACHE_SIZE aşılırsa en eski tek girdiyi sil (stampede önlenir)
  */
-const cleanCache = () => {
-  if (translationCache.size > MAX_CACHE_SIZE) {
-    const entries = Array.from(translationCache.entries());
-    entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
-    const toDelete = entries.slice(0, Math.floor(MAX_CACHE_SIZE / 2));
-    toDelete.forEach(([key]) => translationCache.delete(key));
+const setCacheEntry = (key, value) => {
+  if (translationCache.size >= MAX_CACHE_SIZE) {
+    // En eski girdiyi bul ve sadece onu sil
+    let oldestKey = null;
+    let oldestTime = Infinity;
+    for (const [k, v] of translationCache) {
+      if (v.timestamp < oldestTime) {
+        oldestTime = v.timestamp;
+        oldestKey = k;
+      }
+    }
+    if (oldestKey) translationCache.delete(oldestKey);
   }
+  translationCache.set(key, value);
 };
 
 /**
