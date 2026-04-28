@@ -134,7 +134,10 @@ exports.getUsers = async (req, res) => {
       ? String(req.query.search).trim()
       : null;
     const page = Math.max(parseInt(req.query.page || "1"), 1);
-    const limit = Math.min(Math.max(parseInt(req.query.limit || "100"), 1), 300);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit || "100"), 1),
+      300,
+    );
     const skip = (page - 1) * limit;
     logger.debug("getUsers", { currentUserId, searchQuery, page, limit });
 
@@ -211,7 +214,11 @@ exports.getUsers = async (req, res) => {
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
 
-    logger.debug("getUsers result", { count: formattedUsers.length, page, limit });
+    logger.debug("getUsers result", {
+      count: formattedUsers.length,
+      page,
+      limit,
+    });
     res.json({
       success: true,
       users: formattedUsers,
