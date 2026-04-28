@@ -211,11 +211,14 @@ exports.getUsers = async (req, res) => {
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
 
-    logger.debug("getUsers result", { count: formattedUsers.length });
+    logger.debug("getUsers result", { count: formattedUsers.length, page, limit });
     res.json({
       success: true,
       users: formattedUsers,
       count: formattedUsers.length,
+      page,
+      limit,
+      hasMore: formattedUsers.length === limit,
     });
   } catch (err) {
     logger.error("getUsers error", err);
