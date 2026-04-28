@@ -10,11 +10,11 @@ exports.getGifts = async (req, res) => {
   try {
     const { category } = req.query;
     const gifts = await giftService.getAllGifts(category);
-    
+
     res.json({
       ok: true,
       gifts,
-      categories: ["basic", "premium", "vip", "special"]
+      categories: ["basic", "premium", "vip", "special"],
     });
   } catch (err) {
     logger.error("getGifts error:", err);
@@ -35,7 +35,9 @@ exports.sendGift = async (req, res) => {
     }
 
     if (!liveId && !roomId) {
-      return res.status(400).json({ ok: false, error: "liveId veya roomId gerekli" });
+      return res
+        .status(400)
+        .json({ ok: false, error: "liveId veya roomId gerekli" });
     }
 
     const result = await giftService.sendGift({
@@ -43,28 +45,34 @@ exports.sendGift = async (req, res) => {
       recipientId,
       giftId,
       liveId,
-      roomId
+      roomId,
     });
 
     res.json({
       ok: true,
       message: "Hediye gönderildi",
-      data: result
+      data: result,
     });
   } catch (err) {
     logger.error("sendGift error:", err);
-    
+
     // Bilinen hataları kontrol et
     if (err.message === "Yetersiz coin") {
-      return res.status(400).json({ ok: false, error: "insufficient_coins", message: err.message });
+      return res
+        .status(400)
+        .json({ ok: false, error: "insufficient_coins", message: err.message });
     }
     if (err.message.includes("rate") || err.message.includes("hızlı")) {
-      return res.status(429).json({ ok: false, error: "rate_limited", message: err.message });
+      return res
+        .status(429)
+        .json({ ok: false, error: "rate_limited", message: err.message });
     }
     if (err.message.includes("bulunamadı")) {
-      return res.status(404).json({ ok: false, error: "not_found", message: err.message });
+      return res
+        .status(404)
+        .json({ ok: false, error: "not_found", message: err.message });
     }
-    
+
     res.status(500).json({ ok: false, error: "Sunucu hatası" });
   }
 };
@@ -76,9 +84,9 @@ exports.getMyGiftHistory = async (req, res) => {
   try {
     const userId = req.user.id;
     const { limit = 50 } = req.query;
-    
+
     const gifts = await giftService.getGiftHistory(userId, parseInt(limit));
-    
+
     res.json({ ok: true, gifts });
   } catch (err) {
     logger.error("getMyGiftHistory error:", err);
@@ -93,9 +101,9 @@ exports.getReceivedGifts = async (req, res) => {
   try {
     const userId = req.user.id;
     const { limit = 50 } = req.query;
-    
+
     const gifts = await giftService.getReceivedGifts(userId, parseInt(limit));
-    
+
     res.json({ ok: true, gifts });
   } catch (err) {
     logger.error("getReceivedGifts error:", err);
@@ -109,13 +117,13 @@ exports.getReceivedGifts = async (req, res) => {
 exports.getLiveGiftStats = async (req, res) => {
   try {
     const { liveId } = req.params;
-    
+
     const stats = await giftService.getLiveGiftStats(liveId);
-    
+
     if (!stats) {
       return res.status(404).json({ ok: false, error: "Yayın bulunamadı" });
     }
-    
+
     res.json({ ok: true, stats });
   } catch (err) {
     logger.error("getLiveGiftStats error:", err);
@@ -131,13 +139,15 @@ exports.getLiveGiftStats = async (req, res) => {
 exports.createGift = async (req, res) => {
   try {
     const giftData = req.body;
-    
+
     if (!giftData.name || !giftData.valueCoins || !giftData.imageUrl) {
-      return res.status(400).json({ ok: false, error: "name, valueCoins ve imageUrl gerekli" });
+      return res
+        .status(400)
+        .json({ ok: false, error: "name, valueCoins ve imageUrl gerekli" });
     }
-    
+
     const gift = await giftService.createGift(giftData);
-    
+
     res.status(201).json({ ok: true, gift });
   } catch (err) {
     logger.error("createGift error:", err);
@@ -152,13 +162,13 @@ exports.updateGift = async (req, res) => {
   try {
     const { giftId } = req.params;
     const updates = req.body;
-    
+
     const gift = await giftService.updateGift(giftId, updates);
-    
+
     if (!gift) {
       return res.status(404).json({ ok: false, error: "Hediye bulunamadı" });
     }
-    
+
     res.json({ ok: true, gift });
   } catch (err) {
     logger.error("updateGift error:", err);
@@ -172,13 +182,13 @@ exports.updateGift = async (req, res) => {
 exports.deleteGift = async (req, res) => {
   try {
     const { giftId } = req.params;
-    
+
     const gift = await giftService.deleteGift(giftId);
-    
+
     if (!gift) {
       return res.status(404).json({ ok: false, error: "Hediye bulunamadı" });
     }
-    
+
     res.json({ ok: true, message: "Hediye silindi" });
   } catch (err) {
     logger.error("deleteGift error:", err);

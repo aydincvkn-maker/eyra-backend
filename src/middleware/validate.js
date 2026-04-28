@@ -201,10 +201,7 @@ const validateSendGift = [
     .optional()
     .isMongoId()
     .withMessage("Valid receiver ID required"),
-  body("liveId")
-    .optional()
-    .isMongoId()
-    .withMessage("Valid live ID required"),
+  body("liveId").optional().isMongoId().withMessage("Valid live ID required"),
   body("roomId")
     .optional()
     .isString()
