@@ -1889,7 +1889,7 @@ exports.acceptPaidCall = async (req, res) => {
     const hostToken = await generateHostToken(hostId, callRoomName);
 
     // Request durumunu güncelle
-    request.status = "accepted";
+    request.status = "connected";
     request.callRoomName = callRoomName;
     global.callRequests.set(requestId, request);
 
