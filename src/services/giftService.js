@@ -18,128 +18,32 @@ const giftRateLimits = new Map(); // `${userId}:${giftId}` -> { count, lastReset
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 dakika
 const RATE_LIMIT_MAX_GIFTS = 10; // 1 dakikada max 10 aynı hediye
 
+// Mevcut medya dosyaları — sadece gerçekte var olan dosyalar
 const GIFT_MEDIA_BY_KEY = {
-  rose: { imageUrl: "/gifts/hrt.jpg", animationUrl: "/videos/gifts/rose.mp4" },
-  fireworks: {
-    imageUrl: "/gifts/red.jpg",
-    animationUrl: "/videos/gifts/fire.mp4",
-  },
-  heart: {
-    imageUrl: "/gifts/hrt.jpg",
-    animationUrl: "/videos/gifts/heart.mp4",
-  },
-  boxes: { imageUrl: "/gifts/box.webp", animationUrl: "/videos/gifts/box.mp4" },
-  teddy: {
-    imageUrl: "/gifts/red.jpg",
-    animationUrl: "/videos/gifts/teddy.mp4",
-  },
-  perfume: {
-    imageUrl: "/gifts/red.jpg",
-    animationUrl: "/videos/gifts/perf.mp4",
-  },
-  chest: {
-    imageUrl: "/gifts/chest.jpg",
-    animationUrl: "/videos/gifts/chest.mp4",
-  },
-  ring: { imageUrl: "/gifts/chb.jpg", animationUrl: "/videos/gifts/ring.mp4" },
-  diamond: {
-    imageUrl: "/gifts/elf.jpg",
-    animationUrl: "/videos/gifts/diamond.mp4",
-  },
-  castle: {
-    imageUrl: "/gifts/box.webp",
-    animationUrl: "/videos/gifts/castle.mp4",
-  },
-  angel: {
-    imageUrl: "/gifts/ang.jpg",
-    animationUrl: "/videos/gifts/angel.mp4",
-  },
-  new_gift1: {
-    imageUrl: "/gifts/new_gift1.jpg",
-    animationUrl: null,
-  },
-  new_gift2: {
-    imageUrl: "/gifts/new_gift2.jpg",
-    animationUrl: null,
-  },
-  new_gift3: {
-    imageUrl: "/gifts/new_gift3.jpg",
-    animationUrl: null,
-  },
-  hi: {
-    imageUrl: "/gifts/box.png",
-    animationUrl: "/videos/gifts/hi.mp4",
-  },
+  ask:        { imageUrl: "/gifts/new_gift1.jpg", animationUrl: "/videos/gifts/love.mp4" },
+  opucuk:     { imageUrl: "/gifts/new_gift2.jpg", animationUrl: "/videos/gifts/love_kiss.mp4" },
+  hi:         { imageUrl: "/gifts/box.png",        animationUrl: "/videos/gifts/hi.mp4" },
+  rolex:      { imageUrl: "/gifts/new_gift3.jpg", animationUrl: "/videos/gifts/rolex.mp4" },
+  yuzen_panda:{ imageUrl: "/gifts/box.png",        animationUrl: "/videos/gifts/yuzen_panda.mp4" },
+  peri:       { imageUrl: "/gifts/peri.jpg",       animationUrl: null },
+  new_gift1:  { imageUrl: "/gifts/new_gift1.jpg",  animationUrl: null },
+  new_gift2:  { imageUrl: "/gifts/new_gift2.jpg",  animationUrl: null },
+  new_gift3:  { imageUrl: "/gifts/new_gift3.jpg",  animationUrl: null },
 };
 
 const normalizeGiftKey = (gift) => {
   const image = (gift?.imageUrl || "").toLowerCase();
-  const name = (gift?.name || "").toLowerCase();
+  const name  = (gift?.name   || "").toLowerCase().trim();
 
-  if (image.includes("rose") || name.includes("gül") || name.includes("rose"))
-    return "rose";
-  if (
-    image.includes("fire") ||
-    name.includes("havai") ||
-    name.includes("fişek")
-  )
-    return "fireworks";
-  if (
-    image.includes("heart") ||
-    name.includes("kalp") ||
-    name.includes("heart")
-  )
-    return "heart";
-  if (
-    image.includes("gift_boxes") ||
-    image.includes("box") ||
-    name.includes("kutu") ||
-    name.includes("box")
-  )
-    return "boxes";
-  if (image.includes("teddy") || name.includes("ayı") || name.includes("teddy"))
-    return "teddy";
-  if (
-    image.includes("perfume") ||
-    name.includes("parfüm") ||
-    name.includes("perfume")
-  )
-    return "perfume";
-  if (
-    image.includes("magic_chest") ||
-    image.includes("chest") ||
-    name.includes("sandık") ||
-    name.includes("chest")
-  )
-    return "chest";
-  if (image.includes("ring") || name.includes("yüzük") || name.includes("ring"))
-    return "ring";
-  if (
-    image.includes("diamond") ||
-    name.includes("elmas") ||
-    name.includes("diamond")
-  )
-    return "diamond";
-  if (
-    image.includes("castle") ||
-    name.includes("kale") ||
-    name.includes("castle")
-  )
-    return "castle";
-  if (
-    image.includes("angel") ||
-    name.includes("melek") ||
-    name.includes("angel")
-  )
-    return "angel";
-  if (image.includes("new_gift1") || name.includes("new_gift1"))
-    return "new_gift1";
-  if (image.includes("new_gift2") || name.includes("new_gift2"))
-    return "new_gift2";
-  if (image.includes("new_gift3") || name.includes("new_gift3"))
-    return "new_gift3";
-  if (image.includes("hi") || name === "hi" || name.includes(" hi "))
-    return "hi";
+  if (name === "aşk"   || name.includes("love") || image.includes("love"))        return "ask";
+  if (name === "öpücük"|| name.includes("kiss") || image.includes("kiss"))        return "opucuk";
+  if (name === "hi"    || name === "merhaba")                                       return "hi";
+  if (name === "rolex" || image.includes("rolex"))                                  return "rolex";
+  if (name.includes("panda") || name.includes("yuzen") || name.includes("yüzen")) return "yuzen_panda";
+  if (name === "peri"  || image.includes("peri"))                                   return "peri";
+  if (image.includes("new_gift1") || name === "özel hediye 1")                     return "new_gift1";
+  if (image.includes("new_gift2") || name === "özel hediye 2")                     return "new_gift2";
+  if (image.includes("new_gift3") || name === "özel hediye 3")                     return "new_gift3";
   return null;
 };
 
