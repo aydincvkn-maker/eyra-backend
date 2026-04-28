@@ -16,6 +16,18 @@ const { logger } = require("../utils/logger");
  * @param {Server} io     - The Socket.io server instance (unused directly but kept for consistency)
  */
 function register(socket, io) {
+  const findPaidCallByRoomName = (roomName) => {
+    if (!global.callRequests || !roomName) return null;
+
+    for (const [, request] of global.callRequests) {
+      if (request.callRoomName === roomName) {
+        return request;
+      }
+    }
+
+    return null;
+  };
+
   const forwardCallEvent = async (eventName, roomName) => {
     const senderId = socket.data.userId;
     if (!senderId) {
@@ -43,9 +55,22 @@ function register(socket, io) {
       fromUserId: String(senderId),
     });
 
+    if (eventName === "call:accepted") {
+      startServerSideTickTimer(roomName);
+      const paidCall = findPaidCallByRoomName(roomName);
+      if (paidCall) {
+        paidCall.status = "connected";
+      }
+    }
+
     // Cleanup on call end/reject
-    if (eventName === "call:ended" || eventName === "call:rejected") {
+    if (
+      eventName === "call:ended" ||
+      eventName === "call:rejected" ||
+      eventName === "call:cancelled"
+    ) {
       const callInfo = activeCalls.get(roomName);
+      clearServerSideTickTimer(roomName);
       if (callInfo) {
         try {
           await presenceService
@@ -166,6 +191,10 @@ function startServerSideTickTimer(callRoomName) {
   }
   if (!callInfo) return;
 
+  if (callInfo._serverTickTimer) {
+    return;
+  }
+
   let serverMinute = 0;
   callInfo._serverTickTimer = setInterval(() => {
     // Call hala aktif mi?
@@ -180,12 +209,26 @@ function startServerSideTickTimer(callRoomName) {
     }
     if (!stillActive) {
       clearInterval(callInfo._serverTickTimer);
+      callInfo._serverTickTimer = null;
       return;
     }
 
     serverMinute++;
     _processCallTick(callInfo, serverMinute);
   }, 60 * 1000); // Her 60 saniyede bir
+  callInfo._serverTickTimer.unref?.();
+}
+
+function clearServerSideTickTimer(callRoomName) {
+  if (!global.callRequests || !callRoomName) return;
+
+  for (const [, request] of global.callRequests) {
+    if (request.callRoomName === callRoomName && request._serverTickTimer) {
+      clearInterval(request._serverTickTimer);
+      request._serverTickTimer = null;
+      return;
+    }
+  }
 }
 
 /**
@@ -215,7 +258,10 @@ async function _processCallTick(callInfo, minuteIndex) {
         roomName: callInfo.callRoomName,
       });
       // Stop server timer
-      if (callInfo._serverTickTimer) clearInterval(callInfo._serverTickTimer);
+      if (callInfo._serverTickTimer) {
+        clearInterval(callInfo._serverTickTimer);
+        callInfo._serverTickTimer = null;
+      }
       return;
     }
 
