@@ -21,26 +21,23 @@ const RATE_LIMIT_MAX_GIFTS = 10; // 1 dakikada max 10 aynı hediye
 // Mevcut medya dosyaları — sadece gerçekte var olan dosyalar
 const GIFT_MEDIA_BY_KEY = {
   ask: {
-    imageUrl: "/gifts/new_gift1.jpg",
+    imageUrl: "/gifts/peri.jpeg",
     animationUrl: "/videos/gifts/love.mp4",
   },
   opucuk: {
-    imageUrl: "/gifts/new_gift2.jpg",
+    imageUrl: "/gifts/peri.jpeg",
     animationUrl: "/videos/gifts/love_kiss.mp4",
   },
-  hi: { imageUrl: "/gifts/box.png", animationUrl: "/videos/gifts/hi.mp4" },
+  hi: { imageUrl: "/gifts/peri.jpeg", animationUrl: "/videos/gifts/hi.mp4" },
   rolex: {
-    imageUrl: "/gifts/new_gift3.jpg",
+    imageUrl: "/gifts/peri.jpeg",
     animationUrl: "/videos/gifts/rolex.mp4",
   },
   yuzen_panda: {
-    imageUrl: "/gifts/box.png",
+    imageUrl: "/gifts/peri.jpeg",
     animationUrl: "/videos/gifts/yuzen_panda.mp4",
   },
-  peri: { imageUrl: "/gifts/peri.jpg", animationUrl: null },
-  new_gift1: { imageUrl: "/gifts/new_gift1.jpg", animationUrl: null },
-  new_gift2: { imageUrl: "/gifts/new_gift2.jpg", animationUrl: null },
-  new_gift3: { imageUrl: "/gifts/new_gift3.jpg", animationUrl: null },
+  peri: { imageUrl: "/gifts/peri.jpeg", animationUrl: null },
 };
 
 const normalizeGiftKey = (gift) => {
@@ -60,12 +57,6 @@ const normalizeGiftKey = (gift) => {
   )
     return "yuzen_panda";
   if (name === "peri" || image.includes("peri")) return "peri";
-  if (image.includes("new_gift1") || name === "özel hediye 1")
-    return "new_gift1";
-  if (image.includes("new_gift2") || name === "özel hediye 2")
-    return "new_gift2";
-  if (image.includes("new_gift3") || name === "özel hediye 3")
-    return "new_gift3";
   return null;
 };
 
@@ -85,7 +76,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Aşk",
     description: "Sevgi dolu bir hediye",
-    imageUrl: "/gifts/new_gift1.jpg",
+    imageUrl: "/gifts/peri.jpeg",
     animationUrl: "/videos/gifts/love.mp4",
     valueCoins: 10,
     category: "basic",
@@ -94,7 +85,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Öpücük",
     description: "Tatlı bir öpücük hediyesi",
-    imageUrl: "/gifts/new_gift2.jpg",
+    imageUrl: "/gifts/peri.jpeg",
     animationUrl: "/videos/gifts/love_kiss.mp4",
     valueCoins: 25,
     category: "basic",
@@ -103,52 +94,25 @@ const DEFAULT_GIFTS = [
   {
     name: "Hi",
     description: "Coşkulu bir merhaba",
-    imageUrl: "/gifts/box.png",
+    imageUrl: "/gifts/peri.jpeg",
     animationUrl: "/videos/gifts/hi.mp4",
     valueCoins: 75,
     category: "basic",
     order: 3,
   },
   {
-    name: "Özel Hediye 1",
-    description: "Özel hediye",
-    imageUrl: "/gifts/new_gift1.jpg",
-    animationUrl: null,
-    valueCoins: 100,
+    name: "Rolex",
+    description: "Lüks saat hediyesi",
+    imageUrl: "/gifts/peri.jpeg",
+    animationUrl: "/videos/gifts/rolex.mp4",
+    valueCoins: 500,
     category: "premium",
     order: 1,
   },
   {
-    name: "Özel Hediye 2",
-    description: "Özel hediye",
-    imageUrl: "/gifts/new_gift2.jpg",
-    animationUrl: null,
-    valueCoins: 300,
-    category: "premium",
-    order: 2,
-  },
-  {
-    name: "Rolex",
-    description: "Lüks saat hediyesi",
-    imageUrl: "/gifts/new_gift3.jpg",
-    animationUrl: "/videos/gifts/rolex.mp4",
-    valueCoins: 500,
-    category: "premium",
-    order: 3,
-  },
-  {
-    name: "Özel Hediye 3",
-    description: "Özel hediye",
-    imageUrl: "/gifts/new_gift3.jpg",
-    animationUrl: null,
-    valueCoins: 800,
-    category: "premium",
-    order: 4,
-  },
-  {
     name: "Yüzen Panda",
     description: "Sevimli yüzen panda",
-    imageUrl: "/gifts/box.png",
+    imageUrl: "/gifts/peri.jpeg",
     animationUrl: "/videos/gifts/yuzen_panda.mp4",
     valueCoins: 2000,
     category: "vip",
@@ -157,7 +121,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Peri",
     description: "En değerli peri hediyesi",
-    imageUrl: "/gifts/peri.jpg",
+    imageUrl: "/gifts/peri.jpeg",
     animationUrl: null,
     valueCoins: 999999,
     category: "special",
