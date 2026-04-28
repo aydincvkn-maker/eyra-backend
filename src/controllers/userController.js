@@ -174,10 +174,12 @@ exports.getUsers = async (req, res) => {
       query.gender = genderVisibilityQueryForViewer(null);
     }
 
-    // âœ… KullanÄ±cÄ± listesi getir
+    // ✅ Kullanıcı listesi getir (limit zorunlu — sınırsız sorgu önlenir)
     const users = await User.find(query)
       .select("-password -refreshToken")
       .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
       .lean();
 
     // âœ… Presence: in-memory (socket) snapshot
