@@ -160,13 +160,15 @@ const handleEmailPasswordLogin = async (
     });
   }
 
+  // Legacy plaintext password: deny login and require password reset for security
   if (typeof user.isPasswordHashed === "function" && !user.isPasswordHashed()) {
-    try {
-      user.password = String(password);
-      await user.save();
-    } catch (e) {
-      logger.warn("Password upgrade failed:", e.message);
-    }
+    logger.warn("Legacy plaintext password login attempt blocked", { userId: user._id });
+    return res.status(403).json({
+      success: false,
+      message: "Güvenlik güncellemesi nedeniyle şifrenizi sıfırlamanız gerekiyor.",
+      error: "password_reset_required",
+      requiresPasswordReset: true,
+    });
   }
 
   if (user.isBanned) {
