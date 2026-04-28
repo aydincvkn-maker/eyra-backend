@@ -249,22 +249,6 @@ const checkRateLimit = (userId, giftId) => {
  * Tüm aktif hediyeleri getir
  */
 exports.getAllGifts = async (category = null) => {
-  const periGiftPayload = {
-    name: "Peri",
-    description: "En değerli peri hediyesi",
-    imageUrl: "/gifts/peri.jpg",
-    valueCoins: 999999,
-    category: "basic",
-    order: 1,
-    isActive: true,
-  };
-
-  await Gift.findOneAndUpdate(
-    { name: periGiftPayload.name },
-    { $set: periGiftPayload },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
-  );
-
   await syncDefaultGifts();
 
   const query = { isActive: true };
@@ -272,7 +256,7 @@ exports.getAllGifts = async (category = null) => {
     query.category = category;
   }
 
-  return Gift.find(query).sort({ valueCoins: -1, order: 1 }).lean();
+  return Gift.find(query).sort({ category: 1, order: 1, valueCoins: 1 }).lean();
 };
 
 /**
