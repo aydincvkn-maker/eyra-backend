@@ -110,8 +110,7 @@ exports.translateText = async (text, targetLang, sourceLang = "auto") => {
     const result = { translatedText, detectedLanguage };
 
     // Cache'e kaydet
-    cleanCache();
-    translationCache.set(cacheKey, { result, timestamp: Date.now() });
+    setCacheEntry(cacheKey, { result, timestamp: Date.now() });
 
     return result;
   } catch (err) {
