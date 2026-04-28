@@ -133,7 +133,10 @@ exports.getUsers = async (req, res) => {
     const searchQuery = req.query.search
       ? String(req.query.search).trim()
       : null;
-    logger.debug("getUsers", { currentUserId, searchQuery });
+    const page = Math.max(parseInt(req.query.page || "1"), 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit || "100"), 1), 300);
+    const skip = (page - 1) * limit;
+    logger.debug("getUsers", { currentUserId, searchQuery, page, limit });
 
     // âœ… Query: banned olmayan, kendisi hariÃ§
     const query = buildAppUserQuery({
