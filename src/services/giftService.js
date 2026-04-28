@@ -66,6 +66,10 @@ const GIFT_MEDIA_BY_KEY = {
     imageUrl: "/gifts/new_gift3.jpg",
     animationUrl: null,
   },
+  hi: {
+    imageUrl: "/gifts/box.png",
+    animationUrl: "/videos/gifts/hi.mp4",
+  },
 };
 
 const normalizeGiftKey = (gift) => {
@@ -134,6 +138,8 @@ const normalizeGiftKey = (gift) => {
     return "new_gift2";
   if (image.includes("new_gift3") || name.includes("new_gift3"))
     return "new_gift3";
+  if (image.includes("hi") || name === "hi" || name.includes(" hi "))
+    return "hi";
   return null;
 };
 
@@ -184,6 +190,15 @@ const DEFAULT_GIFTS = [
     valueCoins: 75,
     category: "basic",
     order: 4,
+  },
+  {
+    name: "Hi",
+    description: "Tam ekran hi hediyesi",
+    imageUrl: "/gifts/box.png",
+    animationUrl: "/videos/gifts/hi.mp4",
+    valueCoins: 75,
+    category: "basic",
+    order: 5,
   },
   {
     name: "Ayıcık",
