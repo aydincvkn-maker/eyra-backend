@@ -20,30 +20,52 @@ const RATE_LIMIT_MAX_GIFTS = 10; // 1 dakikada max 10 aynı hediye
 
 // Mevcut medya dosyaları — sadece gerçekte var olan dosyalar
 const GIFT_MEDIA_BY_KEY = {
-  ask:        { imageUrl: "/gifts/new_gift1.jpg", animationUrl: "/videos/gifts/love.mp4" },
-  opucuk:     { imageUrl: "/gifts/new_gift2.jpg", animationUrl: "/videos/gifts/love_kiss.mp4" },
-  hi:         { imageUrl: "/gifts/box.png",        animationUrl: "/videos/gifts/hi.mp4" },
-  rolex:      { imageUrl: "/gifts/new_gift3.jpg", animationUrl: "/videos/gifts/rolex.mp4" },
-  yuzen_panda:{ imageUrl: "/gifts/box.png",        animationUrl: "/videos/gifts/yuzen_panda.mp4" },
-  peri:       { imageUrl: "/gifts/peri.jpg",       animationUrl: null },
-  new_gift1:  { imageUrl: "/gifts/new_gift1.jpg",  animationUrl: null },
-  new_gift2:  { imageUrl: "/gifts/new_gift2.jpg",  animationUrl: null },
-  new_gift3:  { imageUrl: "/gifts/new_gift3.jpg",  animationUrl: null },
+  ask: {
+    imageUrl: "/gifts/new_gift1.jpg",
+    animationUrl: "/videos/gifts/love.mp4",
+  },
+  opucuk: {
+    imageUrl: "/gifts/new_gift2.jpg",
+    animationUrl: "/videos/gifts/love_kiss.mp4",
+  },
+  hi: { imageUrl: "/gifts/box.png", animationUrl: "/videos/gifts/hi.mp4" },
+  rolex: {
+    imageUrl: "/gifts/new_gift3.jpg",
+    animationUrl: "/videos/gifts/rolex.mp4",
+  },
+  yuzen_panda: {
+    imageUrl: "/gifts/box.png",
+    animationUrl: "/videos/gifts/yuzen_panda.mp4",
+  },
+  peri: { imageUrl: "/gifts/peri.jpg", animationUrl: null },
+  new_gift1: { imageUrl: "/gifts/new_gift1.jpg", animationUrl: null },
+  new_gift2: { imageUrl: "/gifts/new_gift2.jpg", animationUrl: null },
+  new_gift3: { imageUrl: "/gifts/new_gift3.jpg", animationUrl: null },
 };
 
 const normalizeGiftKey = (gift) => {
   const image = (gift?.imageUrl || "").toLowerCase();
-  const name  = (gift?.name   || "").toLowerCase().trim();
+  const name = (gift?.name || "").toLowerCase().trim();
 
-  if (name === "aşk"   || name.includes("love") || image.includes("love"))        return "ask";
-  if (name === "öpücük"|| name.includes("kiss") || image.includes("kiss"))        return "opucuk";
-  if (name === "hi"    || name === "merhaba")                                       return "hi";
-  if (name === "rolex" || image.includes("rolex"))                                  return "rolex";
-  if (name.includes("panda") || name.includes("yuzen") || name.includes("yüzen")) return "yuzen_panda";
-  if (name === "peri"  || image.includes("peri"))                                   return "peri";
-  if (image.includes("new_gift1") || name === "özel hediye 1")                     return "new_gift1";
-  if (image.includes("new_gift2") || name === "özel hediye 2")                     return "new_gift2";
-  if (image.includes("new_gift3") || name === "özel hediye 3")                     return "new_gift3";
+  if (name === "aşk" || name.includes("love") || image.includes("love"))
+    return "ask";
+  if (name === "öpücük" || name.includes("kiss") || image.includes("kiss"))
+    return "opucuk";
+  if (name === "hi" || name === "merhaba") return "hi";
+  if (name === "rolex" || image.includes("rolex")) return "rolex";
+  if (
+    name.includes("panda") ||
+    name.includes("yuzen") ||
+    name.includes("yüzen")
+  )
+    return "yuzen_panda";
+  if (name === "peri" || image.includes("peri")) return "peri";
+  if (image.includes("new_gift1") || name === "özel hediye 1")
+    return "new_gift1";
+  if (image.includes("new_gift2") || name === "özel hediye 2")
+    return "new_gift2";
+  if (image.includes("new_gift3") || name === "özel hediye 3")
+    return "new_gift3";
   return null;
 };
 
@@ -162,7 +184,10 @@ const syncDefaultGifts = async () => {
   // Eski/geçersiz hediyeleri devre dışı bırak
   for (const existing of existingGifts) {
     if (existing.isActive && !DEFAULT_GIFT_NAMES.has(existing.name)) {
-      await Gift.updateOne({ _id: existing._id }, { $set: { isActive: false } });
+      await Gift.updateOne(
+        { _id: existing._id },
+        { $set: { isActive: false } },
+      );
       deactivatedCount += 1;
     }
   }
@@ -180,7 +205,8 @@ const syncDefaultGifts = async () => {
     const needsUpdate =
       existingGift.description !== defaultGift.description ||
       existingGift.imageUrl !== defaultGift.imageUrl ||
-      (existingGift.animationUrl || null) !== (defaultGift.animationUrl || null) ||
+      (existingGift.animationUrl || null) !==
+        (defaultGift.animationUrl || null) ||
       existingGift.valueCoins !== defaultGift.valueCoins ||
       existingGift.category !== defaultGift.category ||
       existingGift.order !== defaultGift.order ||
@@ -205,7 +231,11 @@ const syncDefaultGifts = async () => {
     }
   }
 
-  logger.info("Default gifts synced", { insertedCount, updatedCount, deactivatedCount });
+  logger.info("Default gifts synced", {
+    insertedCount,
+    updatedCount,
+    deactivatedCount,
+  });
   return insertedCount;
 };
 
