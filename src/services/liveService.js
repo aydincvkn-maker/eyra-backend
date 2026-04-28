@@ -1,21 +1,25 @@
 // src/services/liveService.js
-const { AccessToken, RoomServiceClient } = require('livekit-server-sdk');
-const { LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL } = require("../config/env");
+const { AccessToken, RoomServiceClient } = require("livekit-server-sdk");
+const {
+  LIVEKIT_API_KEY,
+  LIVEKIT_API_SECRET,
+  LIVEKIT_URL,
+} = require("../config/env");
 const { getRedisClient } = require("../config/redis");
 const LiveStream = require("../models/LiveStream");
 const { logger } = require("../utils/logger");
 
 // ============ REDIS CACHE KEYS ============
 const CACHE_KEYS = {
-  ACTIVE_STREAMS: 'live:active_streams',        // Aktif yayınlar listesi
-  STREAM_DETAIL: 'live:stream:',                // Tek yayın detayı (+ roomId)
-  VIEWER_COUNT: 'live:viewers:',                // İzleyici sayısı (+ roomId)
+  ACTIVE_STREAMS: "live:active_streams", // Aktif yayınlar listesi
+  STREAM_DETAIL: "live:stream:", // Tek yayın detayı (+ roomId)
+  VIEWER_COUNT: "live:viewers:", // İzleyici sayısı (+ roomId)
 };
 
 const CACHE_TTL = {
-  ACTIVE_STREAMS: 30,   // 30 saniye
-  STREAM_DETAIL: 60,    // 1 dakika
-  VIEWER_COUNT: 10,     // 10 saniye
+  ACTIVE_STREAMS: 30, // 30 saniye
+  STREAM_DETAIL: 60, // 1 dakika
+  VIEWER_COUNT: 10, // 10 saniye
 };
 
 const scanKeys = async (redis, pattern) => {
@@ -47,8 +51,8 @@ const scanKeys = async (redis, pattern) => {
 exports.getActiveStreamsWithCache = async (options = {}) => {
   const redis = getRedisClient();
   const { category, limit = 50, page = 1 } = options;
-  
-  const cacheKey = category 
+
+  const cacheKey = category
     ? `${CACHE_KEYS.ACTIVE_STREAMS}:${category}:${page}:${limit}`
     : `${CACHE_KEYS.ACTIVE_STREAMS}:all:${page}:${limit}`;
 
@@ -57,16 +61,16 @@ exports.getActiveStreamsWithCache = async (options = {}) => {
     try {
       const cached = await redis.get(cacheKey);
       if (cached) {
-        logger.info('✅ [Cache HIT] Active streams from Redis');
+        logger.info("✅ [Cache HIT] Active streams from Redis");
         return JSON.parse(cached);
       }
     } catch (e) {
-      logger.warn('⚠️ Redis get failed:', e.message);
+      logger.warn("⚠️ Redis get failed:", e.message);
     }
   }
 
   // DB'den çek
-  logger.info('📦 [Cache MISS] Fetching active streams from MongoDB');
+  logger.info("📦 [Cache MISS] Fetching active streams from MongoDB");
 
   // ✅ PROFESSIONAL: Host offline ise eski yayınlar görünmesin.
   // LiveStream -> User join ile host isOnline/isActive/isBanned filtrelenir.
@@ -74,36 +78,36 @@ exports.getActiveStreamsWithCache = async (options = {}) => {
   const safePage = Math.max(1, parseInt(page));
   const skip = (safePage - 1) * safeLimit;
 
-  const match = { isLive: true, status: 'live' };
+  const match = { isLive: true, status: "live" };
   if (category) match.category = category;
 
   const facet = await LiveStream.aggregate([
     { $match: match },
     {
       $lookup: {
-        from: 'users',
-        localField: 'host',
-        foreignField: '_id',
-        as: 'host',
+        from: "users",
+        localField: "host",
+        foreignField: "_id",
+        as: "host",
       },
     },
-    { $unwind: '$host' },
+    { $unwind: "$host" },
     {
       $match: {
-        'host.isOnline': true,
-        'host.isActive': { $ne: false },
-        'host.isBanned': { $ne: true },
+        "host.isOnline": true,
+        "host.isActive": { $ne: false },
+        "host.isBanned": { $ne: true },
       },
     },
     {
       $project: {
         _id: 1,
         host: {
-          _id: '$host._id',
-          username: '$host.username',
-          name: '$host.name',
-          profileImage: '$host.profileImage',
-          gender: '$host.gender',
+          _id: "$host._id",
+          username: "$host.username",
+          name: "$host.name",
+          profileImage: "$host.profileImage",
+          gender: "$host.gender",
         },
         title: 1,
         description: 1,
@@ -129,7 +133,7 @@ exports.getActiveStreamsWithCache = async (options = {}) => {
     {
       $facet: {
         data: [{ $skip: skip }, { $limit: safeLimit }],
-        total: [{ $count: 'count' }],
+        total: [{ $count: "count" }],
       },
     },
   ]);
@@ -150,10 +154,18 @@ exports.getActiveStreamsWithCache = async (options = {}) => {
   // Redis varsa cache'le
   if (redis) {
     try {
-      await redis.setex(cacheKey, CACHE_TTL.ACTIVE_STREAMS, JSON.stringify(result));
-      logger.info('💾 [Cache SET] Active streams cached for', CACHE_TTL.ACTIVE_STREAMS, 'seconds');
+      await redis.setex(
+        cacheKey,
+        CACHE_TTL.ACTIVE_STREAMS,
+        JSON.stringify(result),
+      );
+      logger.info(
+        "💾 [Cache SET] Active streams cached for",
+        CACHE_TTL.ACTIVE_STREAMS,
+        "seconds",
+      );
     } catch (e) {
-      logger.warn('⚠️ Redis set failed:', e.message);
+      logger.warn("⚠️ Redis set failed:", e.message);
     }
   }
 
@@ -171,23 +183,27 @@ exports.getStreamDetailWithCache = async (roomId) => {
     try {
       const cached = await redis.get(cacheKey);
       if (cached) {
-        logger.info('✅ [Cache HIT] Stream detail from Redis:', roomId);
+        logger.info("✅ [Cache HIT] Stream detail from Redis:", roomId);
         return JSON.parse(cached);
       }
     } catch (e) {
-      logger.warn('⚠️ Redis get failed:', e.message);
+      logger.warn("⚠️ Redis get failed:", e.message);
     }
   }
 
   const stream = await LiveStream.findOne({ roomId })
-    .populate('host', 'username name profileImage gender bio followers')
+    .populate("host", "username name profileImage gender bio followers")
     .lean();
 
   if (stream && redis) {
     try {
-      await redis.setex(cacheKey, CACHE_TTL.STREAM_DETAIL, JSON.stringify(stream));
+      await redis.setex(
+        cacheKey,
+        CACHE_TTL.STREAM_DETAIL,
+        JSON.stringify(stream),
+      );
     } catch (e) {
-      logger.warn('⚠️ Redis set failed:', e.message);
+      logger.warn("⚠️ Redis set failed:", e.message);
     }
   }
 
@@ -206,16 +222,20 @@ exports.invalidateStreamCache = async (roomId = null) => {
     const keys = await scanKeys(redis, `${CACHE_KEYS.ACTIVE_STREAMS}:*`);
     if (keys.length > 0) {
       await redis.del(...keys);
-      logger.info('🧹 [Cache INVALIDATE] Cleared', keys.length, 'active stream cache keys');
+      logger.info(
+        "🧹 [Cache INVALIDATE] Cleared",
+        keys.length,
+        "active stream cache keys",
+      );
     }
 
     // Belirli yayın detayını temizle
     if (roomId) {
       await redis.del(CACHE_KEYS.STREAM_DETAIL + roomId);
-      logger.info('🧹 [Cache INVALIDATE] Cleared stream detail:', roomId);
+      logger.info("🧹 [Cache INVALIDATE] Cleared stream detail:", roomId);
     }
   } catch (e) {
-    logger.warn('⚠️ Cache invalidation failed:', e.message);
+    logger.warn("⚠️ Cache invalidation failed:", e.message);
   }
 };
 
@@ -232,7 +252,7 @@ exports.updateViewerCountCache = async (roomId, delta) => {
     await redis.expire(key, CACHE_TTL.VIEWER_COUNT);
     return Math.max(0, newCount);
   } catch (e) {
-    logger.warn('⚠️ Viewer count cache update failed:', e.message);
+    logger.warn("⚠️ Viewer count cache update failed:", e.message);
     return null;
   }
 };
@@ -255,7 +275,11 @@ exports.getViewerCountFromCache = async (roomId) => {
 // ============ TOKEN GENERATION ============
 
 // ✅ FIX: livekit-server-sdk v2.x'te toJwt() Promise döndürür
-exports.generateLiveKitToken = async (roomName, participantName, participantId) => {
+exports.generateLiveKitToken = async (
+  roomName,
+  participantName,
+  participantId,
+) => {
   const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
     identity: participantId || participantName,
     name: participantName,
@@ -279,23 +303,33 @@ exports.generateLiveKitToken = async (roomName, participantName, participantId) 
  */
 exports.deleteLiveKitRoom = async (roomName) => {
   if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
-    logger.warn('⚠️ LiveKit credentials missing, skipping room deletion');
+    logger.warn("⚠️ LiveKit credentials missing, skipping room deletion");
     return false;
   }
   try {
     // wss:// → https:// for REST API
-    const httpUrl = LIVEKIT_URL.replace('wss://', 'https://').replace('ws://', 'http://');
-    const roomService = new RoomServiceClient(httpUrl, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
+    const httpUrl = LIVEKIT_URL.replace("wss://", "https://").replace(
+      "ws://",
+      "http://",
+    );
+    const roomService = new RoomServiceClient(
+      httpUrl,
+      LIVEKIT_API_KEY,
+      LIVEKIT_API_SECRET,
+    );
     await roomService.deleteRoom(roomName);
     logger.info(`🧹 LiveKit room ${roomName} deleted`);
     return true;
   } catch (err) {
     // Room may already be gone — not an error
-    if (err.message?.includes('not found') || err.code === 404) {
+    if (err.message?.includes("not found") || err.code === 404) {
       logger.info(`ℹ️ LiveKit room ${roomName} already gone`);
       return true;
     }
-    logger.error(`⚠️ LiveKit room deletion failed for ${roomName}:`, err.message);
+    logger.error(
+      `⚠️ LiveKit room deletion failed for ${roomName}:`,
+      err.message,
+    );
     return false;
   }
 };
