@@ -197,11 +197,26 @@ const validateUpdateProfile = [
 
 const validateSendGift = [
   body("giftId").isMongoId().withMessage("Valid gift ID required"),
-  body("recipientId").isMongoId().withMessage("Valid receiver ID required"),
-  body("streamId")
+  body("recipientId")
     .optional()
     .isMongoId()
-    .withMessage("Valid stream ID required"),
+    .withMessage("Valid receiver ID required"),
+  body("liveId")
+    .optional()
+    .isMongoId()
+    .withMessage("Valid live ID required"),
+  body("roomId")
+    .optional()
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage("Valid room ID required"),
+  body().custom((_, { req }) => {
+    if (!req.body.liveId && !req.body.roomId) {
+      throw new Error("liveId or roomId is required");
+    }
+    return true;
+  }),
   handleValidationErrors,
 ];
 
