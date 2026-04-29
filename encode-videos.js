@@ -1,17 +1,17 @@
-const { execSync } = require('child_process');
-const path = require('path');
-const fs = require('fs');
-const ffmpeg = require('ffmpeg-static');
+const { execSync } = require("child_process");
+const path = require("path");
+const fs = require("fs");
+const ffmpeg = require("ffmpeg-static");
 
-const eyraAssetsPath = 'c:\\Users\\Casper\\Desktop\\eyra\\assets';
+const eyraAssetsPath = "c:\\Users\\Casper\\Desktop\\eyra\\assets";
 
 const mp4Files = [
-  'assets/vip/rolex.mp4',
-  'assets/temel/hi.mp4',
-  'assets/premium/yuzen_panda.mp4',
-  'assets/premium/love_kiss.mp4',
-  'assets/premium/love.mp4',
-  'assets/premium/love kiss.mp4'
+  "assets/vip/rolex.mp4",
+  "assets/temel/hi.mp4",
+  "assets/premium/yuzen_panda.mp4",
+  "assets/premium/love_kiss.mp4",
+  "assets/premium/love.mp4",
+  "assets/premium/love kiss.mp4",
 ];
 
 const command = (inputFile, outputFile) => {
@@ -21,23 +21,23 @@ const command = (inputFile, outputFile) => {
 async function encodeVideos() {
   for (const file of mp4Files) {
     const fullPath = path.join(eyraAssetsPath, file);
-    const outputPath = fullPath.replace('.mp4', '_compat.mp4');
-    
+    const outputPath = fullPath.replace(".mp4", "_compat.mp4");
+
     if (!fs.existsSync(fullPath)) {
       console.log(`✗ File not found: ${fullPath}`);
       continue;
     }
-    
+
     console.log(`\n🎬 Encoding: ${file}`);
     console.log(`   Input:  ${fullPath}`);
     console.log(`   Output: ${outputPath}`);
-    
+
     try {
       const cmd = command(fullPath, outputPath);
       console.log(`   Command: ${cmd.substring(0, 100)}...`);
-      execSync(cmd, { stdio: 'inherit' });
+      execSync(cmd, { stdio: "inherit" });
       console.log(`✓ Encoded successfully`);
-      
+
       // Replace original with encoded version
       console.log(`   Replacing original file...`);
       fs.unlinkSync(fullPath);
@@ -47,8 +47,8 @@ async function encodeVideos() {
       console.error(`✗ Error encoding ${file}:`, error.message);
     }
   }
-  
-  console.log('\n✓ All files processed!');
+
+  console.log("\n✓ All files processed!");
 }
 
 encodeVideos();
