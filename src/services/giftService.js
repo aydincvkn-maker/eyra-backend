@@ -29,6 +29,9 @@ const GIFT_MEDIA_BY_KEY = {
     animationUrl: "/videos/gifts/love_kiss.mp4",
   },
   hi: { imageUrl: "/gifts/box.png", animationUrl: "/videos/gifts/hi.mp4" },
+  merhaba: { imageUrl: "/gifts/box.png", animationUrl: "/videos/gifts/hi.mp4" },
+  kirmizi_araba: { imageUrl: "/gifts/new_gift3.jpg", animationUrl: null },
+  ozel_jet: { imageUrl: "/gifts/new_gift3.jpg", animationUrl: null },
   rolex: {
     imageUrl: "/gifts/new_gift3.jpg",
     animationUrl: "/videos/gifts/rolex.mp4",
@@ -52,7 +55,9 @@ const normalizeGiftKey = (gift) => {
     return "ask";
   if (name === "öpücük" || name.includes("kiss") || image.includes("kiss"))
     return "opucuk";
-  if (name === "hi" || name === "merhaba") return "hi";
+  if (name === "hi" || name === "merhaba") return "merhaba";
+  if (name.includes("kırmızı") || name.includes("araba") || name.includes("kirmizi")) return "kirmizi_araba";
+  if (name.includes("jet")) return "ozel_jet";
   if (
     name.includes("kutu") ||
     name.includes("box") ||
