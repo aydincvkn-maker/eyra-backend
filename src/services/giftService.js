@@ -56,7 +56,12 @@ const normalizeGiftKey = (gift) => {
   if (name === "öpücük" || name.includes("kiss") || image.includes("kiss"))
     return "opucuk";
   if (name === "hi" || name === "merhaba") return "merhaba";
-  if (name.includes("kırmızı") || name.includes("araba") || name.includes("kirmizi")) return "kirmizi_araba";
+  if (
+    name.includes("kırmızı") ||
+    name.includes("araba") ||
+    name.includes("kirmizi")
+  )
+    return "kirmizi_araba";
   if (name.includes("jet")) return "ozel_jet";
   if (
     name.includes("kutu") ||
