@@ -14,7 +14,7 @@ exports.getGifts = async (req, res) => {
     res.json({
       ok: true,
       gifts,
-      categories: ["basic", "premium", "vip", "special"],
+      categories: ["basic", "vip", "premium", "special"],
     });
   } catch (err) {
     logger.error("getGifts error:", err);

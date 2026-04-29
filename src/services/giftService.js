@@ -124,7 +124,7 @@ const DEFAULT_GIFTS = [
     imageUrl: "/gifts/new_gift3.jpg",
     animationUrl: "/videos/gifts/rolex.mp4",
     valueCoins: 500,
-    category: "premium",
+    category: "vip",
     order: 1,
   },
   {
@@ -133,7 +133,7 @@ const DEFAULT_GIFTS = [
     imageUrl: "/gifts/box.png",
     animationUrl: "/videos/gifts/yuzen_panda.mp4",
     valueCoins: 2000,
-    category: "vip",
+    category: "premium",
     order: 1,
   },
   {
