@@ -28,8 +28,8 @@ const GIFT_MEDIA_BY_KEY = {
     imageUrl: "/gifts/new_gift2.jpg",
     animationUrl: "/videos/gifts/love_kiss.mp4",
   },
-  hi: { imageUrl: "/gifts/box.png", animationUrl: "/videos/gifts/hi.mp4" },
-  merhaba: { imageUrl: "/gifts/box.png", animationUrl: "/videos/gifts/hi.mp4" },
+  hi: { imageUrl: null, animationUrl: "/videos/gifts/hi.mp4" },
+  merhaba: { imageUrl: null, animationUrl: "/videos/gifts/hi.mp4" },
   kirmizi_araba: { imageUrl: "/gifts/new_gift3.jpg", animationUrl: null },
   ozel_jet: { imageUrl: "/gifts/new_gift3.jpg", animationUrl: null },
   rolex: {
@@ -37,10 +37,10 @@ const GIFT_MEDIA_BY_KEY = {
     animationUrl: "/videos/gifts/rolex.mp4",
   },
   yuzen_panda: {
-    imageUrl: "/gifts/box.png",
+    imageUrl: null,
     animationUrl: "/videos/gifts/yuzen_panda.mp4",
   },
-  kutu: { imageUrl: "/gifts/box.png", animationUrl: null },
+  kutu: { imageUrl: null, animationUrl: null },
   peri: { imageUrl: "/gifts/peri.jpeg", animationUrl: null },
   new_gift1: { imageUrl: "/gifts/new_gift1.jpg", animationUrl: null },
   new_gift2: { imageUrl: "/gifts/new_gift2.jpg", animationUrl: null },
@@ -122,7 +122,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Merhaba",
     description: "Coşkulu bir selamlama",
-    imageUrl: "/gifts/box.png",
+    imageUrl: null,
     animationUrl: "/videos/gifts/hi.mp4",
     valueCoins: 75,
     category: "basic",
@@ -158,7 +158,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Yüzen Panda",
     description: "Sevimli yüzen panda",
-    imageUrl: "/gifts/box.png",
+    imageUrl: null,
     animationUrl: "/videos/gifts/yuzen_panda.mp4",
     valueCoins: 2000,
     category: "premium",
