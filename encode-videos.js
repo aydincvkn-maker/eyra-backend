@@ -6,12 +6,12 @@ const ffmpeg = require("ffmpeg-static");
 const eyraAssetsPath = "c:\\Users\\Casper\\Desktop\\eyra\\assets";
 
 const mp4Files = [
-  "assets/vip/rolex.mp4",
-  "assets/temel/hi.mp4",
-  "assets/premium/yuzen_panda.mp4",
-  "assets/premium/love_kiss.mp4",
-  "assets/premium/love.mp4",
-  "assets/premium/love kiss.mp4",
+  'vip/rolex.mp4',
+  'temel/hi.mp4',
+  'premium/yuzen_panda.mp4',
+  'premium/love_kiss.mp4',
+  'premium/love.mp4',
+  'premium/love kiss.mp4'
 ];
 
 const command = (inputFile, outputFile) => {
