@@ -16,3 +16,10 @@
 - Do not stop to present a plan unless explicitly requested or the task is ambiguous.
 - Keep responses short, avoid repeated summaries, and do not offer multiple alternatives unless asked.
 - Prefer the smallest effective change and report only changed files, a short result, and any blocker.
+
+## Terminal Management
+- ALL AI agents must use ONLY ONE persistent terminal session.
+- REUSE the existing terminal - do NOT spawn new terminals.
+- If terminal fails: kill it, create ONE new one, continue.
+- NEVER run multiple terminals in parallel - use one sync terminal for all work.
+- This persists across workspace reloads and closes.
