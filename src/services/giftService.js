@@ -428,7 +428,11 @@ exports.sendGift = async ({
       // Direkt hediye: alıcı + gönderene bildir
       try {
         const { emitToUserSockets } = require("../socket/helpers");
-        emitToUserSockets(String(actualRecipientId), "gift_received", giftPayload);
+        emitToUserSockets(
+          String(actualRecipientId),
+          "gift_received",
+          giftPayload,
+        );
         emitToUserSockets(String(senderId), "gift_received", giftPayload);
       } catch (e) {
         logger.warn("Direct gift emit failed:", e.message);
