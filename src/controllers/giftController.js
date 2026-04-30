@@ -34,10 +34,12 @@ exports.sendGift = async (req, res) => {
       return res.status(400).json({ ok: false, error: "giftId gerekli" });
     }
 
-    if (!liveId && !roomId) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "liveId veya roomId gerekli" });
+    // Yayın bağlamı yoksa, doğrudan kullanıcıya hediye için recipientId gerekli
+    if (!liveId && !roomId && !recipientId) {
+      return res.status(400).json({
+        ok: false,
+        error: "liveId, roomId veya recipientId gerekli",
+      });
     }
 
     const result = await giftService.sendGift({

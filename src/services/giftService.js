@@ -324,7 +324,7 @@ exports.sendGift = async ({
     throw new Error("Çok hızlı hediye gönderiyorsunuz. Lütfen bekleyin.");
   }
 
-  // 3. LiveStream bul (varsa)
+  // 3. LiveStream bul (varsa) — yoksa direkt (kullanıcı→kullanıcı) hediye modu
   let live = null;
   if (liveId) {
     live = await LiveStream.findById(liveId);
@@ -332,8 +332,9 @@ exports.sendGift = async ({
     live = await LiveStream.findOne({ roomId, isLive: true });
   }
 
-  if (!live) {
-    throw new Error("Yayın bulunamadı veya aktif değil");
+  // Direkt hediye gönderiminde live olmayabilir; bu durumda recipientId zorunlu
+  if (!live && !recipientId) {
+    throw new Error("Alıcı belirtilmedi (yayın yok)");
   }
 
   const actualRecipientId = recipientId || live.host;
@@ -368,10 +369,12 @@ exports.sendGift = async ({
     throw new Error("Alıcı bulunamadı");
   }
 
-  // LiveStream toplam hediye değerini güncelle (atomik)
-  await LiveStream.findByIdAndUpdate(live._id, {
-    $inc: { totalGiftsValue: gift.valueCoins, totalGiftsCount: 1 },
-  });
+  // LiveStream toplam hediye değerini güncelle (atomik) — sadece yayın varsa
+  if (live) {
+    await LiveStream.findByIdAndUpdate(live._id, {
+      $inc: { totalGiftsValue: gift.valueCoins, totalGiftsCount: 1 },
+    });
+  }
 
   // Gift istatistiklerini güncelle (atomik)
   await Gift.findByIdAndUpdate(giftId, {
@@ -382,9 +385,9 @@ exports.sendGift = async ({
   const resolvedImageUrl = media.imageUrl || gift.imageUrl;
   const resolvedAnimationUrl = media.animationUrl || gift.animationUrl;
 
-  // 5. Mesaj olarak kaydet (chat'te görünsün)
+  // 5. Mesaj olarak kaydet (chat'te görünsün) — yayın yoksa roomId boş bırakılır
   const message = await Message.create({
-    roomId: live.roomId,
+    roomId: live ? live.roomId : undefined,
     from: senderId,
     to: actualRecipientId,
     type: "gift",
@@ -401,7 +404,7 @@ exports.sendGift = async ({
 
   // 9. Socket event emit et
   if (global.io) {
-    global.io.to(live.roomId).emit("gift_received", {
+    const giftPayload = {
       messageId: message._id,
       giftId: gift._id,
       giftName: gift.name,
@@ -412,9 +415,21 @@ exports.sendGift = async ({
       senderName: updatedSender.name || updatedSender.username,
       senderImage: updatedSender.profileImage,
       recipientId: actualRecipientId,
-      roomId: live.roomId,
+      roomId: live ? live.roomId : null,
       timestamp: new Date().toISOString(),
-    });
+    };
+    if (live) {
+      global.io.to(live.roomId).emit("gift_received", giftPayload);
+    } else {
+      // Direkt hediye: alıcı + gönderene bildir
+      try {
+        const { emitToUserSockets } = require("../socket/helpers");
+        emitToUserSockets(String(actualRecipientId), "gift_received", giftPayload);
+        emitToUserSockets(String(senderId), "gift_received", giftPayload);
+      } catch (e) {
+        logger.warn("Direct gift emit failed:", e.message);
+      }
+    }
   }
 
   // 10. Post-gift hooks: Transaction kaydet, mission ilerlet, achievement kontrol
