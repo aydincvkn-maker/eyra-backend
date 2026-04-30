@@ -19,26 +19,29 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 dakika
 const RATE_LIMIT_MAX_GIFTS = 10; // 1 dakikada max 10 aynı hediye
 
 // Mevcut medya dosyaları — sadece gerçekte var olan dosyalar
+// NOTE: Use .mp4 only — iOS video_player has zero WebM support, and some
+// Android decoders also fail on .webm. Both .mp4 and .webm files are present
+// under public/videos/gifts/, so switching the URLs is sufficient.
 const GIFT_MEDIA_BY_KEY = {
   ask: {
     imageUrl: "/gifts/new_gift1.jpg",
-    animationUrl: "/videos/gifts/love.webm",
+    animationUrl: "/videos/gifts/love.mp4",
   },
   opucuk: {
     imageUrl: "/gifts/new_gift2.jpg",
-    animationUrl: "/videos/gifts/love_kiss.webm",
+    animationUrl: "/videos/gifts/love_kiss.mp4",
   },
-  hi: { imageUrl: null, animationUrl: "/videos/gifts/hi.webm" },
-  merhaba: { imageUrl: null, animationUrl: "/videos/gifts/hi.webm" },
+  hi: { imageUrl: null, animationUrl: "/videos/gifts/hi.mp4" },
+  merhaba: { imageUrl: null, animationUrl: "/videos/gifts/hi.mp4" },
   kirmizi_araba: { imageUrl: "/gifts/new_gift3.jpg", animationUrl: null },
   ozel_jet: { imageUrl: "/gifts/new_gift3.jpg", animationUrl: null },
   rolex: {
     imageUrl: "/gifts/new_gift3.jpg",
-    animationUrl: "/videos/gifts/rolex.webm",
+    animationUrl: "/videos/gifts/rolex.mp4",
   },
   yuzen_panda: {
     imageUrl: null,
-    animationUrl: "/videos/gifts/yuzen_panda.webm",
+    animationUrl: "/videos/gifts/yuzen_panda.mp4",
   },
   kutu: { imageUrl: null, animationUrl: null },
   peri: { imageUrl: "/gifts/peri.jpeg", animationUrl: null },
@@ -105,7 +108,7 @@ const DEFAULT_GIFTS = [
     name: "Aşk",
     description: "Sevgi dolu bir hediye",
     imageUrl: "/gifts/new_gift1.jpg",
-    animationUrl: "/videos/gifts/love.webm",
+    animationUrl: "/videos/gifts/love.mp4",
     valueCoins: 10,
     category: "basic",
     order: 1,
@@ -114,7 +117,7 @@ const DEFAULT_GIFTS = [
     name: "Öpücük",
     description: "Tatlı bir öpücük hediyesi",
     imageUrl: "/gifts/new_gift2.jpg",
-    animationUrl: "/videos/gifts/love_kiss.webm",
+    animationUrl: "/videos/gifts/love_kiss.mp4",
     valueCoins: 25,
     category: "basic",
     order: 2,
@@ -123,7 +126,7 @@ const DEFAULT_GIFTS = [
     name: "Merhaba",
     description: "Coşkulu bir selamlama",
     imageUrl: null,
-    animationUrl: "/videos/gifts/hi.webm",
+    animationUrl: "/videos/gifts/hi.mp4",
     valueCoins: 75,
     category: "basic",
     order: 3,
@@ -150,7 +153,7 @@ const DEFAULT_GIFTS = [
     name: "Rolex",
     description: "Lüks saat hediyesi",
     imageUrl: "/gifts/new_gift3.jpg",
-    animationUrl: "/videos/gifts/rolex.webm",
+    animationUrl: "/videos/gifts/rolex.mp4",
     valueCoins: 500,
     category: "vip",
     order: 1,
@@ -159,7 +162,7 @@ const DEFAULT_GIFTS = [
     name: "Yüzen Panda",
     description: "Sevimli yüzen panda",
     imageUrl: null,
-    animationUrl: "/videos/gifts/yuzen_panda.webm",
+    animationUrl: "/videos/gifts/yuzen_panda.mp4",
     valueCoins: 2000,
     category: "premium",
     order: 1,
