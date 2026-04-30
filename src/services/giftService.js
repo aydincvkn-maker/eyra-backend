@@ -385,9 +385,13 @@ exports.sendGift = async ({
   const resolvedImageUrl = media.imageUrl || gift.imageUrl;
   const resolvedAnimationUrl = media.animationUrl || gift.animationUrl;
 
-  // 5. Mesaj olarak kaydet (chat'te görünsün) — yayın yoksa roomId boş bırakılır
+  // 5. Mesaj olarak kaydet (chat'te görünsün) — yayın yoksa DM odası uydur
+  const directRoomId = (() => {
+    const ids = [String(senderId), String(actualRecipientId)].sort();
+    return `dm:${ids[0]}:${ids[1]}`;
+  })();
   const message = await Message.create({
-    roomId: live ? live.roomId : undefined,
+    roomId: live ? live.roomId : directRoomId,
     from: senderId,
     to: actualRecipientId,
     type: "gift",
