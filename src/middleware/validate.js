@@ -209,8 +209,8 @@ const validateSendGift = [
     .notEmpty()
     .withMessage("Valid room ID required"),
   body().custom((_, { req }) => {
-    if (!req.body.liveId && !req.body.roomId) {
-      throw new Error("liveId or roomId is required");
+    if (!req.body.liveId && !req.body.roomId && !req.body.recipientId) {
+      throw new Error("liveId, roomId or recipientId is required");
     }
     return true;
   }),
