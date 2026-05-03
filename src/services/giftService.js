@@ -434,6 +434,33 @@ exports.sendGift = async ({
           giftPayload,
         );
         emitToUserSockets(String(senderId), "gift_received", giftPayload);
+
+        // Mesajlaşma listesinde küçük bir bildirim olarak görünsün diye
+        // chat:new_message olarak da yayınla. Frontend bunu özel "gift" mesajı
+        // olarak render edecek (küçük görsel + "X sent Y").
+        const chatPayload = {
+          messageId: message._id.toString(),
+          from: String(senderId),
+          to: String(actualRecipientId),
+          text: `🎁 ${updatedSender.name || updatedSender.username || "Birisi"} sent ${gift.name}`,
+          timestamp: message.createdAt,
+          mediaUrl: resolvedImageUrl,
+          mediaType: "gift",
+          isGift: true,
+          giftName: gift.name,
+          giftImage: resolvedImageUrl,
+          giftValue: gift.valueCoins,
+          isMe: false,
+        };
+        emitToUserSockets(
+          String(actualRecipientId),
+          "chat:new_message",
+          chatPayload,
+        );
+        emitToUserSockets(String(senderId), "chat:new_message", {
+          ...chatPayload,
+          isMe: true,
+        });
       } catch (e) {
         logger.warn("Direct gift emit failed:", e.message);
       }
