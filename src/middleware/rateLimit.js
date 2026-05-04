@@ -1,6 +1,7 @@
 // src/middleware/rateLimit.js
 
 const crypto = require("crypto");
+const jwt = require("jsonwebtoken");
 const { logger } = require("../utils/logger");
 
 /**
@@ -23,6 +24,43 @@ const getClientIp = (req) => {
   }
 
   return req.ip || req.connection?.remoteAddress || "unknown";
+};
+
+/**
+ * Best-effort userId extraction from JWT for rate-limit keying.
+ * Verifies signature when JWT_SECRET is available; falls back to a safe
+ * unverified decode if the token cannot be verified. Returned id is only
+ * used as a bucket key — real authorization still happens per route.
+ */
+const extractUserIdForRateLimit = (req) => {
+  if (req.user?.id) return String(req.user.id);
+
+  const auth = req.headers?.authorization;
+  if (typeof auth !== "string") return null;
+  const m = auth.match(/^Bearer\s+(.+)$/i);
+  if (!m) return null;
+  const token = m[1].trim();
+  if (!token) return null;
+
+  try {
+    const secret = process.env.JWT_SECRET;
+    if (secret) {
+      const decoded = jwt.verify(token, secret, { ignoreExpiration: true });
+      const id = decoded?.id || decoded?.userId || decoded?._id || decoded?.sub;
+      if (id) return String(id);
+    }
+  } catch (_) {
+    // fall through to unverified decode
+  }
+
+  try {
+    const decoded = jwt.decode(token);
+    const id = decoded?.id || decoded?.userId || decoded?._id || decoded?.sub;
+    if (id) return String(id);
+  } catch (_) {
+    // ignore
+  }
+  return null;
 };
 
 const sanitizePathPart = (value) =>
