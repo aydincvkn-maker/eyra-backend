@@ -100,7 +100,13 @@ function normalizeAttachment(rawAttachment) {
   ).trim();
   const fileSize = Number(attachment.fileSize || 0);
 
-  if (!url || !url.startsWith("/uploads/admin-chat/")) {
+  if (!url) {
+    throw new Error("Geçersiz ek dosya yolu");
+  }
+  // Allow Cloudinary URLs and legacy local /uploads/admin-chat/ paths
+  const isCloudinary = /^https:\/\/res\.cloudinary\.com\//.test(url);
+  const isLegacyLocal = url.startsWith("/uploads/admin-chat/");
+  if (!isCloudinary && !isLegacyLocal) {
     throw new Error("Geçersiz ek dosya yolu");
   }
 
