@@ -73,9 +73,17 @@ exports.requestVerification = async (req, res) => {
       });
     }
 
-    const faceCenterUrl = saveVerificationUpload(userId, centerFile, "center");
-    const faceLeftUrl = saveVerificationUpload(userId, leftFile, "left");
-    const faceRightUrl = saveVerificationUpload(userId, rightFile, "right");
+    const faceCenterUrl = await saveVerificationUpload(
+      userId,
+      centerFile,
+      "center",
+    );
+    const faceLeftUrl = await saveVerificationUpload(userId, leftFile, "left");
+    const faceRightUrl = await saveVerificationUpload(
+      userId,
+      rightFile,
+      "right",
+    );
 
     // Verification kaydı oluştur
     const verification = await Verification.create({
