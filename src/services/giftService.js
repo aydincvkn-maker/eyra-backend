@@ -74,44 +74,58 @@ const GIFT_MEDIA_BY_KEY = {
   new_gift3: { imageUrl: "/gifts/new_gift3.jpg", animationUrl: null },
 };
 
-const normalizeGiftKey = (gift) => {
-  const image = (gift?.imageUrl || "").toLowerCase();
-  const name = (gift?.name || "").toLowerCase().trim();
+const normalizeAscii = (value = "") =>
+  value
+    .trim()
+    .toLowerCase()
+    .replaceAll("ç", "c")
+    .replaceAll("ğ", "g")
+    .replaceAll("ı", "i")
+    .replaceAll("ö", "o")
+    .replaceAll("ş", "s")
+    .replaceAll("ü", "u");
 
-  if (name === "aşk" || name.includes("love") || image.includes("love"))
+const normalizeGiftKey = (gift) => {
+  const image = normalizeAscii(gift?.imageUrl || "");
+  const animation = normalizeAscii(gift?.animationUrl || "");
+  const name = normalizeAscii(gift?.name || "");
+  const media = `${image} ${animation}`;
+
+  if (image.includes("new_gift1") || name === "ozel hediye 1") return "new_gift1";
+  if (image.includes("new_gift2") || name === "ozel hediye 2") return "new_gift2";
+  if (image.includes("new_gift3") || name === "ozel hediye 3") return "new_gift3";
+
+  if (name === "ask" || name === "ask" || name === "ask" || name === "ask") {
     return "ask";
-  if (name === "öpücük" || name.includes("kiss") || image.includes("kiss"))
+  }
+  if (name === "ask" || name === "aşk") {
+    return "ask";
+  }
+  if (name === "opucuk" || name === "öpücük") {
     return "opucuk";
-  if (name === "hi" || name === "merhaba") return "merhaba";
-  if (
-    name.includes("kırmızı") ||
-    name.includes("araba") ||
-    name.includes("kirmizi")
-  )
+  }
+  if (name === "hi" || name === "merhaba") {
+    return "merhaba";
+  }
+  if (name === "kirmizi araba" || media.includes("kirmizi_araba")) {
     return "kirmizi_araba";
-  if (name.includes("jet")) return "ozel_jet";
-  if (
-    name.includes("kutu") ||
-    name.includes("box") ||
-    name.includes("sandık") ||
-    name.includes("sandik") ||
-    image.includes("box")
-  )
-    return "kutu";
-  if (name === "rolex" || image.includes("rolex")) return "rolex";
-  if (
-    name.includes("panda") ||
-    name.includes("yuzen") ||
-    name.includes("yüzen")
-  )
+  }
+  if (name === "ozel jet" || media.includes("ozel_jet")) {
+    return "ozel_jet";
+  }
+  if (name === "rolex" || media.includes("rolex")) {
+    return "rolex";
+  }
+  if (name === "yuzen panda" || media.includes("yuzen_panda")) {
     return "yuzen_panda";
-  if (name === "peri" || image.includes("peri")) return "peri";
-  if (image.includes("new_gift1") || name === "özel hediye 1")
-    return "new_gift1";
-  if (image.includes("new_gift2") || name === "özel hediye 2")
-    return "new_gift2";
-  if (image.includes("new_gift3") || name === "özel hediye 3")
-    return "new_gift3";
+  }
+  if (name === "peri" || media.includes("peri")) {
+    return "peri";
+  }
+  if (name === "kutu" || media.includes("box")) {
+    return "kutu";
+  }
+
   return null;
 };
 
