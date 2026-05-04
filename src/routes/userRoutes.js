@@ -30,14 +30,17 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     const mimeType = String(file.mimetype || "").toLowerCase();
     const extension = path.extname(file.originalname || "").toLowerCase();
-    if (
-      allowedAvatarMimeTypes.has(mimeType) &&
-      allowedAvatarExtensions.has(extension)
-    ) {
+    const hasAllowedMimeType = allowedAvatarMimeTypes.has(mimeType);
+    const hasAllowedExtension =
+      extension === "" || allowedAvatarExtensions.has(extension);
+
+    if (hasAllowedMimeType && hasAllowedExtension) {
       return cb(null, true);
     }
 
-    return cb(new Error("Sadece resim dosyaları yüklenebilir"), false);
+    const uploadError = new Error("Sadece resim dosyaları yüklenebilir");
+    uploadError.statusCode = 400;
+    return cb(uploadError, false);
   },
 });
 
