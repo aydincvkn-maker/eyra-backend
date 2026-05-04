@@ -66,7 +66,7 @@ const attachmentUpload = multer({
     const mimeType = String(file.mimetype || "").toLowerCase();
     const extension = path.extname(file.originalname || "").toLowerCase();
     if (
-      allowedAdminChatMimeTypes.has(mimeType) ||
+      allowedAdminChatMimeTypes.has(mimeType) &&
       allowedAdminChatExtensions.has(extension)
     ) {
       return cb(null, true);
