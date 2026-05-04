@@ -183,7 +183,10 @@ const createRateLimiter = (options = {}) => {
     }
 
     // Get identifier (userId if authenticated, IP otherwise)
-    const userId = req.user?.id;
+    // NOTE: This middleware can run BEFORE per-route auth, so try to derive
+    // userId from the JWT directly. This prevents all users behind a single
+    // NAT/CGNAT IP from sharing the same bucket.
+    const userId = extractUserIdForRateLimit(req);
     const ip = getClientIp(req);
     const context = {
       keyPrefix,
@@ -200,6 +203,19 @@ const createRateLimiter = (options = {}) => {
     });
     const now = Date.now();
 
+    // Resolve effective limit (allow `max` to be a function of req/context)
+    let effectiveMax = max;
+    if (typeof max === "function") {
+      try {
+        effectiveMax = max(req, context);
+      } catch (_) {
+        effectiveMax = 100;
+      }
+    }
+    if (typeof effectiveMax !== "number" || effectiveMax <= 0) {
+      effectiveMax = 100;
+    }
+
     let data = rateLimitStore.get(key);
 
     if (!data || now - data.windowStart > windowMs) {
@@ -212,8 +228,8 @@ const createRateLimiter = (options = {}) => {
       rateLimitStore.set(key, data);
 
       // Set rate limit headers
-      res.setHeader("X-RateLimit-Limit", max);
-      res.setHeader("X-RateLimit-Remaining", max - 1);
+      res.setHeader("X-RateLimit-Limit", effectiveMax);
+      res.setHeader("X-RateLimit-Remaining", effectiveMax - 1);
       res.setHeader("X-RateLimit-Reset", Math.ceil((now + windowMs) / 1000));
 
       attachSuccessfulResponseHandler({
@@ -225,11 +241,11 @@ const createRateLimiter = (options = {}) => {
       return next();
     }
 
-    if (data.count >= max) {
+    if (data.count >= effectiveMax) {
       // Rate limit exceeded
       const retryAfter = Math.ceil((data.windowStart + windowMs - now) / 1000);
 
-      res.setHeader("X-RateLimit-Limit", max);
+      res.setHeader("X-RateLimit-Limit", effectiveMax);
       res.setHeader("X-RateLimit-Remaining", 0);
       res.setHeader(
         "X-RateLimit-Reset",
@@ -245,7 +261,7 @@ const createRateLimiter = (options = {}) => {
         path: req.originalUrl || req.path,
         userId: userId || null,
         ip,
-        limit: max,
+        limit: effectiveMax,
         windowMs,
         currentCount: data.count,
         retryAfter,
@@ -263,8 +279,8 @@ const createRateLimiter = (options = {}) => {
     data.count++;
     rateLimitStore.set(key, data);
 
-    res.setHeader("X-RateLimit-Limit", max);
-    res.setHeader("X-RateLimit-Remaining", max - data.count);
+    res.setHeader("X-RateLimit-Limit", effectiveMax);
+    res.setHeader("X-RateLimit-Remaining", effectiveMax - data.count);
     res.setHeader(
       "X-RateLimit-Reset",
       Math.ceil((data.windowStart + windowMs) / 1000),
