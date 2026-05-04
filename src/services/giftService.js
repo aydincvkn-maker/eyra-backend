@@ -1,4 +1,28 @@
 // src/services/giftService.js
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// YENİ HEDİYE EKLEME REHBERİ — her hediye AYNI sistemde eklenmeli!
+// ─────────────────────────────────────────────────────────────────────────────
+// 1) Video dosyası   → public/videos/gifts/<isim>.mp4
+// 2) Poster (jpg)    → public/gifts/<isim>.jpg
+//                      (ffmpeg ile mp4'ün ~1. saniyesinden 256x256 frame al:
+//                       ffmpeg -y -ss 00:00:01 -i in.mp4 -frames:v 1
+//                         -vf "scale=256:256:force_original_aspect_ratio=increase,crop=256:256"
+//                         -q:v 3 out.jpg)
+// 3) DEFAULT_GIFTS dizisine kayıt ekle:
+//      { name, description, imageUrl: "/gifts/<isim>.jpg",
+//        animationUrl: "/videos/gifts/<isim>.mp4",
+//        valueCoins, category: "basic"|"premium"|"vip"|"special", order }
+// 4) Mobile tarafı  → eyra/lib/features/live/utils/gift_asset_paths.dart
+//      a) MP4 ve JPG'i eyra/assets/{tier}/ altına kopyala (ASCII isim).
+//      b) _imageAssetsByGiftKey map'ine 'gift_key': '<asset path>' ekle.
+//      c) _themesByGiftKey map'ine GiftTheme ekle.
+//      d) _resolveGiftKey içine spesifik isim/path eşleştirmesi ekle.
+//
+// syncDefaultGifts sunucu açılışında DB'yi bu listeye senkron eder; bu listede
+// olmayan hediyeler isActive=false yapılır → mobile gift box'ta görünmez.
+// ─────────────────────────────────────────────────────────────────────────────
+
 const mongoose = require("mongoose");
 const Gift = require("../models/Gift");
 const User = require("../models/User");
