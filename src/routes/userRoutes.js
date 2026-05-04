@@ -31,7 +31,7 @@ const upload = multer({
     const mimeType = String(file.mimetype || "").toLowerCase();
     const extension = path.extname(file.originalname || "").toLowerCase();
     if (
-      allowedAvatarMimeTypes.has(mimeType) ||
+      allowedAvatarMimeTypes.has(mimeType) &&
       allowedAvatarExtensions.has(extension)
     ) {
       return cb(null, true);
