@@ -181,7 +181,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Şaplak",
     description: "Şakacı bir şaplak",
-    imageUrl: null,
+    imageUrl: "/gifts/saplak.jpg",
     animationUrl: "/videos/gifts/saplak.mp4",
     valueCoins: 50,
     category: "basic",
@@ -190,7 +190,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Bulutlar",
     description: "Pamuk gibi bulutlar",
-    imageUrl: null,
+    imageUrl: "/gifts/bulutlar.jpg",
     animationUrl: "/videos/gifts/bulutlar.mp4",
     valueCoins: 20,
     category: "basic",
@@ -199,7 +199,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Speed",
     description: "Hız esintisi",
-    imageUrl: null,
+    imageUrl: "/gifts/speed.jpg",
     animationUrl: "/videos/gifts/speed.mp4",
     valueCoins: 40,
     category: "basic",
@@ -210,7 +210,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Dans",
     description: "Coşkulu dans şovu",
-    imageUrl: null,
+    imageUrl: "/gifts/dans.jpg",
     animationUrl: "/videos/gifts/dans.mp4",
     valueCoins: 400,
     category: "premium",
@@ -219,7 +219,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Hız Motoru",
     description: "Yüksek hız motoru",
-    imageUrl: null,
+    imageUrl: "/gifts/hiz_motoru.jpg",
     animationUrl: "/videos/gifts/hiz_motoru.mp4",
     valueCoins: 600,
     category: "premium",
@@ -228,7 +228,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Doğum Günü",
     description: "Mutlu yıllar pastası",
-    imageUrl: null,
+    imageUrl: "/gifts/happy_birthday.jpg",
     animationUrl: "/videos/gifts/happy_birthday.mp4",
     valueCoins: 300,
     category: "premium",
@@ -237,7 +237,7 @@ const DEFAULT_GIFTS = [
   {
     name: "At",
     description: "Asil bir at hediyesi",
-    imageUrl: null,
+    imageUrl: "/gifts/horse.jpg",
     animationUrl: "/videos/gifts/horse.mp4",
     valueCoins: 800,
     category: "premium",
@@ -246,7 +246,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Kartal",
     description: "Görkemli bir kartal",
-    imageUrl: null,
+    imageUrl: "/gifts/kartal.jpg",
     animationUrl: "/videos/gifts/kartal.mp4",
     valueCoins: 1000,
     category: "premium",
@@ -255,7 +255,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Aslan",
     description: "Cesur bir aslan",
-    imageUrl: null,
+    imageUrl: "/gifts/lion.jpg",
     animationUrl: "/videos/gifts/lion.mp4",
     valueCoins: 1200,
     category: "premium",
@@ -264,7 +264,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Aşk Arabası",
     description: "Aşk dolu bir araba",
-    imageUrl: null,
+    imageUrl: "/gifts/love_car.jpg",
     animationUrl: "/videos/gifts/love_car.mp4",
     valueCoins: 900,
     category: "premium",
@@ -273,7 +273,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Aşk Kalbi",
     description: "Çarpan bir kalp",
-    imageUrl: null,
+    imageUrl: "/gifts/love_heart.jpg",
     animationUrl: "/videos/gifts/love_heart.mp4",
     valueCoins: 350,
     category: "premium",
@@ -282,7 +282,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Motor",
     description: "Hızlı motorsiklet",
-    imageUrl: null,
+    imageUrl: "/gifts/motor1.jpg",
     animationUrl: "/videos/gifts/motor1.mp4",
     valueCoins: 700,
     category: "premium",
@@ -291,7 +291,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Seni Seviyorum",
     description: "Sevgi dolu mesaj",
-    imageUrl: null,
+    imageUrl: "/gifts/i_love_you.jpg",
     animationUrl: "/videos/gifts/i_love_you.mp4",
     valueCoins: 500,
     category: "premium",
@@ -300,7 +300,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Seni Seviyorum +",
     description: "Daha büyük bir aşk mesajı",
-    imageUrl: null,
+    imageUrl: "/gifts/i_love_you_1.jpg",
     animationUrl: "/videos/gifts/i_love_you_1.mp4",
     valueCoins: 550,
     category: "premium",
@@ -311,7 +311,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Venüs Araba",
     description: "Altın değerinde lüks araba",
-    imageUrl: null,
+    imageUrl: "/gifts/venus_car.jpg",
     animationUrl: "/videos/gifts/venus_car.mp4",
     valueCoins: 1500,
     category: "vip",
@@ -320,7 +320,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Yat",
     description: "Görkemli yat hediyesi",
-    imageUrl: null,
+    imageUrl: "/gifts/yat.jpg",
     animationUrl: "/videos/gifts/yat.mp4",
     valueCoins: 2500,
     category: "vip",
@@ -329,7 +329,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Buz Araba",
     description: "Buzdan zarif bir araba",
-    imageUrl: null,
+    imageUrl: "/gifts/ice_car.jpg",
     animationUrl: "/videos/gifts/ice_car.mp4",
     valueCoins: 1800,
     category: "vip",
@@ -340,7 +340,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Drakula",
     description: "Gizemli drakula",
-    imageUrl: null,
+    imageUrl: "/gifts/drakula.jpg",
     animationUrl: "/videos/gifts/drakula.mp4",
     valueCoins: 50000,
     category: "special",
@@ -349,7 +349,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Gözcü",
     description: "Sezgisel gözcü",
-    imageUrl: null,
+    imageUrl: "/gifts/gozcu.jpg",
     animationUrl: "/videos/gifts/gozcu.mp4",
     valueCoins: 30000,
     category: "special",
@@ -358,7 +358,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Kılıç Ustası",
     description: "Efsane kılıç ustası",
-    imageUrl: null,
+    imageUrl: "/gifts/kilic_ustasi.jpg",
     animationUrl: "/videos/gifts/kilic_ustasi.mp4",
     valueCoins: 40000,
     category: "special",
@@ -367,7 +367,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Şeytan",
     description: "Yakıcı şeytan",
-    imageUrl: null,
+    imageUrl: "/gifts/seytan.jpg",
     animationUrl: "/videos/gifts/seytan.mp4",
     valueCoins: 75000,
     category: "special",
