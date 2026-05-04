@@ -110,21 +110,20 @@ exports.createPost = async (req, res) => {
 
     // Fotoğraf yükleme
     if (req.file) {
-      const ext = path.extname(req.file.originalname || ".jpg").toLowerCase();
-      const filename = `post_${userId}_${Date.now()}${ext}`;
-      const uploadDir = path.join(__dirname, "../../uploads/posts");
-
-      await fsp.mkdir(uploadDir, { recursive: true });
-
-      const filePath = path.join(uploadDir, filename);
-      await fsp.writeFile(filePath, req.file.buffer);
-
-      imageUrl = `/uploads/posts/${filename}`;
+      const uploaded = await storageService.uploadBuffer(req.file.buffer, {
+        folder: "posts",
+        mimeType: req.file.mimetype,
+        originalName: req.file.originalname,
+        publicId: `post_${userId}_${Date.now()}`,
+      });
+      imageUrl = uploaded.url;
       type = text && text.trim() ? "photo_note" : "photo";
     } else if (text && text.trim()) {
       type = "note";
     } else {
-      return res.status(400).json({ success: false, message: "Fotoğraf veya metin gerekli" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Fotoğraf veya metin gerekli" });
     }
 
     const post = await Post.create({
@@ -175,13 +174,19 @@ exports.toggleLike = async (req, res) => {
 
     const post = await Post.findById(postId);
     if (!post || !post.isActive) {
-      return res.status(404).json({ success: false, message: "Post bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Post bulunamadı" });
     }
 
-    const alreadyLiked = post.likes.some((id) => id.toString() === userId.toString());
+    const alreadyLiked = post.likes.some(
+      (id) => id.toString() === userId.toString(),
+    );
 
     if (alreadyLiked) {
-      post.likes = post.likes.filter((id) => id.toString() !== userId.toString());
+      post.likes = post.likes.filter(
+        (id) => id.toString() !== userId.toString(),
+      );
       post.likeCount = Math.max(0, post.likeCount - 1);
     } else {
       post.likes.push(userId);
@@ -209,11 +214,15 @@ exports.deletePost = async (req, res) => {
 
     const post = await Post.findById(postId);
     if (!post) {
-      return res.status(404).json({ success: false, message: "Post bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Post bulunamadı" });
     }
 
     if (post.user.toString() !== userId.toString()) {
-      return res.status(403).json({ success: false, message: "Bu işlem için yetkiniz yok" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Bu işlem için yetkiniz yok" });
     }
 
     // Fotoğraf varsa sil
