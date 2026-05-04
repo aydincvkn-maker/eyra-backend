@@ -300,11 +300,15 @@ const createRateLimiter = (options = {}) => {
 
 /**
  * General API rate limiter
- * 100 requests per minute
+ * Authenticated user: 240 requests / minute
+ * Anonymous (IP-only): 100 requests / minute
+ *
+ * NOTE: This limiter is mounted before per-route auth, so userId is derived
+ * from the bearer JWT directly. Health checks are excluded.
  */
 const generalLimiter = createRateLimiter({
   windowMs: 60 * 1000,
-  max: 100,
+  max: (req, ctx) => (ctx.userId ? 240 : 100),
   message: "Çok fazla istek gönderdiniz. Lütfen bekleyin.",
   keyPrefix: "general",
   skip: (req) => req.method === "GET" && req.path.startsWith("/gifts"),
