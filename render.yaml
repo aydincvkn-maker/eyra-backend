@@ -70,3 +70,9 @@ services:
         sync: false
       - key: PAYMENT_WEBHOOK_SECRET
         sync: false
+
+      # ── Cloudinary (set in Render dashboard) ──────────────
+      - key: CLOUDINARY_URL
+        sync: false
+      - key: CLOUDINARY_ROOT_FOLDER
+        value: eyra
