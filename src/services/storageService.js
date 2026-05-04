@@ -57,9 +57,11 @@ function _resourceTypeFor(mime) {
 }
 
 function _sanitizeId(value) {
-  return String(value || "")
-    .replace(/[^a-zA-Z0-9_-]+/g, "_")
-    .slice(0, 80) || "file";
+  return (
+    String(value || "")
+      .replace(/[^a-zA-Z0-9_-]+/g, "_")
+      .slice(0, 80) || "file"
+  );
 }
 
 /**
@@ -106,24 +108,27 @@ async function uploadBuffer(buffer, options = {}) {
   }
 
   return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(uploadOpts, (err, result) => {
-      if (err) {
-        logger.error("[storage] upload failed", {
-          folder,
-          resourceType,
-          error: err.message,
+    const stream = cloudinary.uploader.upload_stream(
+      uploadOpts,
+      (err, result) => {
+        if (err) {
+          logger.error("[storage] upload failed", {
+            folder,
+            resourceType,
+            error: err.message,
+          });
+          return reject(err);
+        }
+        resolve({
+          url: result.secure_url || result.url,
+          secureUrl: result.secure_url,
+          publicId: result.public_id,
+          resourceType: result.resource_type,
+          bytes: result.bytes,
+          format: result.format,
         });
-        return reject(err);
-      }
-      resolve({
-        url: result.secure_url || result.url,
-        secureUrl: result.secure_url,
-        publicId: result.public_id,
-        resourceType: result.resource_type,
-        bytes: result.bytes,
-        format: result.format,
-      });
-    });
+      },
+    );
     stream.end(buffer);
   });
 }
@@ -140,7 +145,10 @@ async function destroy(publicId, resourceType = "image") {
       resource_type: resourceType,
       invalidate: true,
     });
-    return { ok: res?.result === "ok" || res?.result === "not found", raw: res };
+    return {
+      ok: res?.result === "ok" || res?.result === "not found",
+      raw: res,
+    };
   } catch (e) {
     logger.warn("[storage] destroy failed", { publicId, error: e.message });
     return { ok: false, error: e.message };

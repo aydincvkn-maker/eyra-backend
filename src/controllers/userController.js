@@ -1090,30 +1090,46 @@ exports.uploadAvatar = async (req, res) => {
         .json({ success: false, message: "Dosya yÃ¼klenmedi" });
     }
 
-    const fileName = `avatar_${userId}_${Date.now()}${path.extname(req.file.originalname)}`;
-    const uploadDir = path.join(__dirname, "../../uploads/avatars");
+    // Upload to Cloudinary
+    const uploaded = await storageService.uploadBuffer(req.file.buffer, {
+      folder: "avatars",
+      mimeType: req.file.mimetype,
+      originalName: req.file.originalname,
+      publicId: `avatar_${userId}_${Date.now()}`,
+    });
 
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
+    const avatarUrl = uploaded.url;
 
-    const filePath = path.join(uploadDir, fileName);
-    fs.writeFileSync(filePath, req.file.buffer);
-
-    const avatarUrl = `/uploads/avatars/${fileName}`;
-
-    // Eski avatarÄ± sil
-    const oldUser = await User.findById(userId);
-    if (oldUser?.profileImage) {
-      const oldPath = path.join(__dirname, "../..", oldUser.profileImage);
-      if (fs.existsSync(oldPath)) {
-        fs.unlinkSync(oldPath);
+    // Eski avatarÄ± sil (Cloudinary publicId varsa)
+    const oldUser = await User.findById(userId).select(
+      "profileImage profileImagePublicId",
+    );
+    if (oldUser) {
+      const oldPublicId =
+        oldUser.profileImagePublicId ||
+        storageService.extractPublicId(oldUser.profileImage || "");
+      if (oldPublicId) {
+        storageService.destroy(oldPublicId, "image").catch(() => {});
+      } else if (
+        oldUser.profileImage &&
+        oldUser.profileImage.startsWith("/uploads/")
+      ) {
+        // legacy local file (best-effort cleanup)
+        const oldPath = path.join(__dirname, "../..", oldUser.profileImage);
+        try {
+          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        } catch (_) {}
       }
     }
 
     const user = await User.findByIdAndUpdate(
       userId,
-      { $set: { profileImage: avatarUrl } },
+      {
+        $set: {
+          profileImage: avatarUrl,
+          profileImagePublicId: uploaded.publicId,
+        },
+      },
       { new: true },
     ).select("-password -refreshToken");
 
