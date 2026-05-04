@@ -107,10 +107,17 @@ const allowedOrigins = new Set([
   ...parseOrigins(CLIENT_ORIGIN),
   ...parseOrigins(MOBILE_ORIGIN),
 ]);
+const hasWildcardOrigin = allowedOrigins.has("*");
+
+if (NODE_ENV === "production" && hasWildcardOrigin) {
+  logger.warn(
+    "CORS wildcard origin (*) production ortaminda devre disi birakildi",
+  );
+}
 
 const isOriginAllowed = (origin) => {
   if (!origin) return true; // non-browser clients
-  if (allowedOrigins.has("*")) return true;
+  if (hasWildcardOrigin && NODE_ENV !== "production") return true;
   return allowedOrigins.has(origin);
 };
 

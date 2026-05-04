@@ -84,7 +84,7 @@ module.exports = {
       return "mock";
     }
 
-    if (!['mock', 'stripe'].includes(val)) {
+    if (!["mock", "stripe"].includes(val)) {
       throw new Error(
         "[ENV] PAYMENT_PROVIDER geçersiz. Desteklenen değerler: mock, stripe",
       );
