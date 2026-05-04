@@ -216,24 +216,19 @@ router.post("/upload", attachmentUpload.single("media"), async (req, res) => {
     const attachmentType = inferAttachmentType(mimeType);
     const folder = attachmentType === "file" ? "files" : `${attachmentType}s`;
     const timestamp = Date.now();
-    const fileName = `admin_${String(req.user.id)}_${timestamp}${extension}`;
-    const uploadDir = path.join(
-      __dirname,
-      `../../uploads/admin-chat/${folder}`,
-    );
 
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
-    const filePath = path.join(uploadDir, fileName);
-    fs.writeFileSync(filePath, file.buffer);
+    const uploaded = await storageService.uploadBuffer(file.buffer, {
+      folder: `admin-chat/${folder}`,
+      mimeType,
+      originalName: file.originalname,
+      publicId: `admin_${String(req.user.id)}_${timestamp}`,
+    });
 
     return sendSuccess(
       res,
       {
         attachment: {
-          url: `/uploads/admin-chat/${folder}/${fileName}`,
+          url: uploaded.url,
           type: attachmentType,
           fileName: file.originalname,
           fileSize: file.size,
