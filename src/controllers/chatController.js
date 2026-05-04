@@ -544,12 +544,13 @@ exports.uploadMedia = async (req, res) => {
     else if (mimeType.startsWith("audio/")) folder = "audio";
 
     const fileName = `chat_${userId}_${timestamp}${ext}`;
-    const uploadDir = path.join(__dirname, `../../uploads/chat/${folder}`);
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-    const filePath = path.join(uploadDir, fileName);
-    fs.writeFileSync(filePath, file.buffer);
-    const fileUrl = `/uploads/chat/${folder}/${fileName}`;
+    const uploaded = await storageService.uploadBuffer(file.buffer, {
+      folder: `chat/${folder}`,
+      mimeType,
+      originalName: file.originalname,
+      publicId: `chat_${userId}_${timestamp}`,
+    });
+    const fileUrl = uploaded.url;
 
     // Dosya tipi belirleme
     let messageType = "file";
