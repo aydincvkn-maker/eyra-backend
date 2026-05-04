@@ -21,6 +21,7 @@ const {
   STRIPE_SECRET_KEY,
   STRIPE_WEBHOOK_SECRET,
   BACKEND_URL,
+  NODE_ENV,
 } = require("../config/env");
 const { logger } = require("../utils/logger");
 
@@ -445,6 +446,13 @@ const processWebhook = async ({
   const providerName = String(provider || "")
     .trim()
     .toLowerCase();
+
+  if (NODE_ENV === "production" && providerName === "mock") {
+    const err = new Error("Production ortaminda mock webhook kabul edilmez");
+    err.statusCode = 403;
+    throw err;
+  }
+
   if (providerName === "stripe") {
     const stripeEventId = String(eventId || "").trim();
     if (!stripeEventId) {
@@ -473,8 +481,15 @@ const processWebhook = async ({
       return { payment: existingPayment, duplicate: true };
     }
 
+    const rawBody = String(payload?.rawBody || "");
+    if (!signature || !rawBody.trim()) {
+      const err = new Error("Stripe webhook imzasi veya payload eksik");
+      err.statusCode = 400;
+      throw err;
+    }
+
     const isSignatureValid = stripeProvider.verifyWebhookSignature({
-      payload: String(payload?.rawBody || ""),
+      payload: rawBody,
       signatureHeader: signature,
       webhookSecret: STRIPE_WEBHOOK_SECRET,
     });
@@ -730,9 +745,7 @@ const refundPayment = async ({ orderId }) => {
           `✅ Stripe refund oluşturuldu: ${refundResult.refundId} (${refundResult.status})`,
         );
       } else {
-        logger.warn(
-          "⚠️ Payment Intent bulunamadı, sadece DB refund yapılacak",
-        );
+        logger.warn("⚠️ Payment Intent bulunamadı, sadece DB refund yapılacak");
       }
     } catch (stripeErr) {
       // Stripe hatası olsa bile DB tarafını yine de işle

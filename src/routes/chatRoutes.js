@@ -62,7 +62,7 @@ const upload = multer({
     const mimeType = String(file.mimetype || "").toLowerCase();
     const extension = path.extname(file.originalname || "").toLowerCase();
     if (
-      allowedChatMimeTypes.has(mimeType) ||
+      allowedChatMimeTypes.has(mimeType) &&
       allowedChatExtensions.has(extension)
     ) {
       return cb(null, true);
