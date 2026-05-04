@@ -98,13 +98,10 @@ const normalizeGiftKey = (gift) => {
   if (image.includes("new_gift3") || name === "ozel hediye 3")
     return "new_gift3";
 
-  if (name === "ask" || name === "ask" || name === "ask" || name === "ask") {
+  if (name === "ask") {
     return "ask";
   }
-  if (name === "ask" || name === "aşk") {
-    return "ask";
-  }
-  if (name === "opucuk" || name === "öpücük") {
+  if (name === "opucuk") {
     return "opucuk";
   }
   if (name === "hi" || name === "merhaba") {
