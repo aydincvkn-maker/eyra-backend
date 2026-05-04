@@ -6,16 +6,18 @@ const { checkVerificationAchievement } = require("./achievementController");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
+const storageService = require("../services/storageService");
 const { logger } = require("../utils/logger");
 
-const saveVerificationUpload = (userId, file, suffix) => {
-  const fileName = `verify_${userId}_${suffix}_${crypto.randomBytes(16).toString("hex")}${path.extname(file.originalname || ".jpg")}`;
-  const uploadDir = path.join(__dirname, "../../uploads/verification");
-  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-  const filePath = path.join(uploadDir, fileName);
-  fs.writeFileSync(filePath, file.buffer);
-  return `/uploads/verification/${fileName}`;
+const saveVerificationUpload = async (userId, file, suffix) => {
+  const id = `verify_${userId}_${suffix}_${crypto.randomBytes(8).toString("hex")}`;
+  const uploaded = await storageService.uploadBuffer(file.buffer, {
+    folder: "verification",
+    mimeType: file.mimetype,
+    originalName: file.originalname,
+    publicId: id,
+  });
+  return uploaded.url;
 };
 
 // =============================================
@@ -38,12 +40,10 @@ exports.requestVerification = async (req, res) => {
     }
 
     if (String(user.gender || "") !== "female") {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Bu doğrulama akışı yalnızca kadın kullanıcılar içindir",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Bu doğrulama akışı yalnızca kadın kullanıcılar içindir",
+      });
     }
 
     // Bekleyen talep var mı?
@@ -54,12 +54,10 @@ exports.requestVerification = async (req, res) => {
     }
 
     if (!String(user.profileImage || "").trim()) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Önce profil fotoğrafı yüklemelisiniz",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Önce profil fotoğrafı yüklemelisiniz",
+      });
     }
 
     const files = req.files || {};
@@ -69,12 +67,10 @@ exports.requestVerification = async (req, res) => {
 
     // Selfie fotoğrafları gerekli
     if (!centerFile || !leftFile || !rightFile) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Orta, sol ve sağ yüz selfie fotoğrafları gerekli",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Orta, sol ve sağ yüz selfie fotoğrafları gerekli",
+      });
     }
 
     const faceCenterUrl = saveVerificationUpload(userId, centerFile, "center");
