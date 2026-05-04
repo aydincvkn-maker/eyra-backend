@@ -48,29 +48,29 @@ const RATE_LIMIT_MAX_GIFTS = 10; // 1 dakikada max 10 aynı hediye
 // under public/videos/gifts/, so switching the URLs is sufficient.
 const GIFT_MEDIA_BY_KEY = {
   ask: {
-    imageUrl: "/gifts/new_gift1.jpg",
+    imageUrl: "/gifts/ask.jpeg",
     animationUrl: "/videos/gifts/love.mp4",
   },
   opucuk: {
-    imageUrl: "/gifts/new_gift2.jpg",
+    imageUrl: "/gifts/opucuk.webp",
     animationUrl: "/videos/gifts/love_kiss.mp4",
   },
-  hi: { imageUrl: null, animationUrl: "/videos/gifts/hi.mp4" },
-  merhaba: { imageUrl: null, animationUrl: "/videos/gifts/hi.mp4" },
-  kirmizi_araba: { imageUrl: "/gifts/new_gift3.jpg", animationUrl: null },
-  ozel_jet: { imageUrl: "/gifts/new_gift3.jpg", animationUrl: null },
+  hi: { imageUrl: "/gifts/hi.webp", animationUrl: "/videos/gifts/hi.mp4" },
+  merhaba: { imageUrl: "/gifts/hi.webp", animationUrl: "/videos/gifts/hi.mp4" },
+  kirmizi_araba: { imageUrl: "/gifts/kirmizi_araba.jpeg", animationUrl: null },
+  ozel_jet: { imageUrl: "/gifts/ozel_jet.jpeg", animationUrl: null },
   rolex: {
-    imageUrl: "/gifts/new_gift3.jpg",
+    imageUrl: "/gifts/rolex.webp",
     animationUrl: "/videos/gifts/rolex.mp4",
   },
   yuzen_panda: {
-    imageUrl: null,
+    imageUrl: "/gifts/yuzen_panda.webp",
     animationUrl: "/videos/gifts/yuzen_panda.mp4",
   },
   kutu: { imageUrl: null, animationUrl: null },
   peri: { imageUrl: "/gifts/peri.jpeg", animationUrl: null },
-  new_gift1: { imageUrl: "/gifts/new_gift1.jpg", animationUrl: null },
-  new_gift2: { imageUrl: "/gifts/new_gift2.jpg", animationUrl: null },
+  new_gift1: { imageUrl: "/gifts/ask.jpeg", animationUrl: null },
+  new_gift2: { imageUrl: "/gifts/opucuk.webp", animationUrl: null },
   new_gift3: { imageUrl: "/gifts/new_gift3.jpg", animationUrl: null },
 };
 
@@ -131,7 +131,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Aşk",
     description: "Sevgi dolu bir hediye",
-    imageUrl: "/gifts/new_gift1.jpg",
+    imageUrl: "/gifts/ask.jpeg",
     animationUrl: "/videos/gifts/love.mp4",
     valueCoins: 10,
     category: "basic",
@@ -140,7 +140,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Öpücük",
     description: "Tatlı bir öpücük hediyesi",
-    imageUrl: "/gifts/new_gift2.jpg",
+    imageUrl: "/gifts/opucuk.webp",
     animationUrl: "/videos/gifts/love_kiss.mp4",
     valueCoins: 25,
     category: "basic",
@@ -149,7 +149,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Merhaba",
     description: "Coşkulu bir selamlama",
-    imageUrl: null,
+    imageUrl: "/gifts/hi.webp",
     animationUrl: "/videos/gifts/hi.mp4",
     valueCoins: 75,
     category: "basic",
@@ -158,7 +158,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Kırmızı Araba",
     description: "Süper bir araba hediyesi",
-    imageUrl: "/gifts/new_gift3.jpg",
+    imageUrl: "/gifts/kirmizi_araba.jpeg",
     animationUrl: null,
     valueCoins: 150,
     category: "basic",
@@ -167,7 +167,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Özel Jet",
     description: "Lüks özel jet hediyesi",
-    imageUrl: "/gifts/new_gift3.jpg",
+    imageUrl: "/gifts/ozel_jet.jpeg",
     animationUrl: null,
     valueCoins: 300,
     category: "vip",
@@ -176,7 +176,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Rolex",
     description: "Lüks saat hediyesi",
-    imageUrl: "/gifts/new_gift3.jpg",
+    imageUrl: "/gifts/rolex.webp",
     animationUrl: "/videos/gifts/rolex.mp4",
     valueCoins: 500,
     category: "vip",
@@ -185,7 +185,7 @@ const DEFAULT_GIFTS = [
   {
     name: "Yüzen Panda",
     description: "Sevimli yüzen panda",
-    imageUrl: null,
+    imageUrl: "/gifts/yuzen_panda.webp",
     animationUrl: "/videos/gifts/yuzen_panda.mp4",
     valueCoins: 2000,
     category: "premium",
