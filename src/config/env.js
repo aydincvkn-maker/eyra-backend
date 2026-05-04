@@ -68,17 +68,35 @@ module.exports = {
   LIVEKIT_API_SECRET: required("LIVEKIT_API_SECRET", ""),
 
   PAYMENT_PROVIDER: (() => {
-    const val = process.env.PAYMENT_PROVIDER;
-    if (val && val.trim()) return val.trim();
-    if (NODE_ENV === "production") {
+    const val = String(process.env.PAYMENT_PROVIDER || "")
+      .trim()
+      .toLowerCase();
+
+    if (!val) {
+      if (NODE_ENV === "production") {
+        throw new Error(
+          "[ENV] PAYMENT_PROVIDER production'da tanımlı olmalı! 'mock' kullanılamaz.",
+        );
+      }
+      console.warn(
+        "[ENV] PAYMENT_PROVIDER tanımlı değil, development fallback: mock",
+      );
+      return "mock";
+    }
+
+    if (!['mock', 'stripe'].includes(val)) {
       throw new Error(
-        "[ENV] PAYMENT_PROVIDER production'da tanımlı olmalı! 'mock' kullanılamaz.",
+        "[ENV] PAYMENT_PROVIDER geçersiz. Desteklenen değerler: mock, stripe",
       );
     }
-    console.warn(
-      "[ENV] PAYMENT_PROVIDER tanımlı değil, development fallback: mock",
-    );
-    return "mock";
+
+    if (NODE_ENV === "production" && val !== "stripe") {
+      throw new Error(
+        "[ENV] PAYMENT_PROVIDER production'da 'stripe' olmalı. 'mock' kullanılamaz.",
+      );
+    }
+
+    return val;
   })(),
   PAYMENT_WEBHOOK_SECRET: (() => {
     const val = process.env.PAYMENT_WEBHOOK_SECRET;
