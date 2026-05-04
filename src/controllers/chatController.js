@@ -7,6 +7,7 @@ const { getChatRoomId } = require("../utils/chatUtils");
 const { sendError } = require("../utils/response");
 const path = require("path");
 const fs = require("fs");
+const storageService = require("../services/storageService");
 const { logger } = require("../utils/logger");
 
 // Legacy/live room messages
