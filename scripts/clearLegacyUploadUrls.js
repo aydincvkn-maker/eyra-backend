@@ -38,7 +38,12 @@ async function main() {
   }
 
   // Verification photos
-  const verifyFields = ["selfieUrl", "faceCenterUrl", "faceLeftUrl", "faceRightUrl"];
+  const verifyFields = [
+    "selfieUrl",
+    "faceCenterUrl",
+    "faceLeftUrl",
+    "faceRightUrl",
+  ];
   for (const field of verifyFields) {
     const q = { [field]: { $regex: "^/uploads/" } };
     const cnt = await Verification.countDocuments(q);
