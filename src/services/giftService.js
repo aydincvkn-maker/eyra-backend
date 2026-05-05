@@ -91,13 +91,6 @@ const normalizeGiftKey = (gift) => {
   const name = normalizeAscii(gift?.name || "");
   const media = `${image} ${animation}`;
 
-  if (image.includes("new_gift1") || name === "ozel hediye 1")
-    return "new_gift1";
-  if (image.includes("new_gift2") || name === "ozel hediye 2")
-    return "new_gift2";
-  if (image.includes("new_gift3") || name === "ozel hediye 3")
-    return "new_gift3";
-
   if (name === "ask") {
     return "ask";
   }
@@ -125,6 +118,14 @@ const normalizeGiftKey = (gift) => {
   if (name === "kutu" || media.includes("box")) {
     return "kutu";
   }
+
+  // Legacy placeholder images only after real gift-name matches fail.
+  if (image.includes("new_gift1") || name === "ozel hediye 1")
+    return "new_gift1";
+  if (image.includes("new_gift2") || name === "ozel hediye 2")
+    return "new_gift2";
+  if (image.includes("new_gift3") || name === "ozel hediye 3")
+    return "new_gift3";
 
   return null;
 };
