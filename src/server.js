@@ -445,9 +445,15 @@ app.use((err, req, res, _next) => {
 
   // Default 500
   const statusCode = err.statusCode || 500;
+  const errorMessage =
+    NODE_ENV === "production" && statusCode >= 500
+      ? "Internal server error"
+      : err.message || "Request failed";
+
   res.status(statusCode).json({
     success: false,
-    error: NODE_ENV === "production" ? "Internal server error" : err.message,
+    error: errorMessage,
+    message: errorMessage,
   });
 });
 
