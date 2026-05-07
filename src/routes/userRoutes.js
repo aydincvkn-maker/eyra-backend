@@ -6,20 +6,16 @@ const blockController = require("../controllers/blockController");
 const auth = require("../middleware/auth");
 const requirePermission = require("../middleware/requirePermission");
 const multer = require("multer");
-const path = require("path");
 
 const allowedAvatarMimeTypes = new Set([
   "image/jpeg",
   "image/png",
   "image/gif",
   "image/webp",
-]);
-const allowedAvatarExtensions = new Set([
-  ".jpg",
-  ".jpeg",
-  ".png",
-  ".gif",
-  ".webp",
+  "image/heic",
+  "image/heif",
+  "image/bmp",
+  "image/x-ms-bmp",
 ]);
 
 // Multer konfigürasyonu - avatar yükleme için
@@ -29,12 +25,11 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
     const mimeType = String(file.mimetype || "").toLowerCase();
-    const extension = path.extname(file.originalname || "").toLowerCase();
     const hasAllowedMimeType = allowedAvatarMimeTypes.has(mimeType);
-    const hasAllowedExtension =
-      extension === "" || allowedAvatarExtensions.has(extension);
 
-    if (hasAllowedMimeType && hasAllowedExtension) {
+    // Some mobile camera/gallery flows produce temporary filenames with
+    // non-standard extensions even though the actual MIME type is a valid image.
+    if (hasAllowedMimeType) {
       return cb(null, true);
     }
 
