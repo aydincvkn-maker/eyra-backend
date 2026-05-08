@@ -46,16 +46,8 @@ function initFirebaseAdmin() {
       }
     }
 
-    // 3. Deprecated compatibility fallback for existing development setups
-    if (!serviceAccount && !isProduction) {
-      const keyPath = path.resolve(__dirname, "../../serviceAccountKey.json");
-      if (fs.existsSync(keyPath)) {
-        serviceAccount = require(keyPath);
-        console.warn(
-          "⚠️ Firebase credentials loaded from deprecated serviceAccountKey.json fallback",
-        );
-      }
-    }
+    // 3. Do NOT fall back to repo file on any deployment
+    // (removed for security: no file-based fallback allowed in any environment)
 
     if (!serviceAccount) {
       console.warn(
