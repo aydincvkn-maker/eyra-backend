@@ -63,8 +63,12 @@ function initFirebaseAdmin() {
     });
 
     initialized = true;
-    const rtdb = process.env.FIREBASE_DATABASE_URL ? "+ Realtime DB" : "(no RTD)";
-    console.log(`🔔 Firebase Admin SDK baslatildi (push notifications ${rtdb})`);
+    const rtdb = process.env.FIREBASE_DATABASE_URL
+      ? "+ Realtime DB"
+      : "(no RTD)";
+    console.log(
+      `🔔 Firebase Admin SDK baslatildi (push notifications ${rtdb})`,
+    );
   } catch (err) {
     console.error("❌ Firebase Admin SDK başlatma hatası:", err.message);
   }
