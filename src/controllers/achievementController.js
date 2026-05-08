@@ -10,26 +10,166 @@ const { logger } = require("../utils/logger");
 
 const ACHIEVEMENTS = [
   // Sosyal
-  { id: "first_follow", name: "İlk Takip", nameEn: "First Follow", icon: "👋", description: "İlk takipçini kazan", category: "social", condition: { type: "followers", count: 1 }, rewardCoins: 50, rewardXP: 20 },
-  { id: "popular_100", name: "Süperstar", nameEn: "Superstar", icon: "💫", description: "100 takipçiye ulaş", category: "social", condition: { type: "followers", count: 100 }, rewardCoins: 1000, rewardXP: 500 },
-  { id: "popular_500", name: "Efsane", nameEn: "Legend", icon: "👑", description: "500 takipçiye ulaş", category: "social", condition: { type: "followers", count: 500 }, rewardCoins: 1000, rewardXP: 2000 },
-  
+  {
+    id: "first_follow",
+    name: "İlk Takip",
+    nameEn: "First Follow",
+    icon: "👋",
+    description: "İlk takipçini kazan",
+    category: "social",
+    condition: { type: "followers", count: 1 },
+    rewardCoins: 50,
+    rewardXP: 20,
+  },
+  {
+    id: "popular_100",
+    name: "Süperstar",
+    nameEn: "Superstar",
+    icon: "💫",
+    description: "100 takipçiye ulaş",
+    category: "social",
+    condition: { type: "followers", count: 100 },
+    rewardCoins: 1000,
+    rewardXP: 500,
+  },
+  {
+    id: "popular_500",
+    name: "Efsane",
+    nameEn: "Legend",
+    icon: "👑",
+    description: "500 takipçiye ulaş",
+    category: "social",
+    condition: { type: "followers", count: 500 },
+    rewardCoins: 1000,
+    rewardXP: 2000,
+  },
+
   // Streaming
-  { id: "first_stream", name: "İlk Yayın", nameEn: "First Stream", icon: "📺", description: "İlk yayınını yap", category: "streaming", condition: { type: "streams", count: 1 }, rewardCoins: 100, rewardXP: 50 },
-  { id: "streamer_10", name: "Yayıncı", nameEn: "Streamer", icon: "🎤️", description: "10 yayın yap", category: "streaming", condition: { type: "streams", count: 10 }, rewardCoins: 300, rewardXP: 200 },
-  { id: "streamer_50", name: "Pro Yayıncı", nameEn: "Pro Streamer", icon: "🎬", description: "50 yayın yap", category: "streaming", condition: { type: "streams", count: 50 }, rewardCoins: 2000, rewardXP: 1000 },
-  
+  {
+    id: "first_stream",
+    name: "İlk Yayın",
+    nameEn: "First Stream",
+    icon: "📺",
+    description: "İlk yayınını yap",
+    category: "streaming",
+    condition: { type: "streams", count: 1 },
+    rewardCoins: 100,
+    rewardXP: 50,
+  },
+  {
+    id: "streamer_10",
+    name: "Yayıncı",
+    nameEn: "Streamer",
+    icon: "🎤️",
+    description: "10 yayın yap",
+    category: "streaming",
+    condition: { type: "streams", count: 10 },
+    rewardCoins: 300,
+    rewardXP: 200,
+  },
+  {
+    id: "streamer_50",
+    name: "Pro Yayıncı",
+    nameEn: "Pro Streamer",
+    icon: "🎬",
+    description: "50 yayın yap",
+    category: "streaming",
+    condition: { type: "streams", count: 50 },
+    rewardCoins: 2000,
+    rewardXP: 1000,
+  },
+
   // Gifting
-  { id: "first_gift_sent", name: "İlk Hediye", nameEn: "First Gift", icon: "🎁", description: "İlk hediyeni gönder", category: "gifting", condition: { type: "gifts_sent", count: 1 }, rewardCoins: 25, rewardXP: 25 },
-  { id: "gifter_50", name: "Cömert", nameEn: "Generous", icon: "💝", description: "50 hediye gönder", category: "gifting", condition: { type: "gifts_sent", count: 50 }, rewardCoins: 500, rewardXP: 200 },
-  { id: "first_gift_received", name: "İlk Hediye Aldım", nameEn: "Gift Received", icon: "🎀", description: "İlk hediyeni al", category: "gifting", condition: { type: "gifts_received", count: 1 }, rewardCoins: 25, rewardXP: 10 },
-  
+  {
+    id: "first_gift_sent",
+    name: "İlk Hediye",
+    nameEn: "First Gift",
+    icon: "🎁",
+    description: "İlk hediyeni gönder",
+    category: "gifting",
+    condition: { type: "gifts_sent", count: 1 },
+    rewardCoins: 25,
+    rewardXP: 25,
+  },
+  {
+    id: "gifter_50",
+    name: "Cömert",
+    nameEn: "Generous",
+    icon: "💝",
+    description: "50 hediye gönder",
+    category: "gifting",
+    condition: { type: "gifts_sent", count: 50 },
+    rewardCoins: 500,
+    rewardXP: 200,
+  },
+  {
+    id: "first_gift_received",
+    name: "İlk Hediye Aldım",
+    nameEn: "Gift Received",
+    icon: "🎀",
+    description: "İlk hediyeni al",
+    category: "gifting",
+    condition: { type: "gifts_received", count: 1 },
+    rewardCoins: 25,
+    rewardXP: 10,
+  },
+
   // Milestones
-  { id: "level_5", name: "Seviye 5", nameEn: "Level 5", icon: "🏅", description: "Seviye 5'e ulaş", category: "milestone", condition: { type: "level", count: 5 }, rewardCoins: 500, rewardXP: 0 },
-  { id: "level_10", name: "Seviye 10", nameEn: "Level 10", icon: "🏆", description: "Seviye 10'a ulaş", category: "milestone", condition: { type: "level", count: 10 }, rewardCoins: 2000, rewardXP: 0 },
-  { id: "coins_1000", name: "Zengin", nameEn: "Rich", icon: "💰", description: "1000 coin biriktir", category: "milestone", condition: { type: "coins", count: 1000 }, rewardCoins: 0, rewardXP: 100 },
-  { id: "coins_10000", name: "Milyoner", nameEn: "Millionaire", icon: "💎", description: "10000 coin biriktir", category: "milestone", condition: { type: "coins", count: 10000 }, rewardCoins: 0, rewardXP: 500 },
-  { id: "verified", name: "Doğrulanmış", nameEn: "Verified", icon: "✅", description: "Profilini doğrula", category: "milestone", condition: { type: "verified", count: 1 }, rewardCoins: 200, rewardXP: 100 },
+  {
+    id: "level_5",
+    name: "Seviye 5",
+    nameEn: "Level 5",
+    icon: "🏅",
+    description: "Seviye 5'e ulaş",
+    category: "milestone",
+    condition: { type: "level", count: 5 },
+    rewardCoins: 500,
+    rewardXP: 0,
+  },
+  {
+    id: "level_10",
+    name: "Seviye 10",
+    nameEn: "Level 10",
+    icon: "🏆",
+    description: "Seviye 10'a ulaş",
+    category: "milestone",
+    condition: { type: "level", count: 10 },
+    rewardCoins: 2000,
+    rewardXP: 0,
+  },
+  {
+    id: "coins_1000",
+    name: "Zengin",
+    nameEn: "Rich",
+    icon: "💰",
+    description: "1000 coin biriktir",
+    category: "milestone",
+    condition: { type: "coins", count: 1000 },
+    rewardCoins: 0,
+    rewardXP: 100,
+  },
+  {
+    id: "coins_10000",
+    name: "Milyoner",
+    nameEn: "Millionaire",
+    icon: "💎",
+    description: "10000 coin biriktir",
+    category: "milestone",
+    condition: { type: "coins", count: 10000 },
+    rewardCoins: 0,
+    rewardXP: 500,
+  },
+  {
+    id: "verified",
+    name: "Doğrulanmış",
+    nameEn: "Verified",
+    icon: "✅",
+    description: "Profilini doğrula",
+    category: "milestone",
+    condition: { type: "verified", count: 1 },
+    rewardCoins: 200,
+    rewardXP: 100,
+  },
 ];
 
 // =============================================
@@ -41,11 +181,15 @@ const ACHIEVEMENTS = [
  */
 const tryUnlockAchievement = async (userId, achievementId) => {
   try {
-    const user = await User.findById(userId).select("achievements coins xp level followers");
+    const user = await User.findById(userId).select(
+      "achievements coins xp level followers",
+    );
     if (!user) return null;
 
     // Zaten açılmış mı?
-    const alreadyUnlocked = user.achievements?.some((a) => a.id === achievementId);
+    const alreadyUnlocked = user.achievements?.some(
+      (a) => a.id === achievementId,
+    );
     if (alreadyUnlocked) return null;
 
     const achievement = ACHIEVEMENTS.find((a) => a.id === achievementId);
@@ -90,15 +234,17 @@ const tryUnlockAchievement = async (userId, achievementId) => {
 
     if (achievement.rewardCoins > 0 || achievement.rewardXP > 0) {
       updateOps.$inc = {};
-      if (achievement.rewardCoins > 0) updateOps.$inc.coins = achievement.rewardCoins;
+      if (achievement.rewardCoins > 0)
+        updateOps.$inc.coins = achievement.rewardCoins;
       if (achievement.rewardXP > 0) {
         updateOps.$inc.xp = achievement.rewardXP;
         updateOps.$inc.totalXpEarned = achievement.rewardXP;
       }
     }
 
-    const updatedUser = await User.findByIdAndUpdate(userId, updateOps, { new: true })
-      .select("coins xp level achievements");
+    const updatedUser = await User.findByIdAndUpdate(userId, updateOps, {
+      new: true,
+    }).select("coins xp level achievements");
 
     // Transaction kaydet
     if (achievement.rewardCoins > 0) {
