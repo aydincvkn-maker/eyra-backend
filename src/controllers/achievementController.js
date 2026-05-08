@@ -11,18 +11,16 @@ const { logger } = require("../utils/logger");
 const ACHIEVEMENTS = [
   // Sosyal
   { id: "first_follow", name: "İlk Takip", nameEn: "First Follow", icon: "👋", description: "İlk takipçini kazan", category: "social", condition: { type: "followers", count: 1 }, rewardCoins: 50, rewardXP: 20 },
-  { id: "popular_10", name: "Popüler", nameEn: "Popular", icon: "⭐", description: "10 takipçiye ulaş", category: "social", condition: { type: "followers", count: 10 }, rewardCoins: 200, rewardXP: 100 },
-  { id: "popular_50", name: "Yıldız", nameEn: "Star", icon: "🌟", description: "50 takipçiye ulaş", category: "social", condition: { type: "followers", count: 50 }, rewardCoins: 500, rewardXP: 250 },
   { id: "popular_100", name: "Süperstar", nameEn: "Superstar", icon: "💫", description: "100 takipçiye ulaş", category: "social", condition: { type: "followers", count: 100 }, rewardCoins: 1000, rewardXP: 500 },
-  { id: "popular_500", name: "Efsane", nameEn: "Legend", icon: "👑", description: "500 takipçiye ulaş", category: "social", condition: { type: "followers", count: 500 }, rewardCoins: 5000, rewardXP: 2000 },
+  { id: "popular_500", name: "Efsane", nameEn: "Legend", icon: "👑", description: "500 takipçiye ulaş", category: "social", condition: { type: "followers", count: 500 }, rewardCoins: 1000, rewardXP: 2000 },
   
   // Streaming
   { id: "first_stream", name: "İlk Yayın", nameEn: "First Stream", icon: "📺", description: "İlk yayınını yap", category: "streaming", condition: { type: "streams", count: 1 }, rewardCoins: 100, rewardXP: 50 },
-  { id: "streamer_10", name: "Yayıncı", nameEn: "Streamer", icon: "🎙️", description: "10 yayın yap", category: "streaming", condition: { type: "streams", count: 10 }, rewardCoins: 500, rewardXP: 200 },
+  { id: "streamer_10", name: "Yayıncı", nameEn: "Streamer", icon: "🎤️", description: "10 yayın yap", category: "streaming", condition: { type: "streams", count: 10 }, rewardCoins: 300, rewardXP: 200 },
   { id: "streamer_50", name: "Pro Yayıncı", nameEn: "Pro Streamer", icon: "🎬", description: "50 yayın yap", category: "streaming", condition: { type: "streams", count: 50 }, rewardCoins: 2000, rewardXP: 1000 },
   
   // Gifting
-  { id: "first_gift_sent", name: "İlk Hediye", nameEn: "First Gift", icon: "🎁", description: "İlk hediyeni gönder", category: "gifting", condition: { type: "gifts_sent", count: 1 }, rewardCoins: 50, rewardXP: 25 },
+  { id: "first_gift_sent", name: "İlk Hediye", nameEn: "First Gift", icon: "🎁", description: "İlk hediyeni gönder", category: "gifting", condition: { type: "gifts_sent", count: 1 }, rewardCoins: 25, rewardXP: 25 },
   { id: "gifter_50", name: "Cömert", nameEn: "Generous", icon: "💝", description: "50 hediye gönder", category: "gifting", condition: { type: "gifts_sent", count: 50 }, rewardCoins: 500, rewardXP: 200 },
   { id: "first_gift_received", name: "İlk Hediye Aldım", nameEn: "Gift Received", icon: "🎀", description: "İlk hediyeni al", category: "gifting", condition: { type: "gifts_received", count: 1 }, rewardCoins: 25, rewardXP: 10 },
   
@@ -144,9 +142,8 @@ const tryUnlockAchievement = async (userId, achievementId) => {
 /**
  * Seviye bazlı başarımları kontrol et
  */
-const checkLevelAchievements = async (userId, level) => {
-  if (level >= 5) await tryUnlockAchievement(userId, "level_5");
-  if (level >= 10) await tryUnlockAchievement(userId, "level_10");
+const checkLevelAchievements = async (_userId, _level) => {
+  // level_5 ve level_10 kaldırıldı
 };
 exports.checkLevelAchievements = checkLevelAchievements;
 
@@ -155,8 +152,6 @@ exports.checkLevelAchievements = checkLevelAchievements;
  */
 exports.checkFollowerAchievements = async (userId, followerCount) => {
   if (followerCount >= 1) await tryUnlockAchievement(userId, "first_follow");
-  if (followerCount >= 10) await tryUnlockAchievement(userId, "popular_10");
-  if (followerCount >= 50) await tryUnlockAchievement(userId, "popular_50");
   if (followerCount >= 100) await tryUnlockAchievement(userId, "popular_100");
   if (followerCount >= 500) await tryUnlockAchievement(userId, "popular_500");
 };
@@ -172,8 +167,8 @@ exports.checkGiftSentAchievements = async (userId, totalSent) => {
 /**
  * Hediye alma bazlı başarımları kontrol et
  */
-exports.checkGiftReceivedAchievements = async (userId) => {
-  await tryUnlockAchievement(userId, "first_gift_received");
+exports.checkGiftReceivedAchievements = async (_userId) => {
+  // first_gift_received kaldırıldı
 };
 
 /**
@@ -188,8 +183,8 @@ exports.checkStreamAchievements = async (userId, streamCount) => {
 /**
  * Doğrulama başarımını kontrol et
  */
-exports.checkVerificationAchievement = async (userId) => {
-  await tryUnlockAchievement(userId, "verified");
+exports.checkVerificationAchievement = async (_userId) => {
+  // verified başarımı kaldırıldı
 };
 
 /**
