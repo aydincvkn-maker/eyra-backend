@@ -102,41 +102,8 @@ const ACHIEVEMENTS = [
     rewardCoins: 500,
     rewardXP: 200,
   },
-  {
-    id: "first_gift_received",
-    name: "İlk Hediye Aldım",
-    nameEn: "Gift Received",
-    icon: "🎀",
-    description: "İlk hediyeni al",
-    category: "gifting",
-    condition: { type: "gifts_received", count: 1 },
-    rewardCoins: 25,
-    rewardXP: 10,
-  },
 
   // Milestones
-  {
-    id: "level_5",
-    name: "Seviye 5",
-    nameEn: "Level 5",
-    icon: "🏅",
-    description: "Seviye 5'e ulaş",
-    category: "milestone",
-    condition: { type: "level", count: 5 },
-    rewardCoins: 500,
-    rewardXP: 0,
-  },
-  {
-    id: "level_10",
-    name: "Seviye 10",
-    nameEn: "Level 10",
-    icon: "🏆",
-    description: "Seviye 10'a ulaş",
-    category: "milestone",
-    condition: { type: "level", count: 10 },
-    rewardCoins: 2000,
-    rewardXP: 0,
-  },
   {
     id: "coins_1000",
     name: "Zengin",
@@ -159,17 +126,7 @@ const ACHIEVEMENTS = [
     rewardCoins: 0,
     rewardXP: 500,
   },
-  {
-    id: "verified",
-    name: "Doğrulanmış",
-    nameEn: "Verified",
-    icon: "✅",
-    description: "Profilini doğrula",
-    category: "milestone",
-    condition: { type: "verified", count: 1 },
-    rewardCoins: 200,
-    rewardXP: 100,
-  },
+
 ];
 
 // =============================================
