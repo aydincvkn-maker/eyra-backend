@@ -126,7 +126,6 @@ const ACHIEVEMENTS = [
     rewardCoins: 0,
     rewardXP: 500,
   },
-
 ];
 
 // =============================================
