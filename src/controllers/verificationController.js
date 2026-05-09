@@ -38,7 +38,189 @@ const cleanupUploads = async (uploaded) => {
 // KULLANICI ENDPOINT'LERİ
 // =============================================
 
-// POST /api/verification/request - Doğrulama talebi
+// POST /api/verification/profile-photo - Profil fotoğrafı yükleme (Galeri)
+exports.uploadProfilePhoto = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const file = req.file;
+
+    if (!file) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Profil fotoğrafı gerekli" });
+    }
+
+    const user = await User.findById(userId).select("isVerified");
+    if (user.isVerified) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Zaten doğrulanmış" });
+    }
+
+    // Eski profil foto'su varsa temizle
+    const oldUser = await User.findById(userId).select(
+      "profileImage profileImagePublicId",
+    );
+    if (oldUser.profileImagePublicId) {
+      try {
+        await storageService.destroy(oldUser.profileImagePublicId);
+      } catch (e) {
+        logger.warn("Old profile photo cleanup failed", {
+          userId,
+          error: e.message,
+        });
+      }
+    }
+
+    // Yeni profil fotosunu upload et
+    const id = `profile_${userId}_${crypto.randomBytes(6).toString("hex")}`;
+    const uploaded = await storageService.uploadBuffer(file.buffer, {
+      folder: "profile",
+      mimeType: file.mimetype,
+      originalName: file.originalname,
+      publicId: id,
+    });
+
+    // Kullanıcıyı güncelle
+    const updated = await User.findByIdAndUpdate(
+      userId,
+      {
+        profileImage: uploaded.url,
+        profileImagePublicId: uploaded.publicId || id,
+      },
+      { new: true, select: "profileImage" },
+    );
+
+    logger.info("Profile photo uploaded", { userId, publicId: id });
+    return res.json({
+      success: true,
+      message: "Profil fotoğrafı başarıyla yüklendi",
+      profileImage: updated.profileImage,
+    });
+  } catch (err) {
+    logger.error("uploadProfilePhoto error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Profil fotoğrafı yüklemesi başarısız",
+    });
+  }
+};
+
+// POST /api/verification/face-photos - Yüz fotoğrafları yükleme (Kamera - sağ, sol, ön)
+exports.uploadFacePhotos = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const user = await User.findById(userId).select(
+      "isVerified verificationStatus gender profileImage",
+    );
+    if (user.isVerified) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Zaten doğrulanmış" });
+    }
+
+    if (String(user.gender || "") !== "female") {
+      return res.status(403).json({
+        success: false,
+        message: "Bu doğrulama akışı yalnızca kadın kullanıcılar içindir",
+      });
+    }
+
+    // Profil fotosu kontrol et
+    if (!String(user.profileImage || "").trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Önce profil fotoğrafı yüklemelisiniz",
+      });
+    }
+
+    // Bekleyen talep var mı?
+    if (user.verificationStatus === "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Zaten bekleyen bir talebiniz var. Lütfen sonucu bekleyin.",
+      });
+    }
+
+    const files = req.files || {};
+    const centerFile = files.faceCenter?.[0] || req.file;
+    const leftFile = files.faceLeft?.[0] || null;
+    const rightFile = files.faceRight?.[0] || null;
+
+    // 3 selfie fotoğrafı gerekli
+    if (!centerFile || !leftFile || !rightFile) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Ön, sol ve sağ yüz fotoğraflarının hepsi gerekli (kameradan çekilmiş olmalı)",
+      });
+    }
+
+    // Upload et
+    const faceCenterUpload = await saveVerificationUpload(
+      userId,
+      centerFile,
+      "center",
+    );
+    const uploaded = [faceCenterUpload];
+    let faceLeftUpload;
+    let faceRightUpload;
+    try {
+      faceLeftUpload = await saveVerificationUpload(userId, leftFile, "left");
+      uploaded.push(faceLeftUpload);
+      faceRightUpload = await saveVerificationUpload(
+        userId,
+        rightFile,
+        "right",
+      );
+      uploaded.push(faceRightUpload);
+    } catch (uploadErr) {
+      await cleanupUploads(uploaded);
+      throw uploadErr;
+    }
+
+    // Verification kaydı oluştur
+    const verification = await Verification.create({
+      userId,
+      status: "pending",
+      faceCenterUrl: faceCenterUpload.url,
+      faceCenterPublicId: faceCenterUpload.publicId,
+      faceLeftUrl: faceLeftUpload.url,
+      faceLeftPublicId: faceLeftUpload.publicId,
+      faceRightUrl: faceRightUpload.url,
+      faceRightPublicId: faceRightUpload.publicId,
+      profileImageUrl: user.profileImage,
+      submittedAt: new Date(),
+    });
+
+    // Kullanıcı durumunu güncelle
+    await User.findByIdAndUpdate(userId, {
+      verificationStatus: "pending",
+    });
+
+    logger.info("Verification request submitted", {
+      userId,
+      verificationId: verification._id,
+    });
+
+    return res.json({
+      success: true,
+      message:
+        "Doğrulama talebi gönderildi. Lütfen sonucu bekleyin (24-48 saat).",
+      verificationId: verification._id,
+      status: "pending",
+    });
+  } catch (err) {
+    logger.error("uploadFacePhotos error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Yüz fotoğrafları yüklemesi başarısız",
+    });
+  }
+};
+
+// POST /api/verification/request - Doğrulama talebi (ESKI - backward compat)
 exports.requestVerification = async (req, res) => {
   try {
     const userId = req.user.id;
