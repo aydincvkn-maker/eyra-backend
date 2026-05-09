@@ -182,8 +182,10 @@ exports.uploadFacePhotos = async (req, res) => {
 
     // Verification kaydı oluştur
     const verification = await Verification.create({
-      userId,
+      user: userId,
       status: "pending",
+      selfieUrl: faceCenterUpload.url,
+      selfiePublicId: faceCenterUpload.publicId,
       faceCenterUrl: faceCenterUpload.url,
       faceCenterPublicId: faceCenterUpload.publicId,
       faceLeftUrl: faceLeftUpload.url,
