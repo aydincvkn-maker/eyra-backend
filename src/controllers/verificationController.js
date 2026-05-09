@@ -39,13 +39,6 @@ exports.requestVerification = async (req, res) => {
         .json({ success: false, message: "Zaten doğrulanmış" });
     }
 
-    if (String(user.gender || "") !== "female") {
-      return res.status(403).json({
-        success: false,
-        message: "Bu doğrulama akışı yalnızca kadın kullanıcılar içindir",
-      });
-    }
-
     // Bekleyen talep var mı?
     if (user.verificationStatus === "pending") {
       return res
@@ -61,15 +54,16 @@ exports.requestVerification = async (req, res) => {
     }
 
     const files = req.files || {};
-    const centerFile = files.faceCenter?.[0] || req.file;
+    const selfieFile = files.selfie?.[0] || req.file || null;
+    const centerFile = files.faceCenter?.[0] || selfieFile;
     const leftFile = files.faceLeft?.[0] || null;
     const rightFile = files.faceRight?.[0] || null;
 
-    // Selfie fotoğrafları gerekli
-    if (!centerFile || !leftFile || !rightFile) {
+    // En azından bir selfie/merkez fotoğrafı gerekli
+    if (!centerFile) {
       return res.status(400).json({
         success: false,
-        message: "Orta, sol ve sağ yüz selfie fotoğrafları gerekli",
+        message: "Selfie fotoğrafı gerekli",
       });
     }
 
@@ -78,20 +72,20 @@ exports.requestVerification = async (req, res) => {
       centerFile,
       "center",
     );
-    const faceLeftUrl = await saveVerificationUpload(userId, leftFile, "left");
-    const faceRightUrl = await saveVerificationUpload(
-      userId,
-      rightFile,
-      "right",
-    );
+    const faceLeftUrl = leftFile
+      ? await saveVerificationUpload(userId, leftFile, "left")
+      : null;
+    const faceRightUrl = rightFile
+      ? await saveVerificationUpload(userId, rightFile, "right")
+      : null;
 
     // Verification kaydı oluştur
     const verification = await Verification.create({
       user: userId,
       selfieUrl: faceCenterUrl,
       faceCenterUrl,
-      faceLeftUrl,
-      faceRightUrl,
+      ...(faceLeftUrl ? { faceLeftUrl } : {}),
+      ...(faceRightUrl ? { faceRightUrl } : {}),
     });
 
     // User durumunu güncelle
