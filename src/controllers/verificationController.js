@@ -87,32 +87,47 @@ exports.requestVerification = async (req, res) => {
       });
     }
 
-    const faceCenterUrl = await saveVerificationUpload(
+    const faceCenterUpload = await saveVerificationUpload(
       userId,
       centerFile,
       "center",
     );
-    const faceLeftUrl = await saveVerificationUpload(userId, leftFile, "left");
-    const faceRightUrl = await saveVerificationUpload(
-      userId,
-      rightFile,
-      "right",
-    );
+    const uploaded = [faceCenterUpload];
+    let faceLeftUpload;
+    let faceRightUpload;
+    try {
+      faceLeftUpload = await saveVerificationUpload(userId, leftFile, "left");
+      uploaded.push(faceLeftUpload);
+      faceRightUpload = await saveVerificationUpload(
+        userId,
+        rightFile,
+        "right",
+      );
+      uploaded.push(faceRightUpload);
+    } catch (uploadErr) {
+      await cleanupUploads(uploaded);
+      throw uploadErr;
+    }
 
-    // Verification kaydı oluştur
-    const verification = await Verification.create({
-      user: userId,
-      selfieUrl: faceCenterUrl,
-      faceCenterUrl,
-      faceLeftUrl,
-      faceRightUrl,
-    });
+    let verification;
+    try {
+      verification = await Verification.create({
+        user: userId,
+        selfieUrl: faceCenterUpload.url,
+        faceCenterUrl: faceCenterUpload.url,
+        faceLeftUrl: faceLeftUpload.url,
+        faceRightUrl: faceRightUpload.url,
+      });
+    } catch (dbErr) {
+      await cleanupUploads(uploaded);
+      throw dbErr;
+    }
 
     // User durumunu güncelle
     await User.findByIdAndUpdate(userId, {
       $set: {
         verificationStatus: "pending",
-        verificationPhoto: faceCenterUrl,
+        verificationPhoto: faceCenterUpload.url,
         verificationRequestedAt: new Date(),
       },
     });
