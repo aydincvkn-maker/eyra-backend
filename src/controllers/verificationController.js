@@ -61,16 +61,15 @@ exports.requestVerification = async (req, res) => {
     }
 
     const files = req.files || {};
-    const selfieFile = files.selfie?.[0] || req.file || null;
-    const centerFile = files.faceCenter?.[0] || selfieFile;
+    const centerFile = files.faceCenter?.[0] || files.selfie?.[0] || req.file;
     const leftFile = files.faceLeft?.[0] || null;
     const rightFile = files.faceRight?.[0] || null;
 
-    // En azından bir selfie/merkez fotoğrafı gerekli
-    if (!centerFile) {
+    // Selfie fotoğrafları gerekli (orta + sol + sağ)
+    if (!centerFile || !leftFile || !rightFile) {
       return res.status(400).json({
         success: false,
-        message: "Selfie fotoğrafı gerekli",
+        message: "Orta, sol ve sağ yüz selfie fotoğrafları gerekli",
       });
     }
 
@@ -79,20 +78,20 @@ exports.requestVerification = async (req, res) => {
       centerFile,
       "center",
     );
-    const faceLeftUrl = leftFile
-      ? await saveVerificationUpload(userId, leftFile, "left")
-      : null;
-    const faceRightUrl = rightFile
-      ? await saveVerificationUpload(userId, rightFile, "right")
-      : null;
+    const faceLeftUrl = await saveVerificationUpload(userId, leftFile, "left");
+    const faceRightUrl = await saveVerificationUpload(
+      userId,
+      rightFile,
+      "right",
+    );
 
     // Verification kaydı oluştur
     const verification = await Verification.create({
       user: userId,
       selfieUrl: faceCenterUrl,
       faceCenterUrl,
-      ...(faceLeftUrl ? { faceLeftUrl } : {}),
-      ...(faceRightUrl ? { faceRightUrl } : {}),
+      faceLeftUrl,
+      faceRightUrl,
     });
 
     // User durumunu güncelle
