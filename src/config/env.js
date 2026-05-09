@@ -15,6 +15,21 @@ const isEmpty = (value) => {
 
 const devJwtFallback = crypto.randomBytes(32).toString("hex");
 
+const ensureMinSecretLength = (key, value, minLength) => {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    throw new Error(`[ENV] ${key} tanımlı değil`);
+  }
+
+  if (normalized.length < minLength) {
+    throw new Error(
+      `[ENV] ${key} en az ${minLength} karakter olmalı (mevcut: ${normalized.length})`,
+    );
+  }
+
+  return normalized;
+};
+
 const required = (key, fallback) => {
   const raw = process.env[key];
   if (!isEmpty(raw)) return raw;
@@ -140,3 +155,29 @@ module.exports = {
   MIN_WITHDRAWAL_COINS: Number(required("MIN_WITHDRAWAL_COINS", "5000")),
   MAX_WITHDRAWAL_COINS: Number(required("MAX_WITHDRAWAL_COINS", "500000")),
 };
+
+if (NODE_ENV === "production") {
+  ensureMinSecretLength("JWT_SECRET", module.exports.JWT_SECRET, 32);
+  ensureMinSecretLength(
+    "PAYMENT_WEBHOOK_SECRET",
+    module.exports.PAYMENT_WEBHOOK_SECRET,
+    24,
+  );
+
+  if (!String(module.exports.CLIENT_ORIGIN || "").trim()) {
+    throw new Error("[ENV] CLIENT_ORIGIN production'da boş bırakılamaz");
+  }
+
+  const disallowedOrigins = [module.exports.CLIENT_ORIGIN, module.exports.MOBILE_ORIGIN]
+    .join(",")
+    .split(",")
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .filter((value) => value === "*" || /^http:\/\//i.test(value));
+
+  if (disallowedOrigins.length > 0) {
+    throw new Error(
+      `[ENV] Production origin ayarı güvensiz: ${disallowedOrigins.join(", ")}`,
+    );
+  }
+}

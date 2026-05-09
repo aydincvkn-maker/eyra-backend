@@ -109,6 +109,9 @@ const sendLoginResponse = async (
   }
 
   const token = createToken(user);
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
   res.cookie("auth_token", token, getAuthCookieOptions());
 
   const dailyBonus = grantDailyBonus
@@ -252,6 +255,7 @@ const getAuthCookieOptions = () => {
     httpOnly: true,
     sameSite,
     secure,
+    path: "/",
     maxAge: 1000 * 60 * 60 * 24 * 90,
   };
 };
