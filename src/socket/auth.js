@@ -4,21 +4,23 @@
  * Optional insecure dev fallback when SOCKET_ALLOW_INSECURE_USERID=true.
  */
 
-const jwt = require('jsonwebtoken');
-const { JWT_SECRET, NODE_ENV } = require('../config/env');
-const User = require('../models/User');
-const { userConnectionTimestamps } = require('./state');
-const { logger } = require('../utils/logger');
+const jwt = require("jsonwebtoken");
+const { JWT_SECRET, NODE_ENV } = require("../config/env");
+const User = require("../models/User");
+const { userConnectionTimestamps } = require("./state");
+const { logger } = require("../utils/logger");
 
 const CONNECTION_RATE_LIMIT_MS = 3000; // Min 3 seconds between connections from same user
 
-const parseCookieHeader = (header = '') => {
-  return String(header || '').split(';').reduce((acc, part) => {
-    const [key, ...value] = part.trim().split('=');
-    if (!key) return acc;
-    acc[key] = decodeURIComponent(value.join('='));
-    return acc;
-  }, {});
+const parseCookieHeader = (header = "") => {
+  return String(header || "")
+    .split(";")
+    .reduce((acc, part) => {
+      const [key, ...value] = part.trim().split("=");
+      if (!key) return acc;
+      acc[key] = decodeURIComponent(value.join("="));
+      return acc;
+    }, {});
 };
 
 /**
@@ -29,11 +31,15 @@ const extractSocketToken = (socket) => {
   if (authToken) return String(authToken);
 
   const headerAuth = socket.handshake?.headers?.authorization;
-  if (headerAuth && typeof headerAuth === 'string' && headerAuth.toLowerCase().startsWith('bearer ')) {
+  if (
+    headerAuth &&
+    typeof headerAuth === "string" &&
+    headerAuth.toLowerCase().startsWith("bearer ")
+  ) {
     return headerAuth.slice(7).trim();
   }
 
-  const cookies = parseCookieHeader(socket.handshake?.headers?.cookie || '');
+  const cookies = parseCookieHeader(socket.handshake?.headers?.cookie || "");
   if (cookies.auth_token || cookies.access_token) {
     return String(cookies.auth_token || cookies.access_token);
   }
@@ -42,8 +48,11 @@ const extractSocketToken = (socket) => {
   if (queryToken) return String(queryToken);
 
   // Optional dev fallback (disabled by default)
-  if (process.env.SOCKET_ALLOW_INSECURE_USERID === 'true') {
-    const insecureUserId = socket.handshake?.auth?.userId || socket.handshake?.query?.userId || socket.handshake?.query?.uid;
+  if (process.env.SOCKET_ALLOW_INSECURE_USERID === "true") {
+    const insecureUserId =
+      socket.handshake?.auth?.userId ||
+      socket.handshake?.query?.userId ||
+      socket.handshake?.query?.uid;
     if (insecureUserId) return null;
   }
 
@@ -57,79 +66,93 @@ function createAuthMiddleware() {
   return async (socket, next) => {
     try {
       const token = extractSocketToken(socket);
-      logger.info(`Socket auth: token=${token ? 'present' : 'missing'}`);
+      logger.info(`Socket auth: token=${token ? "present" : "missing"}`);
 
       // Optional dev fallback: allow providing userId without JWT ONLY in development
       // ⛔ Insecure mode SADECE development'ta ve açıkça etkinleştirildiğinde
-      const ALLOW_INSECURE = NODE_ENV !== 'production'
-        && process.env.SOCKET_ALLOW_INSECURE_USERID === 'true';
+      const ALLOW_INSECURE =
+        NODE_ENV !== "production" &&
+        process.env.SOCKET_ALLOW_INSECURE_USERID === "true";
 
       if (!token && ALLOW_INSECURE) {
-        const rawUserId = socket.handshake?.auth?.userId || socket.handshake?.query?.userId || socket.handshake?.query?.uid;
-        const userId = String(rawUserId || '').trim();
+        const rawUserId =
+          socket.handshake?.auth?.userId ||
+          socket.handshake?.query?.userId ||
+          socket.handshake?.query?.uid;
+        const userId = String(rawUserId || "").trim();
         logger.warn(`Socket auth (insecure mode - DEV ONLY): userId=${userId}`);
         if (!userId) {
-          logger.warn('Socket auth failed: Missing token and userId');
-          return next(new Error('Missing token'));
+          logger.warn("Socket auth failed: Missing token and userId");
+          return next(new Error("Missing token"));
         }
 
         // Rate limit check
         const now = Date.now();
         const lastConnect = userConnectionTimestamps.get(userId);
-        if (lastConnect && (now - lastConnect) < CONNECTION_RATE_LIMIT_MS) {
-          logger.warn(`Rate limited: ${userId} (${now - lastConnect}ms since last connect)`);
-          return next(new Error('Rate limited'));
+        if (lastConnect && now - lastConnect < CONNECTION_RATE_LIMIT_MS) {
+          logger.warn(
+            `Rate limited: ${userId} (${now - lastConnect}ms since last connect)`,
+          );
+          return next(new Error("Rate limited"));
         }
         userConnectionTimestamps.set(userId, now);
 
-        const user = await User.findById(userId).select('_id gender isBanned isActive').lean();
+        const user = await User.findById(userId)
+          .select("_id gender isBanned isActive")
+          .lean();
         if (!user || user.isBanned || user.isActive === false) {
-          logger.warn('Socket auth failed: User not found or banned');
-          return next(new Error('Unauthorized'));
+          logger.warn("Socket auth failed: User not found or banned");
+          return next(new Error("Unauthorized"));
         }
 
         socket.data.userId = String(user._id);
-        socket.data.gender = user.gender || 'other';
-        socket.data.authMode = 'insecure_userId';
+        socket.data.gender = user.gender || "other";
+        socket.data.authMode = "insecure_userId";
         logger.info(`Socket auth success (insecure): userId=${user._id}`);
         return next();
       }
 
       if (!token) {
-        logger.info('Socket auth failed: No token provided');
-        return next(new Error('Missing token'));
+        logger.info("Socket auth failed: No token provided");
+        return next(new Error("Missing token"));
       }
 
       const decoded = jwt.verify(token, JWT_SECRET);
-      const userId = String(decoded?.id || '').trim();
+      const userId = String(decoded?.id || "").trim();
       if (!userId) {
-        logger.warn('Socket auth failed: Invalid token (no userId)');
-        return next(new Error('Invalid token'));
+        logger.warn("Socket auth failed: Invalid token (no userId)");
+        return next(new Error("Invalid token"));
       }
 
       // Rate limit check
       const now = Date.now();
       const lastConnect = userConnectionTimestamps.get(userId);
-      if (lastConnect && (now - lastConnect) < CONNECTION_RATE_LIMIT_MS) {
-        logger.warn(`Rate limited: ${userId} (${now - lastConnect}ms since last connect)`);
-        return next(new Error('Rate limited'));
+      if (lastConnect && now - lastConnect < CONNECTION_RATE_LIMIT_MS) {
+        logger.warn(
+          `Rate limited: ${userId} (${now - lastConnect}ms since last connect)`,
+        );
+        return next(new Error("Rate limited"));
       }
       userConnectionTimestamps.set(userId, now);
 
-      const user = await User.findById(userId).select('_id gender isBanned isActive').lean();
+      const user = await User.findById(userId)
+        .select("_id gender isBanned isActive")
+        .lean();
       if (!user || user.isBanned || user.isActive === false) {
-        logger.warn(`Socket auth failed: User not found or banned (userId=${userId})`);
-        return next(new Error('Unauthorized'));
+        logger.warn(
+          `Socket auth failed: User not found or banned (userId=${userId})`,
+        );
+        return next(new Error("Unauthorized"));
       }
 
       socket.data.userId = String(user._id);
-      socket.data.gender = user.gender || 'other';
-      socket.data.authMode = 'jwt';
+      socket.data.gender = user.gender || "other";
+      socket.data.authMode = "jwt";
       logger.info(`Socket auth success: userId=${user._id}`);
       return next();
     } catch (e) {
       logger.error(`Socket auth exception: ${e.message}`);
-      return next(new Error('Unauthorized'));
+      return next(new Error("Unauthorized"));
     }
   };
 }

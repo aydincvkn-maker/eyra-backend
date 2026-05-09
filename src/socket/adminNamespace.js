@@ -12,12 +12,14 @@ const { logger } = require("../utils/logger");
 let adminNsp = null;
 
 function parseCookieHeader(header = "") {
-  return String(header || "").split(";").reduce((acc, part) => {
-    const [key, ...value] = part.trim().split("=");
-    if (!key) return acc;
-    acc[key] = decodeURIComponent(value.join("="));
-    return acc;
-  }, {});
+  return String(header || "")
+    .split(";")
+    .reduce((acc, part) => {
+      const [key, ...value] = part.trim().split("=");
+      if (!key) return acc;
+      acc[key] = decodeURIComponent(value.join("="));
+      return acc;
+    }, {});
 }
 
 function getAdminUserRoom(userId) {
@@ -105,7 +107,8 @@ function setup(io) {
           "",
         ) ||
         parseCookieHeader(socket.handshake?.headers?.cookie || "").auth_token ||
-        parseCookieHeader(socket.handshake?.headers?.cookie || "").access_token ||
+        parseCookieHeader(socket.handshake?.headers?.cookie || "")
+          .access_token ||
         socket.handshake?.query?.token;
 
       if (!token) return next(new Error("Missing token"));

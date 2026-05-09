@@ -178,7 +178,9 @@ const createRateLimiter = (options = {}) => {
     }
 
     // Admin ve super_admin rate limit'ten muaf
-    const userRole = String(req.user?.role || "").trim().toLowerCase();
+    const userRole = String(req.user?.role || "")
+      .trim()
+      .toLowerCase();
     if (Array.isArray(skipRoles) && skipRoles.includes(userRole)) {
       return next();
     }
