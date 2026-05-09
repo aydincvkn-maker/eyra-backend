@@ -168,7 +168,10 @@ if (NODE_ENV === "production") {
     throw new Error("[ENV] CLIENT_ORIGIN production'da boş bırakılamaz");
   }
 
-  const disallowedOrigins = [module.exports.CLIENT_ORIGIN, module.exports.MOBILE_ORIGIN]
+  const disallowedOrigins = [
+    module.exports.CLIENT_ORIGIN,
+    module.exports.MOBILE_ORIGIN,
+  ]
     .join(",")
     .split(",")
     .map((value) => String(value || "").trim())
