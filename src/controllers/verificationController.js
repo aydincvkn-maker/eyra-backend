@@ -180,6 +180,8 @@ exports.uploadFacePhotos = async (req, res) => {
       throw uploadErr;
     }
 
+    const submittedAt = new Date();
+
     // Verification kaydı oluştur
     const verification = await Verification.create({
       user: userId,
@@ -193,12 +195,18 @@ exports.uploadFacePhotos = async (req, res) => {
       faceRightUrl: faceRightUpload.url,
       faceRightPublicId: faceRightUpload.publicId,
       profileImageUrl: user.profileImage,
-      submittedAt: new Date(),
     });
 
-    // Kullanıcı durumunu güncelle
+    // Kullanıcı durumunu güncelle ve mevcut token'ları geçersiz kıl
     await User.findByIdAndUpdate(userId, {
-      verificationStatus: "pending",
+      $set: {
+        verificationStatus: "pending",
+        verificationPhoto: faceCenterUpload.url,
+        verificationRequestedAt: submittedAt,
+        verificationReviewedAt: null,
+        verificationReviewedBy: null,
+      },
+      $inc: { tokenVersion: 1 },
     });
 
     logger.info("Verification request submitted", {
@@ -209,7 +217,7 @@ exports.uploadFacePhotos = async (req, res) => {
     return res.json({
       success: true,
       message:
-        "Doğrulama talebi gönderildi. Lütfen sonucu bekleyin (24-48 saat).",
+        "Doğrulama talebi gönderildi. Lütfen onay için 1-30 dakika bekleyin.",
       verificationId: verification._id,
       status: "pending",
     });

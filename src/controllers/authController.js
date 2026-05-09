@@ -71,7 +71,7 @@ const getPendingApprovalMessage = (user) => {
     user.isVerified !== true &&
     user.verificationStatus === "pending"
   ) {
-    return "İşleminiz onay sürecinde. Yaklaşık 20 dakika içinde değerlendirilecektir.";
+    return "Doğrulama talebiniz inceleniyor. Lütfen onay için 1-30 dakika bekleyin.";
   }
 
   return null;

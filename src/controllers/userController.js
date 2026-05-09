@@ -982,6 +982,7 @@ exports.getMyProfile = async (req, res) => {
         isOnline: user.isOnline || false,
         isLive: user.isLive || false,
         isVerified: user.isVerified || false,
+        verificationStatus: user.verificationStatus || "none",
         createdAt: user.createdAt,
         settings: user.settings || {
           pushNotifications: true,
