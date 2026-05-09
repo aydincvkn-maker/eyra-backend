@@ -39,6 +39,13 @@ exports.requestVerification = async (req, res) => {
         .json({ success: false, message: "Zaten doğrulanmış" });
     }
 
+    if (String(user.gender || "") !== "female") {
+      return res.status(403).json({
+        success: false,
+        message: "Bu doğrulama akışı yalnızca kadın kullanıcılar içindir",
+      });
+    }
+
     // Bekleyen talep var mı?
     if (user.verificationStatus === "pending") {
       return res
