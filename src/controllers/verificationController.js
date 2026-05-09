@@ -17,7 +17,21 @@ const saveVerificationUpload = async (userId, file, suffix) => {
     originalName: file.originalname,
     publicId: id,
   });
-  return uploaded.url;
+  return { url: uploaded.url, publicId: uploaded.publicId || id };
+};
+
+const cleanupUploads = async (uploaded) => {
+  for (const item of uploaded) {
+    if (!item || !item.publicId) continue;
+    try {
+      await storageService.destroy(item.publicId);
+    } catch (e) {
+      logger.warn("verification cleanup failed", {
+        publicId: item.publicId,
+        error: e.message,
+      });
+    }
+  }
 };
 
 // =============================================
