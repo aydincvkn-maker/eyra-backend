@@ -85,7 +85,7 @@ const translateRoutes = require("./routes/translateRoutes");
 const adminChatRoutes = require("./routes/adminChatRoutes");
 const backupRoutes = require("./routes/backupRoutes");
 const postRoutes = require("./routes/postRoutes");
-const { generalLimiter } = require("./middleware/rateLimit");
+const { generalLimiter, panelAdminLimiter } = require("./middleware/rateLimit");
 const maintenanceMiddleware = require("./middleware/maintenanceMiddleware");
 
 // =========================
@@ -119,6 +119,19 @@ const isOriginAllowed = (origin) => {
   if (!origin) return true; // non-browser clients
   if (hasWildcardOrigin && NODE_ENV !== "production") return true;
   return allowedOrigins.has(origin);
+};
+
+const hasAuthTokenCookie = (header = "") =>
+  /(?:^|;\s*)(auth_token|access_token)=/.test(String(header || ""));
+
+const isAdminApiSurface = (pathValue = "") => {
+  const currentPath = String(pathValue || "").trim();
+  if (!currentPath) return false;
+  if (currentPath === "/admin-chat" || currentPath.startsWith("/admin-chat/")) {
+    return true;
+  }
+
+  return /(^|\/)admin(?:\/|$)/.test(currentPath);
 };
 
 // =========================
@@ -259,8 +272,14 @@ app.use(
   "/uploads",
   express.static(path.join(__dirname, "../uploads"), {
     setHeaders: (res) => {
-      res.setHeader("Access-Control-Allow-Origin", "*");
+      const requestOrigin = res.req?.headers?.origin;
+      if (requestOrigin && isOriginAllowed(requestOrigin)) {
+        res.setHeader("Access-Control-Allow-Origin", requestOrigin);
+        res.setHeader("Vary", "Origin");
+      }
       res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Cache-Control", "public, max-age=3600");
     },
   }),
 );
@@ -358,6 +377,27 @@ app.get("/api/health", healthCheckHandler);
 
 // Rate limiter
 app.use("/api", generalLimiter);
+
+// Extra limiter for admin/panel surfaces after auth cookie/bearer parsing.
+app.use("/api", (req, res, next) => {
+  if (!isAdminApiSurface(req.path)) {
+    return next();
+  }
+
+  const hasBearerToken = /^Bearer\s+\S+/i.test(
+    String(req.headers.authorization || ""),
+  );
+  const hasCookieToken = hasAuthTokenCookie(req.headers.cookie);
+
+  if (!hasBearerToken && !hasCookieToken) {
+    return next();
+  }
+
+  return authMiddleware(req, res, (authErr) => {
+    if (authErr) return next(authErr);
+    return panelAdminLimiter(req, res, next);
+  });
+});
 
 // Maintenance mode
 app.use(maintenanceMiddleware);

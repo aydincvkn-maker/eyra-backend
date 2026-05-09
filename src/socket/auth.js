@@ -12,6 +12,15 @@ const { logger } = require('../utils/logger');
 
 const CONNECTION_RATE_LIMIT_MS = 3000; // Min 3 seconds between connections from same user
 
+const parseCookieHeader = (header = '') => {
+  return String(header || '').split(';').reduce((acc, part) => {
+    const [key, ...value] = part.trim().split('=');
+    if (!key) return acc;
+    acc[key] = decodeURIComponent(value.join('='));
+    return acc;
+  }, {});
+};
+
 /**
  * Extract JWT token from the socket handshake in priority order.
  */
@@ -22,6 +31,11 @@ const extractSocketToken = (socket) => {
   const headerAuth = socket.handshake?.headers?.authorization;
   if (headerAuth && typeof headerAuth === 'string' && headerAuth.toLowerCase().startsWith('bearer ')) {
     return headerAuth.slice(7).trim();
+  }
+
+  const cookies = parseCookieHeader(socket.handshake?.headers?.cookie || '');
+  if (cookies.auth_token || cookies.access_token) {
+    return String(cookies.auth_token || cookies.access_token);
   }
 
   const queryToken = socket.handshake?.query?.token;

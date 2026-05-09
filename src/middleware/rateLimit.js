@@ -169,6 +169,7 @@ const createRateLimiter = (options = {}) => {
     skipSuccessfulRequests = false,
     keyGenerator = null,
     skip = null,
+    skipRoles = ["admin", "super_admin"],
   } = options;
 
   return (req, res, next) => {
@@ -177,8 +178,8 @@ const createRateLimiter = (options = {}) => {
     }
 
     // Admin ve super_admin rate limit'ten muaf
-    const userRole = req.user?.role;
-    if (userRole === "admin" || userRole === "super_admin") {
+    const userRole = String(req.user?.role || "").trim().toLowerCase();
+    if (Array.isArray(skipRoles) && skipRoles.includes(userRole)) {
       return next();
     }
 
@@ -403,6 +404,7 @@ const panelAdminLimiter = createRateLimiter({
   max: 500,
   message: "Çok fazla istek. Lütfen bekleyin.",
   keyPrefix: "panel_admin",
+  skipRoles: [],
 });
 
 /**
