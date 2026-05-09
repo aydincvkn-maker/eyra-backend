@@ -40,6 +40,24 @@ const upload = multer({
 
 // Kullanıcı endpoint'leri
 router.post(
+  "/profile-photo",
+  auth,
+  upload.single("profilePhoto"),
+  verificationController.uploadProfilePhoto,
+);
+
+router.post(
+  "/face-photos",
+  auth,
+  upload.fields([
+    { name: "faceCenter", maxCount: 1 },
+    { name: "faceLeft", maxCount: 1 },
+    { name: "faceRight", maxCount: 1 },
+  ]),
+  verificationController.uploadFacePhotos,
+);
+
+router.post(
   "/request",
   auth,
   upload.fields([
