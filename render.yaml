@@ -21,7 +21,7 @@ services:
 
       # ── Auth ──────────────────────────────────────────────
       - key: JWT_SECRET
-        sync: false
+        generateValue: true
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_WEB_CLIENT_ID
