@@ -18,12 +18,14 @@ const devJwtFallback = crypto.randomBytes(32).toString("hex");
 const ensureMinSecretLength = (key, value, minLength) => {
   const normalized = String(value || "").trim();
   if (!normalized) {
-    throw new Error(`[ENV] ${key} tanımlı değil`);
+    throw new Error(
+      `[ENV] ${key} tanımlı değil. Render kullanıyorsanız Dashboard > Environment içinde ${key} ekleyin.`,
+    );
   }
 
   if (normalized.length < minLength) {
     throw new Error(
-      `[ENV] ${key} en az ${minLength} karakter olmalı (mevcut: ${normalized.length})`,
+      `[ENV] ${key} en az ${minLength} karakter olmalı (mevcut: ${normalized.length}). Render kullanıyorsanız Dashboard > Environment içinde ${key} değerini 32+ karakter olacak şekilde güncelleyin.`,
     );
   }
 
@@ -65,7 +67,9 @@ module.exports = {
     if (!isEmpty(secret)) return secret;
 
     if (NODE_ENV === "production") {
-      throw new Error("[ENV] JWT_SECRET tanımlı değil (production)");
+      throw new Error(
+        "[ENV] JWT_SECRET tanımlı değil (production). Render kullanıyorsanız Dashboard > Environment içinde JWT_SECRET ekleyin.",
+      );
     }
 
     console.warn(
