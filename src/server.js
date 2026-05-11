@@ -103,9 +103,16 @@ const parseOrigins = (value) => {
     .filter(Boolean);
 };
 
+// Firebase Hosting (Flutter web) production origins — her zaman izinli.
+const defaultWebOrigins = [
+  "https://eyra-9cf0d.web.app",
+  "https://eyra-9cf0d.firebaseapp.com",
+];
+
 const allowedOrigins = new Set([
   ...parseOrigins(CLIENT_ORIGIN),
   ...parseOrigins(MOBILE_ORIGIN),
+  ...defaultWebOrigins,
 ]);
 const hasWildcardOrigin = allowedOrigins.has("*");
 
