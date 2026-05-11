@@ -4,6 +4,9 @@
 
 name: CI
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
     branches: [main]
@@ -27,7 +30,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm ci --omit=dev --no-audit --no-fund
       - name: Sanity check (require key modules)
         run: |
           node -e "
@@ -46,10 +49,11 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ../eyrapanel/eyra-admin
+        working-directory: eyrapanel/eyra-admin
     steps:
       - uses: actions/checkout@v4
         with:
+          repository: aydincvkn-maker/eyra-kontrol
           path: eyrapanel/eyra-admin
       - uses: actions/setup-node@v4
         with:
@@ -58,7 +62,7 @@ jobs:
           cache-dependency-path: eyrapanel/eyra-admin/package-lock.json
       - run: npm ci
         working-directory: eyrapanel/eyra-admin
-      - run: npx next build
+      - run: npm run build
         working-directory: eyrapanel/eyra-admin
         env:
           NEXT_PUBLIC_API_BASE: https://eyra-backend.onrender.com/api
