@@ -61,7 +61,21 @@ const required = (key, fallback) => {
 module.exports = {
   NODE_ENV,
   PORT: Number(required("PORT", 5000)),
-  MONGO_URI: required("MONGO_URI", "mongodb://127.0.0.1:27017/eyra"),
+  MONGO_URI: (() => {
+    const uri = process.env.MONGO_URI;
+    if (!isEmpty(uri)) return uri;
+
+    if (NODE_ENV === "production") {
+      throw new Error(
+        "[ENV] MONGO_URI tanımlı değil (production). Render kullanıyorsanız Dashboard > Environment içinde MONGO_URI ekleyin.",
+      );
+    }
+
+    console.warn(
+      "[ENV] MONGO_URI tanımlı değil, fallback kullanılıyor: mongodb://127.0.0.1:27017/eyra",
+    );
+    return "mongodb://127.0.0.1:27017/eyra";
+  })(),
   JWT_SECRET: (() => {
     const secret = process.env.JWT_SECRET;
     if (!isEmpty(secret)) return secret;
