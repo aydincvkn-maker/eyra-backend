@@ -116,6 +116,17 @@ router.post("/start", auth, liveStartLimiter, liveController.startLive);
 // Yayını sonlandır
 router.post("/stop", auth, liveController.endLive);
 
+// Kapak fotoğrafı yükle / güncelle
+router.patch(
+  "/cover-image",
+  auth,
+  coverUpload.single("coverImage"),
+  liveController.updateStreamCoverImage,
+);
+
+// Kayıtlı kapak fotoğrafını getir
+router.get("/cover-image", auth, liveController.getStreamCoverImage);
+
 // ============ VIEWER ENDPOINTS ============
 // Yayına katıl (token al)
 router.post("/viewer-join", auth, liveController.joinAsViewer);
