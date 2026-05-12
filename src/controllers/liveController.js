@@ -332,7 +332,7 @@ exports.startLive = async (req, res) => {
       title: title || `${host.name || host.username}'s Live`,
       description: description || "",
       category: category || "chat",
-      thumbnailUrl: host.profileImage || "",
+      thumbnailUrl: host.streamCoverImage || host.profileImage || "",
       isLive: true,
       status: "live",
       viewerCount: 0,
