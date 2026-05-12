@@ -323,7 +323,7 @@ const IAP_COIN_MAP = {
   eyra_coins_2500: 2500,
   eyra_coins_5000: 5000,
   "com.eyra.coins_7000": 7000,
-  'com.eyra.coins_15000': 15000,
+  "com.eyra.coins_15000": 15000,
 };
 
 // 🔒 RevenueCat REST API ile transaction doğrulama
