@@ -11,6 +11,22 @@ const {
 } = require("../middleware/rateLimit");
 const { logger } = require("../utils/logger");
 
+const multer = require("multer");
+const path = require("path");
+
+const allowedMime = new Set(["image/jpeg", "image/png", "image/webp"]);
+const allowedExt = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+const coverUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const mime = String(file.mimetype || "").toLowerCase();
+    const ext = path.extname(file.originalname || "").toLowerCase();
+    if (allowedMime.has(mime) && allowedExt.has(ext)) return cb(null, true);
+    cb(new Error("Sadece resim dosyaları yüklenebilir"), false);
+  },
+});
+
 // ============ DEBUG ROUTES (Admin only, non-production) ============
 // Token kontrolü (authentication debug)
 router.post(
