@@ -6,7 +6,7 @@ mongoose.connect(process.env.MONGO_URI).then(async () => {
   const Payment = require('../src/models/Payment');
 
   const userId = '6a023fb0babbeb846a364fae';
-  const coins = 500;
+  const coins = -500; // fazla eklenen 500'ü geri al
 
   const user = await User.findByIdAndUpdate(
     userId,
