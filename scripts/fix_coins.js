@@ -1,9 +1,9 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const mongoose = require('mongoose');
 mongoose.connect(process.env.MONGO_URI).then(async () => {
-  const User = require('./src/models/User');
-  const Transaction = require('./src/models/Transaction');
-  const Payment = require('./src/models/Payment');
+  const User = require('../src/models/User');
+  const Transaction = require('../src/models/Transaction');
+  const Payment = require('../src/models/Payment');
 
   const userId = '6a023fb0babbeb846a364fae';
   const coins = 500;
