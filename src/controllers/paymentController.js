@@ -469,24 +469,8 @@ exports.iapPurchase = async (req, res) => {
       });
     }
 
-    // 🔒 RevenueCat ile transaction doğrulama
-    const verification = await verifyIapWithRevenueCat(
-      userId,
-      transactionId,
-      productId,
-    );
-    if (!verification.valid) {
-      logger.warn(
-        `❌ IAP doğrulama başarısız: userId=${userId}, txId=${transactionId}, reason=${verification.reason}`,
-      );
-      return res.status(403).json({
-        success: false,
-        message:
-          "Satın alma doğrulanamadı: " + (verification.reason || "Unknown"),
-      });
-    }
-
-    // ─── Coin ekle ────────────────────────────────────────────
+    // ─── Coin ekle (optimistic — RevenueCat SDK zaten store ile doğruladı) ──
+    // Arka planda RC doğrulama yapılır; fraud tespit edilirse payment suspicious olarak işaretlenir.
     const user = await User.findByIdAndUpdate(
       userId,
       { $inc: { coins: coinAmount } },
@@ -515,7 +499,33 @@ exports.iapPurchase = async (req, res) => {
       balanceAfter: user.coins,
       platform: platform || "unknown",
       paidAt: new Date(),
+      metadata: { rcVerified: false, rcVerifyPending: true },
     });
+
+    // ─── Arka planda RevenueCat doğrulama (non-blocking) ─────
+    verifyIapWithRevenueCat(userId, transactionId, productId)
+      .then(async (verification) => {
+        if (verification.valid) {
+          await Payment.findByIdAndUpdate(payment._id, {
+            "metadata.rcVerified": true,
+            "metadata.rcVerifyPending": false,
+          });
+        } else {
+          // SDK zaten doğruladığı için coin geri alınmaz, suspicious olarak işaretlenir.
+          await Payment.findByIdAndUpdate(payment._id, {
+            "metadata.rcVerified": false,
+            "metadata.rcVerifyPending": false,
+            "metadata.rcFailReason": verification.reason,
+            "metadata.suspicious": true,
+          });
+          logger.warn(
+            `⚠️ IAP arka plan doğrulama başarısız (coin verildi, inceleme gerekli): userId=${userId}, txId=${transactionId}, reason=${verification.reason}`,
+          );
+        }
+      })
+      .catch((err) => {
+        logger.error("IAP arka plan doğrulama hatası:", err.message || err);
+      });
 
     return res.json({
       success: true,
