@@ -438,7 +438,8 @@ exports.updateStreamCoverImage = async (req, res) => {
     const path = require("path");
 
     // Benzersiz dosya adı oluştur
-    const ext = path.extname(req.file.originalname || ".jpg").toLowerCase() || ".jpg";
+    const ext =
+      path.extname(req.file.originalname || ".jpg").toLowerCase() || ".jpg";
     const filename = `stream_cover_${userId}_${Date.now()}${ext}`;
     const uploadsDir = path.join(__dirname, "../../uploads");
 
@@ -455,13 +456,13 @@ exports.updateStreamCoverImage = async (req, res) => {
     await User.findByIdAndUpdate(
       userId,
       { streamCoverImage: coverUrl },
-      { runValidators: false }
+      { runValidators: false },
     );
 
     // Aktif yayın varsa thumbnailUrl'ini de güncelle
     await LiveStream.findOneAndUpdate(
       { host: userId, isLive: true, status: "live" },
-      { thumbnailUrl: coverUrl }
+      { thumbnailUrl: coverUrl },
     );
 
     // Cache invalidate
