@@ -355,58 +355,79 @@ async function verifyIapWithRevenueCat(userId, transactionId, productId) {
     return { valid: true, reason: "dev_skip" };
   }
 
-  try {
-    const axios = require("axios");
-    const response = await axios.get(
-      `${REVENUECAT_API_BASE_URL}/subscribers/${encodeURIComponent(userId)}`,
-      {
-        headers: {
-          Authorization: `Bearer ${REVENUECAT_API_KEY}`,
-          "Content-Type": "application/json",
+  const axios = require("axios");
+  // Google Play → RevenueCat senkronu birkaç saniye gecikebilir.
+  // İlk denemede bulunamazsa 2 kez daha 3'er saniye bekleyerek tekrar dene.
+  const MAX_ATTEMPTS = 3;
+  const RETRY_DELAY_MS = 3000;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await axios.get(
+        `${REVENUECAT_API_BASE_URL}/subscribers/${encodeURIComponent(userId)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${REVENUECAT_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          timeout: 10000,
         },
-        timeout: 10000,
-      },
-    );
-
-    const subscriber = response.data?.subscriber;
-    if (!subscriber) {
-      return { valid: false, reason: "Subscriber not found" };
-    }
-
-    // non_subscriptions altında productId'yi ara
-    const purchases = subscriber.non_subscriptions?.[productId] || [];
-    const found = purchases.some((p) => {
-      // RevenueCat store_transaction_id veya id ile eşleştir
-      return p.store_transaction_id === transactionId || p.id === transactionId;
-    });
-
-    if (!found) {
-      // Alternatif: tüm non_subscriptions içinde transactionId ara
-      const allPurchases = Object.values(
-        subscriber.non_subscriptions || {},
-      ).flat();
-      const foundAnywhere = allPurchases.some(
-        (p) =>
-          p.store_transaction_id === transactionId || p.id === transactionId,
       );
 
-      if (foundAnywhere) {
-        // Transaction var ama productId eşleşmiyor — muhtemelen manipülasyon
-        logger.warn(
-          `⚠️ IAP productId uyuşmazlığı: ${productId}, txId=${transactionId}`,
-        );
-        return { valid: false, reason: "Product ID mismatch" };
+      const subscriber = response.data?.subscriber;
+      if (!subscriber) {
+        return { valid: false, reason: "Subscriber not found" };
       }
 
-      return { valid: false, reason: "Transaction not found in RevenueCat" };
-    }
+      // non_subscriptions altında productId'yi ara
+      const purchases = subscriber.non_subscriptions?.[productId] || [];
+      const found = purchases.some((p) => {
+        // RevenueCat store_transaction_id veya id ile eşleştir
+        return p.store_transaction_id === transactionId || p.id === transactionId;
+      });
 
-    return { valid: true };
-  } catch (err) {
-    logger.error("RevenueCat doğrulama hatası:", err.message || err);
-    // Network hatası — güvenli tarafta kal, reddet
-    return { valid: false, reason: `Verification failed: ${err.message}` };
+      if (!found) {
+        // Alternatif: tüm non_subscriptions içinde transactionId ara
+        const allPurchases = Object.values(
+          subscriber.non_subscriptions || {},
+        ).flat();
+        const foundAnywhere = allPurchases.some(
+          (p) =>
+            p.store_transaction_id === transactionId || p.id === transactionId,
+        );
+
+        if (foundAnywhere) {
+          // Transaction var ama productId eşleşmiyor — muhtemelen manipülasyon
+          logger.warn(
+            `⚠️ IAP productId uyuşmazlığı: ${productId}, txId=${transactionId}`,
+          );
+          return { valid: false, reason: "Product ID mismatch" };
+        }
+
+        if (attempt < MAX_ATTEMPTS) {
+          logger.warn(
+            `⚠️ IAP transaction bulunamadı (deneme ${attempt}/${MAX_ATTEMPTS}), ${RETRY_DELAY_MS}ms sonra tekrar deneniyor. userId=${userId}, txId=${transactionId}`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+          continue;
+        }
+
+        return { valid: false, reason: "Transaction not found in RevenueCat" };
+      }
+
+      return { valid: true };
+    } catch (err) {
+      logger.error(`RevenueCat doğrulama hatası (deneme ${attempt}):`, err.message || err);
+      if (attempt < MAX_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+        continue;
+      }
+      // Tüm denemeler başarısız — güvenli tarafta kal, reddet
+      return { valid: false, reason: `Verification failed: ${err.message}` };
+    }
   }
+
+  return { valid: false, reason: "Verification exhausted" };
 }
 
 exports.iapPurchase = async (req, res) => {
