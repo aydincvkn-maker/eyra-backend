@@ -139,7 +139,10 @@ const buildUserStats = async (userId, existingUser = null) => {
       stats.likes += postStats[0].totalLikes || 0;
     }
   } catch (error) {
-    logger.warn("buildUserStats post aggregate warning:", error?.message || error);
+    logger.warn(
+      "buildUserStats post aggregate warning:",
+      error?.message || error,
+    );
   }
 
   return stats;

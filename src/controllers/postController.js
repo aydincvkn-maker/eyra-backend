@@ -21,7 +21,8 @@ const buildActivePostQuery = (extra = {}) => ({
 });
 
 const serializePost = (post, currentUserId) => {
-  const postUser = post.user && typeof post.user === "object" ? post.user : null;
+  const postUser =
+    post.user && typeof post.user === "object" ? post.user : null;
   const postUserId = postUser?._id || post.user;
 
   return {
@@ -89,7 +90,9 @@ const purgeExpiredPosts = async () => {
     }
 
     await Promise.all(expiredPosts.map((post) => removePostAsset(post)));
-    await Post.deleteMany({ _id: { $in: expiredPosts.map((post) => post._id) } });
+    await Post.deleteMany({
+      _id: { $in: expiredPosts.map((post) => post._id) },
+    });
 
     return expiredPosts.length;
   })().finally(() => {
