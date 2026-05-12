@@ -322,7 +322,7 @@ const IAP_COIN_MAP = {
   eyra_coins_1000: 1200,
   eyra_coins_2500: 2500,
   eyra_coins_5000: 5000,
-  eyra_coins_7000: 7000,
+  "com.eyra.coins_7000": 7000,
   eyra_coins_15000: 15000,
 };
 
