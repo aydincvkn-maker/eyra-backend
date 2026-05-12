@@ -383,7 +383,9 @@ async function verifyIapWithRevenueCat(userId, transactionId, productId) {
       const purchases = subscriber.non_subscriptions?.[productId] || [];
       const found = purchases.some((p) => {
         // RevenueCat store_transaction_id veya id ile eşleştir
-        return p.store_transaction_id === transactionId || p.id === transactionId;
+        return (
+          p.store_transaction_id === transactionId || p.id === transactionId
+        );
       });
 
       if (!found) {
@@ -417,7 +419,10 @@ async function verifyIapWithRevenueCat(userId, transactionId, productId) {
 
       return { valid: true };
     } catch (err) {
-      logger.error(`RevenueCat doğrulama hatası (deneme ${attempt}):`, err.message || err);
+      logger.error(
+        `RevenueCat doğrulama hatası (deneme ${attempt}):`,
+        err.message || err,
+      );
       if (attempt < MAX_ATTEMPTS) {
         await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
         continue;
