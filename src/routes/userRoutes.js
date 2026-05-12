@@ -158,6 +158,9 @@ router.get("/females", optionalAuth, userController.getFemaleUsers);
 // GET /api/users/vip - VIP kullanıcıları getir
 router.get("/vip", optionalAuth, userController.getVipUsers);
 
+// GET /api/users/:userId/stats - Kullanıcı istatistiklerini getir
+router.get("/:userId/stats", optionalAuth, userController.getUserStats);
+
 // GET /api/users/:userId - Tek bir kullanıcıyı getir
 router.get("/:userId", optionalAuth, userController.getUserById);
 

@@ -6,6 +6,7 @@ const LiveStream = require("../models/LiveStream");
 const Follow = require("../models/Follow");
 const Visitor = require("../models/Visitor");
 const CallHistory = require("../models/CallHistory");
+const Post = require("../models/Post");
 const path = require("path");
 const fs = require("fs");
 const storageService = require("../services/storageService");
@@ -66,6 +67,82 @@ const isPanelUser = (user) => {
   if (user?.accountScope === "panel") return true;
   const role = String(user?.role || "").toLowerCase();
   return PANEL_ROLES.includes(role) || user?.isOwner === true;
+};
+
+const buildActivePostStatsQuery = (userId) => ({
+  user: userId,
+  isActive: true,
+  $or: [
+    { expiresAt: { $exists: false } },
+    { expiresAt: null },
+    { expiresAt: { $gt: new Date() } },
+  ],
+});
+
+const buildUserStats = async (userId, existingUser = null) => {
+  const user =
+    existingUser ||
+    (await User.findById(userId).select(
+      "coins level followers following gifts totalEarnings",
+    ));
+
+  if (!user) {
+    return null;
+  }
+
+  const stats = {
+    coins: user.coins || 0,
+    level: user.level || 1,
+    followers: user.followers || 0,
+    following: user.following || 0,
+    gifts: user.gifts || 0,
+    totalEarnings: user.totalEarnings || 0,
+    streams: 0,
+    likes: 0,
+    views: 0,
+  };
+
+  try {
+    const streamStats = await LiveStream.aggregate([
+      { $match: { hostId: user._id } },
+      {
+        $group: {
+          _id: null,
+          totalStreams: { $sum: 1 },
+          totalViews: { $sum: "$viewCount" },
+          totalLikes: { $sum: "$likeCount" },
+        },
+      },
+    ]);
+
+    if (streamStats.length > 0) {
+      stats.streams = streamStats[0].totalStreams || 0;
+      stats.views = streamStats[0].totalViews || 0;
+      stats.likes = streamStats[0].totalLikes || 0;
+    }
+  } catch (_) {
+    // LiveStream modeli yoksa devam et
+  }
+
+  try {
+    const postStats = await Post.aggregate([
+      { $match: buildActivePostStatsQuery(user._id) },
+      {
+        $group: {
+          _id: null,
+          totalLikes: { $sum: "$likeCount" },
+        },
+      },
+    ]);
+
+    if (postStats.length > 0) {
+      stats.likes += postStats[0].totalLikes || 0;
+    }
+  } catch (error) {
+    logger.warn("buildUserStats post aggregate warning:", error?.message || error);
+  }
+
+  return stats;
 };
 
 // =============================================
@@ -1182,54 +1259,49 @@ exports.getMyStats = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const user = await User.findById(userId).select(
-      "coins level followers following gifts totalEarnings",
-    );
+    const stats = await buildUserStats(userId);
 
-    if (!user) {
+    if (!stats) {
       return res
         .status(404)
         .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
     }
 
-    const stats = {
-      coins: user.coins || 0,
-      level: user.level || 1,
-      followers: user.followers || 0,
-      following: user.following || 0,
-      gifts: user.gifts || 0,
-      totalEarnings: user.totalEarnings || 0,
-      streams: 0,
-      likes: 0,
-      views: 0,
-    };
-
-    try {
-      const LiveStream = require("../models/LiveStream");
-      const streamStats = await LiveStream.aggregate([
-        { $match: { hostId: user._id } },
-        {
-          $group: {
-            _id: null,
-            totalStreams: { $sum: 1 },
-            totalViews: { $sum: "$viewCount" },
-            totalLikes: { $sum: "$likeCount" },
-          },
-        },
-      ]);
-
-      if (streamStats.length > 0) {
-        stats.streams = streamStats[0].totalStreams || 0;
-        stats.views = streamStats[0].totalViews || 0;
-        stats.likes = streamStats[0].totalLikes || 0;
-      }
-    } catch (e) {
-      // LiveStream modeli yoksa devam et
-    }
-
     res.json({ success: true, stats });
   } catch (err) {
     logger.error("getMyStats error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+  }
+};
+
+// GET /api/users/:userId/stats - BaÅŸka bir kullanÄ±cÄ±nÄ±n istatistiklerini getir
+exports.getUserStats = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    let user;
+
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      user = await User.findById(userId).select(
+        "coins level followers following gifts totalEarnings role accountScope isOwner",
+      );
+    } else {
+      user = await User.findOne({ username: userId }).select(
+        "coins level followers following gifts totalEarnings role accountScope isOwner",
+      );
+    }
+
+    if (!user || isPanelUser(user)) {
+      return res
+        .status(404)
+        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+    }
+
+    const stats = await buildUserStats(user._id, user);
+
+    res.json({ success: true, stats });
+  } catch (err) {
+    logger.error("getUserStats error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
   }
 };

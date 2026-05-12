@@ -13,6 +13,7 @@ const postSchema = new mongoose.Schema(
     // Etkileşim
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     likeCount: { type: Number, default: 0 },
+    expiresAt: { type: Date, default: null },
     
     // Durum
     isActive: { type: Boolean, default: true },
@@ -23,5 +24,6 @@ const postSchema = new mongoose.Schema(
 
 postSchema.index({ createdAt: -1 });
 postSchema.index({ user: 1, createdAt: -1 });
+postSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 module.exports = mongoose.model("Post", postSchema);
