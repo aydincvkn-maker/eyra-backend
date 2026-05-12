@@ -24,24 +24,6 @@ mongoose.connect(process.env.MONGO_URI).then(async () => {
     metadata: { manual: true, reason: 'rc_sync_failure', productId: 'eyra_coins_500' }
   });
 
-  await Payment.create({
-    user: userId,
-    orderId: 'iap_manual_' + Date.now(),
-    productCode: 'eyra_coins_500',
-    productType: 'coin_topup',
-    amountMinor: 0,
-    currency: 'USD',
-    method: 'google_iap',
-    provider: 'revenuecat',
-    status: 'paid',
-    providerPaymentId: 'manual_rc_sync_fix_' + Date.now(),
-    coinsAwarded: coins,
-    balanceAfter: user.coins,
-    platform: 'android',
-    paidAt: new Date(),
-    metadata: { manual: true, reason: 'rc_sync_failure' }
-  });
-
   console.log('DONE - username:', user.username, '- new coins:', user.coins);
   process.exit(0);
 }).catch(e => { console.error(e.message); process.exit(1); });
