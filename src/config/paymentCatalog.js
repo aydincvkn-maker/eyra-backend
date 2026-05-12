@@ -51,8 +51,8 @@ const paymentCatalog = Object.freeze({
     savingsLabel: null,
     visible: false,
   },
-  coin_8000_usd: {
-    code: "coin_8000_usd",
+  coin_7000_usd: {
+    code: "coin_7000_usd",
     title: "7000 Coin",
     productType: "coin_topup",
     coins: 7000,
