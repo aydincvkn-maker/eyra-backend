@@ -281,7 +281,7 @@ exports.startLive = async (req, res) => {
 
     // Cinsiyet kontrolü
     const host = await User.findById(userId).select(
-      "gender isBanned isActive username name profileImage",
+      "gender isBanned isActive username name profileImage streamCoverImage",
     );
     logger.info(
       "🔵 [startLive] Host found:",
