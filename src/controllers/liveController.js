@@ -422,6 +422,77 @@ exports.startLive = async (req, res) => {
 };
 
 /**
+ * Yayın kapak fotoğrafını güncelle (yayıncı)
+ * PATCH /live/cover-image
+ * multipart/form-data: field name = "coverImage"
+ */
+exports.updateStreamCoverImage = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    if (!req.file) {
+      return res.status(400).json({ ok: false, error: "no_file" });
+    }
+
+    const fs = require("fs");
+    const path = require("path");
+
+    // Benzersiz dosya adı oluştur
+    const ext = path.extname(req.file.originalname || ".jpg").toLowerCase() || ".jpg";
+    const filename = `stream_cover_${userId}_${Date.now()}${ext}`;
+    const uploadsDir = path.join(__dirname, "../../uploads");
+
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    const filePath = path.join(uploadsDir, filename);
+    fs.writeFileSync(filePath, req.file.buffer);
+
+    const coverUrl = `/uploads/${filename}`;
+
+    // Kullanıcının kalıcı streamCoverImage alanını güncelle
+    await User.findByIdAndUpdate(
+      userId,
+      { streamCoverImage: coverUrl },
+      { runValidators: false }
+    );
+
+    // Aktif yayın varsa thumbnailUrl'ini de güncelle
+    await LiveStream.findOneAndUpdate(
+      { host: userId, isLive: true, status: "live" },
+      { thumbnailUrl: coverUrl }
+    );
+
+    // Cache invalidate
+    try {
+      await liveService.invalidateStreamCache();
+    } catch (e) {
+      logger.warn("⚠️ Cache invalidation failed:", e.message);
+    }
+
+    return res.json({ ok: true, coverUrl });
+  } catch (err) {
+    logger.error("❌ updateStreamCoverImage error:", err.message);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+};
+
+/**
+ * Yayıncının kayıtlı kapak fotoğrafını getir
+ * GET /live/cover-image
+ */
+exports.getStreamCoverImage = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId).select("streamCoverImage");
+    return res.json({ ok: true, coverUrl: user?.streamCoverImage || "" });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+};
+
+/**
  * Yayını sonlandır
  */
 exports.endLive = async (req, res) => {
