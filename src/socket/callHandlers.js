@@ -260,7 +260,9 @@ async function _processCallTick(callInfo, minuteIndex) {
 
     // Ücretsiz dakika içindeyse coin düşme
     if (minuteIndex <= freeMinutes) {
-      logger.debug(`Call tick minute ${minuteIndex} is free (freeMinutes=${freeMinutes})`);
+      logger.debug(
+        `Call tick minute ${minuteIndex} is free (freeMinutes=${freeMinutes})`,
+      );
       return;
     }
 
