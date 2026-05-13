@@ -214,6 +214,21 @@ router.post("/initiate", auth, async (req, res) => {
       });
     }
 
+    // Tick sistemi için callRequests'e de ekle (ücretli arama)
+    if (!global.callRequests) global.callRequests = new Map();
+    const requestId = `direct_call_${Date.now()}_${callerId.toString().slice(-6)}`;
+    global.callRequests.set(requestId, {
+      requestId,
+      callerId: String(callerId),
+      hostId: String(targetUserId),      // callee = "host" tick sisteminde
+      callRoomName: roomName,
+      pricePerMinute,
+      freeMinutes: 0,
+      status: "pending",
+      isDirectCall: true,               // live yayın araması değil
+      createdAt: Date.now(),
+    });
+
     // Cevaplanmayan arama timeout'u başlat
     const timer = setTimeout(
       () => handleCallTimeout(roomName),
