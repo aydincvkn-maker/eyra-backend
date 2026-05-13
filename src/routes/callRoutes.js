@@ -220,12 +220,12 @@ router.post("/initiate", auth, async (req, res) => {
     global.callRequests.set(requestId, {
       requestId,
       callerId: String(callerId),
-      hostId: String(targetUserId),      // callee = "host" tick sisteminde
+      hostId: String(targetUserId), // callee = "host" tick sisteminde
       callRoomName: roomName,
       pricePerMinute,
       freeMinutes: 0,
       status: "pending",
-      isDirectCall: true,               // live yayın araması değil
+      isDirectCall: true, // live yayın araması değil
       createdAt: Date.now(),
     });
 
