@@ -98,15 +98,30 @@ function register(socket, io) {
       // Yayın odasına host'un döndüğünü bildir (pembe overlay kapatılsın)
       if (eventName === "call:ended" && global.callRequests && global.io) {
         for (const [reqId, req] of global.callRequests) {
-          if (req.callRoomName === roomName && req.roomId) {
-            global.io.to(req.roomId).emit("host_returned_from_call", {
-              hostId: req.hostId,
-              hostName: req.hostName || "Yayıncı",
-              callerName: req.callerName || "Kullanıcı",
-            });
-            logger.debug(
-              `host_returned_from_call emitted to room ${req.roomId}`,
-            );
+          if (req.callRoomName === roomName) {
+            if (req.roomId) {
+              // Live yayın araması — yayın odasına bildir
+              global.io.to(req.roomId).emit("host_returned_from_call", {
+                hostId: req.hostId,
+                hostName: req.hostName || "Yayıncı",
+                callerName: req.callerName || "Kullanıcı",
+              });
+              logger.debug(`host_returned_from_call emitted to room ${req.roomId}`);
+            }
+            // Her iki tip araması için callRequests'ten temizle
+            global.callRequests.delete(reqId);
+            break;
+          }
+        }
+      }
+
+      // Reddedilen/iptal edilen direkt aramalar için callRequests temizliği
+      if (
+        (eventName === "call:rejected" || eventName === "call:cancelled") &&
+        global.callRequests
+      ) {
+        for (const [reqId, req] of global.callRequests) {
+          if (req.callRoomName === roomName && req.isDirectCall) {
             global.callRequests.delete(reqId);
             break;
           }
