@@ -106,7 +106,9 @@ function register(socket, io) {
                 hostName: req.hostName || "Yayıncı",
                 callerName: req.callerName || "Kullanıcı",
               });
-              logger.debug(`host_returned_from_call emitted to room ${req.roomId}`);
+              logger.debug(
+                `host_returned_from_call emitted to room ${req.roomId}`,
+              );
             }
             // Her iki tip araması için callRequests'ten temizle
             global.callRequests.delete(reqId);
