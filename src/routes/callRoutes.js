@@ -287,6 +287,7 @@ router.post("/initiate", auth, async (req, res) => {
       roomName,
       callerId: String(callerId),
       targetUserId: String(targetUserId),
+      pricePerMinute,
       message: "Arama başlatıldı",
     });
   } catch (error) {
