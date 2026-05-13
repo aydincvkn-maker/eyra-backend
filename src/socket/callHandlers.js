@@ -256,6 +256,13 @@ async function _processCallTick(callInfo, minuteIndex) {
     callInfo._lastTickMinute = minuteIndex;
 
     const pricePerMinute = callInfo.pricePerMinute || 120;
+    const freeMinutes = callInfo.freeMinutes || 0;
+
+    // Ücretsiz dakika içindeyse coin düşme
+    if (minuteIndex <= freeMinutes) {
+      logger.debug(`Call tick minute ${minuteIndex} is free (freeMinutes=${freeMinutes})`);
+      return;
+    }
 
     const updatedCaller = await User.findOneAndUpdate(
       { _id: callInfo.callerId, coins: { $gte: pricePerMinute } },
