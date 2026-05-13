@@ -132,6 +132,30 @@ router.post("/initiate", auth, async (req, res) => {
       return sendError(res, 400, "Kendinizi arayamazsınız");
     }
 
+    // Callee bilgilerini çek (fiyat için)
+    const targetUser = await User.findById(targetUserId)
+      .select("callPricePerMinute coins username name profileImage")
+      .lean();
+    if (!targetUser) {
+      return sendError(res, 404, "Kullanıcı bulunamadı");
+    }
+    const pricePerMinute = targetUser.callPricePerMinute || 100;
+
+    // Caller'ın en az 1 dakika karşılığı coin'i olmalı
+    const caller = await User.findById(callerId).select("coins").lean();
+    if (!caller) {
+      return sendError(res, 404, "Kullanıcı bulunamadı");
+    }
+    if (caller.coins < pricePerMinute) {
+      return res.status(400).json({
+        success: false,
+        error: "insufficient_coins",
+        required: pricePerMinute,
+        available: caller.coins,
+        message: `Arama için en az ${pricePerMinute} coin gerekli`,
+      });
+    }
+
     // Check if target user is available (socket-driven, in-memory)
     let targetPresence = await presenceService.getPresence(targetUserId);
     if (!targetPresence.online) {
