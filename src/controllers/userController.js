@@ -1400,6 +1400,29 @@ exports.deleteAccount = async (req, res) => {
 
     await User.findByIdAndDelete(userId);
 
+    // Firebase Auth kullanicisini da sil - email ve/veya telefon numarasina gore
+    try {
+      const admin = require("firebase-admin");
+      if (admin.apps.length) {
+        const firebaseDeletePromises = [];
+        if (user.email) {
+          firebaseDeletePromises.push(
+            admin.auth().getUserByEmail(user.email)
+              .then((fbUser) => admin.auth().deleteUser(fbUser.uid))
+              .catch((e) => logger.warn("Firebase email silme basarisiz (" + user.email + "): " + e.message))
+          );
+        }
+        if (user.phone) {
+          firebaseDeletePromises.push(
+            admin.auth().getUserByPhoneNumber(user.phone)
+              .then((fbUser) => admin.auth().deleteUser(fbUser.uid))
+              .catch(() => {})
+          );
+        }
+        await Promise.all(firebaseDeletePromises);
+      }
+    } catch (_) {}
+
     logger.info(`ğŸ—‘ï¸ Hesap silindi: ${user?.username}`);
 
     res.json({ success: true, message: "Hesap silindi" });
