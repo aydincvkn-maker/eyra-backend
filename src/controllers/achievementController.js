@@ -102,19 +102,14 @@ const ACHIEVEMENTS = [
  */
 const tryUnlockAchievement = async (userId, achievementId) => {
   try {
+    // Gender + varlık kontrolü tek sorguda
     const user = await User.findById(userId).select(
-      "achievements coins xp level followers gender",
+      "coins xp level followers gender",
     );
     if (!user) return null;
 
     // Başarımlar sadece kadın kullanıcılara
     if (user.gender !== "female") return null;
-
-    // Zaten açılmış mı?
-    const alreadyUnlocked = user.achievements?.some(
-      (a) => a.id === achievementId,
-    );
-    if (alreadyUnlocked) return null;
 
     const achievement = ACHIEVEMENTS.find((a) => a.id === achievementId);
     if (!achievement) return null;
@@ -131,10 +126,11 @@ const tryUnlockAchievement = async (userId, achievementId) => {
       case "coins":
         conditionMet = user.coins >= achievement.condition.count;
         break;
-      case "verified":
+      case "verified": {
         const fullUser = await User.findById(userId).select("isVerified");
         conditionMet = fullUser?.isVerified === true;
         break;
+      }
       // streams, gifts_sent, gifts_received -> harici kontrol
       default:
         conditionMet = true; // Manuel tetikleme
@@ -166,9 +162,16 @@ const tryUnlockAchievement = async (userId, achievementId) => {
       }
     }
 
-    const updatedUser = await User.findByIdAndUpdate(userId, updateOps, {
-      new: true,
-    }).select("coins xp level achievements");
+    // Atomik yazma: filtre "achievements.id != achievementId" garantisiyle
+    // eş zamanlı iki istek aynı başarımı iki kez veremez
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: userId, "achievements.id": { $ne: achievementId } },
+      updateOps,
+      { new: true },
+    ).select("coins xp level achievements");
+
+    // null → başarım zaten vardı (race condition engellendi)
+    if (!updatedUser) return null;
 
     // Transaction kaydet
     if (achievement.rewardCoins > 0) {
