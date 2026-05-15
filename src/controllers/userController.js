@@ -1413,16 +1413,27 @@ exports.deleteAccount = async (req, res) => {
         const firebaseDeletePromises = [];
         if (user.email) {
           firebaseDeletePromises.push(
-            admin.auth().getUserByEmail(user.email)
+            admin
+              .auth()
+              .getUserByEmail(user.email)
               .then((fbUser) => admin.auth().deleteUser(fbUser.uid))
-              .catch((e) => logger.warn("Firebase email silme basarisiz (" + user.email + "): " + e.message))
+              .catch((e) =>
+                logger.warn(
+                  "Firebase email silme basarisiz (" +
+                    user.email +
+                    "): " +
+                    e.message,
+                ),
+              ),
           );
         }
         if (user.phone) {
           firebaseDeletePromises.push(
-            admin.auth().getUserByPhoneNumber(user.phone)
+            admin
+              .auth()
+              .getUserByPhoneNumber(user.phone)
               .then((fbUser) => admin.auth().deleteUser(fbUser.uid))
-              .catch(() => {})
+              .catch(() => {}),
           );
         }
         await Promise.all(firebaseDeletePromises);
@@ -1464,11 +1475,18 @@ exports.getUserById = async (req, res) => {
 
     // Profil fotoğrafı olmayan kadın kullanıcıyı erkek izleyiciden gizle
     const viewerId = req.user?.id ? String(req.user.id) : null;
-    if (user.gender === "female" && user.settings?.profileVisibility === false) {
+    if (
+      user.gender === "female" &&
+      user.settings?.profileVisibility === false
+    ) {
       if (!viewerId || viewerId !== String(user._id)) {
-        const viewer = viewerId ? await User.findById(viewerId).select("gender") : null;
+        const viewer = viewerId
+          ? await User.findById(viewerId).select("gender")
+          : null;
         if (!viewer || viewer.gender !== "female") {
-          return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+          return res
+            .status(404)
+            .json({ success: false, message: "Kullanıcı bulunamadı" });
         }
       }
     }
