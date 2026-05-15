@@ -144,8 +144,8 @@ const resolveGiftMedia = (gift) => {
 // Sadece mevcut dosyalar kullanılıyor
 const DEFAULT_GIFTS = [
   {
-    name: "Aşk",
-    description: "Sevgi dolu bir hediye",
+    name: "Enerji",
+    description: "Güçlü bir enerji patlaması",
     imageUrl: "/gifts/ask.jpeg",
     animationUrl: "/videos/gifts/love.mp4",
     valueCoins: 10,
@@ -153,8 +153,8 @@ const DEFAULT_GIFTS = [
     order: 1,
   },
   {
-    name: "Öpücük",
-    description: "Tatlı bir öpücük hediyesi",
+    name: "Alkış",
+    description: "Coşkulu alkış",
     imageUrl: "/gifts/opucuk.webp",
     animationUrl: "/videos/gifts/love_kiss.mp4",
     valueCoins: 25,
@@ -301,8 +301,8 @@ const DEFAULT_GIFTS = [
     order: 7,
   },
   {
-    name: "Aşk Arabası",
-    description: "Aşk dolu bir araba",
+    name: "Spor Araba",
+    description: "Hızlı bir spor araba",
     imageUrl: "/gifts/love_car.jpg",
     animationUrl: "/videos/gifts/love_car.mp4",
     valueCoins: 900,
@@ -310,8 +310,8 @@ const DEFAULT_GIFTS = [
     order: 8,
   },
   {
-    name: "Aşk Kalbi",
-    description: "Çarpan bir kalp",
+    name: "Kalp Ritmi",
+    description: "Çarpan ritim",
     imageUrl: "/gifts/love_heart.jpg",
     animationUrl: "/videos/gifts/love_heart.mp4",
     valueCoins: 350,
@@ -328,8 +328,8 @@ const DEFAULT_GIFTS = [
     order: 10,
   },
   {
-    name: "Seni Seviyorum",
-    description: "Sevgi dolu mesaj",
+    name: "Süper Star",
+    description: "Efsane yıldız",
     imageUrl: "/gifts/i_love_you.jpg",
     animationUrl: "/videos/gifts/i_love_you.mp4",
     valueCoins: 500,
@@ -337,8 +337,8 @@ const DEFAULT_GIFTS = [
     order: 11,
   },
   {
-    name: "Seni Seviyorum +",
-    description: "Daha büyük bir aşk mesajı",
+    name: "Efsane",
+    description: "En büyük efsane",
     imageUrl: "/gifts/i_love_you_1.jpg",
     animationUrl: "/videos/gifts/i_love_you_1.mp4",
     valueCoins: 550,
