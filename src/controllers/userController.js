@@ -258,6 +258,9 @@ exports.getUsers = async (req, res) => {
       query.gender = genderVisibilityQueryForViewer(null);
     }
 
+    // Profil fotoğrafı olmayan (gizli) kadın kullanıcıları listeden çıkar
+    query["settings.profileVisibility"] = { $ne: false };
+
     // ✅ Kullanıcı listesi getir (limit zorunlu — sınırsız sorgu önlenir)
     const users = await User.find(query)
       .select("-password -refreshToken")
@@ -709,6 +712,9 @@ exports.getFemaleUsers = async (req, res) => {
     } else {
       baseQuery.gender = genderVisibilityQueryForViewer(null);
     }
+
+    // Profil fotoğrafı olmayan (gizli) kadın kullanıcıları listeden çıkar
+    baseQuery["settings.profileVisibility"] = { $ne: false };
 
     const users = await User.find(baseQuery)
       .select("-password -refreshToken")
@@ -1453,7 +1459,18 @@ exports.getUserById = async (req, res) => {
     if (!user || isPanelUser(user)) {
       return res
         .status(404)
-        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
+    }
+
+    // Profil fotoğrafı olmayan kadın kullanıcıyı erkek izleyiciden gizle
+    const viewerId = req.user?.id ? String(req.user.id) : null;
+    if (user.gender === "female" && user.settings?.profileVisibility === false) {
+      if (!viewerId || viewerId !== String(user._id)) {
+        const viewer = viewerId ? await User.findById(viewerId).select("gender") : null;
+        if (!viewer || viewer.gender !== "female") {
+          return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+        }
+      }
     }
 
     const presenceData = await presenceService.getPresence(user._id);
