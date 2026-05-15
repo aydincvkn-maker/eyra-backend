@@ -255,10 +255,9 @@ exports.checkVerificationAchievement = async (_userId) => {
 };
 
 /**
- * Coin bazlı başarımları kontrol et
+ * coins_1000 kaldırıldı — coins_10000 kaldı
  */
 exports.checkCoinAchievements = async (userId, coinBalance) => {
-  if (coinBalance >= 1000) await tryUnlockAchievement(userId, "coins_1000");
   if (coinBalance >= 10000) await tryUnlockAchievement(userId, "coins_10000");
 };
 
