@@ -1,0 +1,24 @@
+﻿   }
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      {
+        $set: {
+          profileImage: avatarUrl,
+          profileImagePublicId: uploaded.publicId,
+        },
+      },
+      { new: true },
+    ).select("-password -refreshToken");
+
+    logger.info(`ğŸ“· Avatar gÃ¼ncellendi: ${user.username}`);
+
+    res.json({
+      success: true,
+      message: "Avatar gÃ¼ncellendi",
+      profileImage: avatarUrl,
+    });
+  } catch (err) {
+    logger.error("uploadAvatar error:", err);
+    res.status(500).json({ success: false, message: "Avatar yÃ¼kleneme
