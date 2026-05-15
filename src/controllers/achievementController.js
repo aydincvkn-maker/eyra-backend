@@ -227,12 +227,9 @@ exports.checkFollowerAchievements = async (userId, followerCount) => {
 };
 
 /**
- * Hediye gönderme bazlı başarımları kontrol et
+ * Hediye gönderme bazlı başarımlar kaldırıldı (kadınlar hediye göndermez)
  */
-exports.checkGiftSentAchievements = async (userId, totalSent) => {
-  if (totalSent >= 1) await tryUnlockAchievement(userId, "first_gift_sent");
-  if (totalSent >= 50) await tryUnlockAchievement(userId, "gifter_50");
-};
+exports.checkGiftSentAchievements = async (_userId, _totalSent) => {};
 
 /**
  * Hediye alma bazlı başarımları kontrol et
