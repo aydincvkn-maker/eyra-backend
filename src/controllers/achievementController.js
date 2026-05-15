@@ -79,42 +79,7 @@ const ACHIEVEMENTS = [
     rewardXP: 1000,
   },
 
-  // Gifting
-  {
-    id: "first_gift_sent",
-    name: "İlk Hediye",
-    nameEn: "First Gift",
-    icon: "🎁",
-    description: "İlk hediyeni gönder",
-    category: "gifting",
-    condition: { type: "gifts_sent", count: 1 },
-    rewardCoins: 25,
-    rewardXP: 25,
-  },
-  {
-    id: "gifter_50",
-    name: "Cömert",
-    nameEn: "Generous",
-    icon: "💝",
-    description: "50 hediye gönder",
-    category: "gifting",
-    condition: { type: "gifts_sent", count: 50 },
-    rewardCoins: 500,
-    rewardXP: 200,
-  },
-
   // Milestones
-  {
-    id: "coins_1000",
-    name: "Zengin",
-    nameEn: "Rich",
-    icon: "💰",
-    description: "1000 coin biriktir",
-    category: "milestone",
-    condition: { type: "coins", count: 1000 },
-    rewardCoins: 0,
-    rewardXP: 100,
-  },
   {
     id: "coins_10000",
     name: "Milyoner",
