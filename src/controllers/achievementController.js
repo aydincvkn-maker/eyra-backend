@@ -138,9 +138,12 @@ const ACHIEVEMENTS = [
 const tryUnlockAchievement = async (userId, achievementId) => {
   try {
     const user = await User.findById(userId).select(
-      "achievements coins xp level followers",
+      "achievements coins xp level followers gender",
     );
     if (!user) return null;
+
+    // Başarımlar sadece kadın kullanıcılara
+    if (user.gender !== "female") return null;
 
     // Zaten açılmış mı?
     const alreadyUnlocked = user.achievements?.some(
@@ -305,7 +308,16 @@ exports.checkCoinAchievements = async (userId, coinBalance) => {
 exports.getAchievements = async (req, res) => {
   try {
     const userId = req.user.id;
-    const user = await User.findById(userId).select("achievements");
+    const user = await User.findById(userId).select("achievements gender");
+
+    // Başarımlar sadece kadın kullanıcılara
+    if (user?.gender !== "female") {
+      return res.json({
+        success: true,
+        achievements: [],
+        stats: { total: 0, unlocked: 0, percentage: 0 },
+      });
+    }
     const unlockedIds = (user?.achievements || []).map((a) => a.id);
 
     const achievements = ACHIEVEMENTS.map((a) => {
@@ -345,7 +357,12 @@ exports.getAchievements = async (req, res) => {
 exports.getRecentAchievements = async (req, res) => {
   try {
     const userId = req.user.id;
-    const user = await User.findById(userId).select("achievements");
+    const user = await User.findById(userId).select("achievements gender");
+
+    // Başarımlar sadece kadın kullanıcılara
+    if (user?.gender !== "female") {
+      return res.json({ success: true, achievements: [] });
+    }
 
     const recent = (user?.achievements || [])
       .sort((a, b) => new Date(b.unlockedAt) - new Date(a.unlockedAt))
