@@ -61,6 +61,7 @@ const maintenanceMiddleware = async (req, res, next) => {
 
       return res.status(503).json({
         success: false,
+        message: "Sistem bakımda, lütfen daha sonra tekrar deneyin.",
         error: "Sistem bakımda, lütfen daha sonra tekrar deneyin.",
         maintenance: true,
       });
