@@ -47,7 +47,10 @@ const maintenanceMiddleware = async (req, res, next) => {
     }
 
     // Admin endpoint'leri her zaman çalışmalı
-    if (req.path.startsWith("/api/admin") || req.path.startsWith("/api/settings")) {
+    if (
+      req.path.startsWith("/api/admin") ||
+      req.path.startsWith("/api/settings")
+    ) {
       return next();
     }
 
