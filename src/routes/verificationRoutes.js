@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth");
 const requirePermission = require("../middleware/requirePermission");
+const { uploadLimiter } = require("../middleware/rateLimit");
 const verificationController = require("../controllers/verificationController");
 const multer = require("multer");
 const path = require("path");
