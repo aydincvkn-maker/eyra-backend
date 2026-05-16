@@ -16,16 +16,16 @@ const { HOST_SALARY_LEVELS, calculateHostLevel } = salaryService;
 // =============================================
 // SABİTLER
 // =============================================
-const PLATFORM_FEE_PERCENT = 0;     // Çekim komisyonu %0 (isteğe bağlı)
+const PLATFORM_FEE_PERCENT = 0; // Çekim komisyonu %0 (isteğe bağlı)
 
 // Birikim ödülleri (milestone bonusları)
 const SAVINGS_MILESTONES = [
-  { threshold: 10000,  bonusPercent: 2,  label: "Bronz Yayıncı",    icon: "🥉" },
-  { threshold: 25000,  bonusPercent: 3,  label: "Gümüş Yayıncı",    icon: "🥈" },
-  { threshold: 50000,  bonusPercent: 5,  label: "Altın Yayıncı",    icon: "🥇" },
-  { threshold: 100000, bonusPercent: 7,  label: "Platin Yayıncı",   icon: "💎" },
-  { threshold: 250000, bonusPercent: 10, label: "Elmas Yayıncı",    icon: "👑" },
-  { threshold: 500000, bonusPercent: 15, label: "Efsane Yayıncı",   icon: "🌟" },
+  { threshold: 10000, bonusPercent: 2, label: "Bronz Yayıncı", icon: "🥉" },
+  { threshold: 25000, bonusPercent: 3, label: "Gümüş Yayıncı", icon: "🥈" },
+  { threshold: 50000, bonusPercent: 5, label: "Altın Yayıncı", icon: "🥇" },
+  { threshold: 100000, bonusPercent: 7, label: "Platin Yayıncı", icon: "💎" },
+  { threshold: 250000, bonusPercent: 10, label: "Elmas Yayıncı", icon: "👑" },
+  { threshold: 500000, bonusPercent: 15, label: "Efsane Yayıncı", icon: "🌟" },
 ];
 
 // =============================================
@@ -44,11 +44,13 @@ exports.getBroadcasterInfo = async (req, res) => {
   try {
     const userId = req.user.id;
     const user = await User.findById(userId).select(
-      "coins totalEarnings gender broadcasterContract iban bankName accountHolder preferredWithdrawMethod paparaId paparaName paypalEmail cryptoAddress cryptoNetwork wiseEmail wiseName name username profileImage level followers violations"
+      "coins totalEarnings gender broadcasterContract iban bankName accountHolder preferredWithdrawMethod paparaId paparaName paypalEmail cryptoAddress cryptoNetwork wiseEmail wiseName name username profileImage level followers violations",
     );
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     // Toplam çekilen coin
@@ -61,7 +63,13 @@ exports.getBroadcasterInfo = async (req, res) => {
     // Bekleyen çekim
     const pendingWithdrawals = await Withdrawal.aggregate([
       { $match: { user: user._id, status: "pending" } },
-      { $group: { _id: null, total: { $sum: "$amountCoins" }, count: { $sum: 1 } } },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$amountCoins" },
+          count: { $sum: 1 },
+        },
+      },
     ]);
     const pendingCoins = pendingWithdrawals[0]?.total || 0;
     const pendingCount = pendingWithdrawals[0]?.count || 0;
@@ -70,15 +78,19 @@ exports.getBroadcasterInfo = async (req, res) => {
     const availableCoins = Math.max(0, user.coins - pendingCoins);
 
     // Birikim ödülü (milestone)
-    const currentMilestone = SAVINGS_MILESTONES
-      .filter(m => user.totalEarnings >= m.threshold)
-      .pop() || null;
+    const currentMilestone =
+      SAVINGS_MILESTONES.filter(
+        (m) => user.totalEarnings >= m.threshold,
+      ).pop() || null;
 
-    const nextMilestone = SAVINGS_MILESTONES
-      .find(m => user.totalEarnings < m.threshold) || null;
+    const nextMilestone =
+      SAVINGS_MILESTONES.find((m) => user.totalEarnings < m.threshold) || null;
 
     const progressToNext = nextMilestone
-      ? Math.min(100, Math.round((user.totalEarnings / nextMilestone.threshold) * 100))
+      ? Math.min(
+          100,
+          Math.round((user.totalEarnings / nextMilestone.threshold) * 100),
+        )
       : 100;
 
     // Son çekimler
@@ -93,65 +105,95 @@ exports.getBroadcasterInfo = async (req, res) => {
     thisMonthStart.setHours(0, 0, 0, 0);
 
     const monthlyEarnings = await Transaction.aggregate([
-      { $match: { user: user._id, type: "gift_received", createdAt: { $gte: thisMonthStart } } },
+      {
+        $match: {
+          user: user._id,
+          type: "gift_received",
+          createdAt: { $gte: thisMonthStart },
+        },
+      },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
 
     // ── Haftalık seviye sistemi ──────────────────────────────
     // Sabit Pazartesi→Pazar hafta aralığı (salaryService ile aynı)
-    const { weekStart, weekEnd: currentWeekEnd } = salaryService.getCurrentWeekRange();
+    const { weekStart, weekEnd: currentWeekEnd } =
+      salaryService.getCurrentWeekRange();
 
     const weeklyGiftAgg = await Transaction.aggregate([
-      { $match: { user: user._id, type: "gift_received", createdAt: { $gte: weekStart, $lte: currentWeekEnd } } },
+      {
+        $match: {
+          user: user._id,
+          type: "gift_received",
+          createdAt: { $gte: weekStart, $lte: currentWeekEnd },
+        },
+      },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
     const weeklyGifts = weeklyGiftAgg[0]?.total || 0;
 
     // Haftalık hediye + özel görüşme geliri (gift_received + call earnings)
     const weeklyTotalAgg = await Transaction.aggregate([
-      { $match: { 
-        user: user._id, 
-        type: { $in: ["gift_received", "call_earning", "paid_call_earning"] },
-        createdAt: { $gte: weekStart, $lte: currentWeekEnd } 
-      }},
+      {
+        $match: {
+          user: user._id,
+          type: { $in: ["gift_received", "call_earning", "paid_call_earning"] },
+          createdAt: { $gte: weekStart, $lte: currentWeekEnd },
+        },
+      },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
     const weeklyGiftsWithCalls = weeklyTotalAgg[0]?.total || 0;
 
     // Günlük kırılım (bu haftanın günleri)
     const dailyBreakdown = await Transaction.aggregate([
-      { $match: { 
-        user: user._id, 
-        type: { $in: ["gift_received", "call_earning", "paid_call_earning"] },
-        createdAt: { $gte: weekStart, $lte: currentWeekEnd } 
-      }},
-      { $group: { 
-        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-        gifts: { 
-          $sum: { $cond: [{ $eq: ["$type", "gift_received"] }, "$amount", 0] } 
+      {
+        $match: {
+          user: user._id,
+          type: { $in: ["gift_received", "call_earning", "paid_call_earning"] },
+          createdAt: { $gte: weekStart, $lte: currentWeekEnd },
         },
-        calls: { 
-          $sum: { $cond: [{ $ne: ["$type", "gift_received"] }, "$amount", 0] } 
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          gifts: {
+            $sum: {
+              $cond: [{ $eq: ["$type", "gift_received"] }, "$amount", 0],
+            },
+          },
+          calls: {
+            $sum: {
+              $cond: [{ $ne: ["$type", "gift_received"] }, "$amount", 0],
+            },
+          },
+          total: { $sum: "$amount" },
         },
-        total: { $sum: "$amount" }
-      }},
+      },
       { $sort: { _id: 1 } },
     ]);
 
     // Mevcut seviye hesapla
-    const currentSalaryLevel = calculateHostLevel(weeklyGifts, weeklyGiftsWithCalls);
-    
+    const currentSalaryLevel = calculateHostLevel(
+      weeklyGifts,
+      weeklyGiftsWithCalls,
+    );
+
     // Sonraki seviye
-    const nextSalaryLevelIdx = HOST_SALARY_LEVELS.findIndex(l => l.level === currentSalaryLevel.level) + 1;
-    const nextSalaryLevel = nextSalaryLevelIdx < HOST_SALARY_LEVELS.length 
-      ? HOST_SALARY_LEVELS[nextSalaryLevelIdx] 
-      : null;
+    const nextSalaryLevelIdx =
+      HOST_SALARY_LEVELS.findIndex(
+        (l) => l.level === currentSalaryLevel.level,
+      ) + 1;
+    const nextSalaryLevel =
+      nextSalaryLevelIdx < HOST_SALARY_LEVELS.length
+        ? HOST_SALARY_LEVELS[nextSalaryLevelIdx]
+        : null;
 
     // Sonraki seviyeye kalan
-    const giftsToNextLevel = nextSalaryLevel 
+    const giftsToNextLevel = nextSalaryLevel
       ? Math.max(0, nextSalaryLevel.minGifts - weeklyGifts)
       : 0;
-    const giftsWithCallsToNextLevel = nextSalaryLevel 
+    const giftsWithCallsToNextLevel = nextSalaryLevel
       ? Math.max(0, nextSalaryLevel.minGiftsWithCalls - weeklyGiftsWithCalls)
       : 0;
 
@@ -162,11 +204,26 @@ exports.getBroadcasterInfo = async (req, res) => {
     // ── Haftalık yayın süresi ────────────────────────────────
     const LiveStream = require("../models/LiveStream");
     const weeklyStreamAgg = await LiveStream.aggregate([
-      { $match: { host: user._id, status: "ended", startedAt: { $gte: weekStart, $lte: currentWeekEnd } } },
-      { $group: { _id: null, totalDuration: { $sum: "$duration" }, count: { $sum: 1 } } },
+      {
+        $match: {
+          host: user._id,
+          status: "ended",
+          startedAt: { $gte: weekStart, $lte: currentWeekEnd },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalDuration: { $sum: "$duration" },
+          count: { $sum: 1 },
+        },
+      },
     ]);
-    const weeklyStreamingMinutes = Math.floor((weeklyStreamAgg[0]?.totalDuration || 0) / 60);
-    const weeklyStreamingHours = Math.round((weeklyStreamingMinutes / 60) * 100) / 100;
+    const weeklyStreamingMinutes = Math.floor(
+      (weeklyStreamAgg[0]?.totalDuration || 0) / 60,
+    );
+    const weeklyStreamingHours =
+      Math.round((weeklyStreamingMinutes / 60) * 100) / 100;
     const weeklyStreamCount = weeklyStreamAgg[0]?.count || 0;
 
     res.json({
@@ -220,22 +277,24 @@ exports.getBroadcasterInfo = async (req, res) => {
           salaryPerWeek: currentSalaryLevel.salaryPerWeek,
           salaryType: currentSalaryLevel.salaryType,
         },
-        next: nextSalaryLevel ? {
-          level: nextSalaryLevel.level,
-          label: nextSalaryLevel.label,
-          description: nextSalaryLevel.description,
-          icon: nextSalaryLevel.icon,
-          color: nextSalaryLevel.color,
-          salaryPerWeek: nextSalaryLevel.salaryPerWeek,
-          minGifts: nextSalaryLevel.minGifts,
-          minGiftsWithCalls: nextSalaryLevel.minGiftsWithCalls,
-        } : null,
+        next: nextSalaryLevel
+          ? {
+              level: nextSalaryLevel.level,
+              label: nextSalaryLevel.label,
+              description: nextSalaryLevel.description,
+              icon: nextSalaryLevel.icon,
+              color: nextSalaryLevel.color,
+              salaryPerWeek: nextSalaryLevel.salaryPerWeek,
+              minGifts: nextSalaryLevel.minGifts,
+              minGiftsWithCalls: nextSalaryLevel.minGiftsWithCalls,
+            }
+          : null,
         weeklyGifts,
         weeklyGiftsWithCalls,
         giftsToNextLevel,
         giftsWithCallsToNextLevel,
         dailyBreakdown,
-        allLevels: HOST_SALARY_LEVELS.map(l => ({
+        allLevels: HOST_SALARY_LEVELS.map((l) => ({
           level: l.level,
           label: l.label,
           description: l.description,
@@ -244,7 +303,8 @@ exports.getBroadcasterInfo = async (req, res) => {
           minGifts: l.minGifts,
           maxGifts: l.maxGifts === Infinity ? null : l.maxGifts,
           minGiftsWithCalls: l.minGiftsWithCalls,
-          maxGiftsWithCalls: l.maxGiftsWithCalls === Infinity ? null : l.maxGiftsWithCalls,
+          maxGiftsWithCalls:
+            l.maxGiftsWithCalls === Infinity ? null : l.maxGiftsWithCalls,
           salaryPerHour: l.salaryPerHour,
           salaryPerDay: l.salaryPerDay || 0,
           hoursPerDayLabel: l.hoursPerDayLabel,
@@ -256,7 +316,7 @@ exports.getBroadcasterInfo = async (req, res) => {
         weeklyStreamingMinutes,
         weeklyStreamingHours,
         weeklyStreamCount,
-        recentSalaryPayments: salaryHistory.map(h => ({
+        recentSalaryPayments: salaryHistory.map((h) => ({
           id: h._id,
           weekStart: h.weekStart,
           weekEnd: h.weekEnd,
@@ -279,7 +339,7 @@ exports.getBroadcasterInfo = async (req, res) => {
       recentWithdrawals,
       violations: (() => {
         const now = new Date();
-        const vList = (user.violations || []).map(v => ({
+        const vList = (user.violations || []).map((v) => ({
           _id: v._id,
           reason: v.reason,
           severity: v.severity,
@@ -288,11 +348,14 @@ exports.getBroadcasterInfo = async (req, res) => {
           expiresAt: v.expiresAt,
           active: v.active && (!v.expiresAt || new Date(v.expiresAt) > now),
         }));
-        const active = vList.filter(v => v.active);
+        const active = vList.filter((v) => v.active);
         return {
           list: vList,
           activeCount: active.length,
-          totalPenalty: Math.min(active.reduce((s, v) => s + (v.penaltyPercent || 0), 0), 100),
+          totalPenalty: Math.min(
+            active.reduce((s, v) => s + (v.penaltyPercent || 0), 0),
+            100,
+          ),
         };
       })(),
       minWeeklyHours: {
@@ -301,26 +364,26 @@ exports.getBroadcasterInfo = async (req, res) => {
         met: weeklyStreamingHours >= salaryService.MIN_WEEKLY_HOURS,
       },
       paymentInfo: {
-        preferredMethod: user.preferredWithdrawMethod || 'bank',
+        preferredMethod: user.preferredWithdrawMethod || "bank",
         bank: {
-          iban: user.iban || '',
-          bankName: user.bankName || '',
-          accountHolder: user.accountHolder || '',
+          iban: user.iban || "",
+          bankName: user.bankName || "",
+          accountHolder: user.accountHolder || "",
         },
         papara: {
-          paparaId: user.paparaId || '',
-          accountHolder: user.paparaName || '',
+          paparaId: user.paparaId || "",
+          accountHolder: user.paparaName || "",
         },
         paypal: {
-          email: user.paypalEmail || '',
+          email: user.paypalEmail || "",
         },
         crypto: {
-          address: user.cryptoAddress || '',
-          network: user.cryptoNetwork || 'TRC20',
+          address: user.cryptoAddress || "",
+          network: user.cryptoNetwork || "TRC20",
         },
         wise: {
-          email: user.wiseEmail || '',
-          accountHolder: user.wiseName || '',
+          email: user.wiseEmail || "",
+          accountHolder: user.wiseName || "",
         },
       },
     });
@@ -341,15 +404,26 @@ exports.signContract = async (req, res) => {
     const user = await User.findById(userId);
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     if (user.gender !== "female") {
-      return res.status(403).json({ success: false, message: "Bu özellik yalnızca kadın yayıncılar için geçerlidir" });
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "Bu özellik yalnızca kadın yayıncılar için geçerlidir",
+        });
     }
 
     if (user.broadcasterContract?.signed) {
-      return res.json({ success: true, message: "Sözleşme zaten imzalanmış", alreadySigned: true });
+      return res.json({
+        success: true,
+        message: "Sözleşme zaten imzalanmış",
+        alreadySigned: true,
+      });
     }
 
     user.broadcasterContract = {
@@ -376,84 +450,153 @@ exports.signContract = async (req, res) => {
 exports.updateBankInfo = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { method = 'bank', iban, bankName, accountHolder,
-            paparaId, paparaName, paypalEmail,
-            cryptoAddress, cryptoNetwork,
-            wiseEmail, wiseName } = req.body;
+    const {
+      method = "bank",
+      iban,
+      bankName,
+      accountHolder,
+      paparaId,
+      paparaName,
+      paypalEmail,
+      cryptoAddress,
+      cryptoNetwork,
+      wiseEmail,
+      wiseName,
+    } = req.body;
 
-    const ALLOWED_METHODS = ['bank', 'papara', 'paypal', 'crypto', 'wise'];
-    const normalizedMethod = String(method || 'bank').trim().toLowerCase();
+    const ALLOWED_METHODS = ["bank", "papara", "paypal", "crypto", "wise"];
+    const normalizedMethod = String(method || "bank")
+      .trim()
+      .toLowerCase();
     if (!ALLOWED_METHODS.includes(normalizedMethod)) {
-      return res.status(400).json({ success: false, message: 'Geçersiz ödeme yöntemi' });
+      return res
+        .status(400)
+        .json({ success: false, message: "Geçersiz ödeme yöntemi" });
     }
 
     // Simple email format check
-    const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || ''));
+    const isValidEmail = (v) =>
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || ""));
 
     const updateData = { preferredWithdrawMethod: normalizedMethod };
 
     switch (normalizedMethod) {
-      case 'papara': {
+      case "papara": {
         if (!paparaId || !paparaName)
-          return res.status(400).json({ success: false, message: 'Papara ID ve hesap sahibi gerekli' });
+          return res
+            .status(400)
+            .json({
+              success: false,
+              message: "Papara ID ve hesap sahibi gerekli",
+            });
         const pid = String(paparaId).trim();
         const pname = String(paparaName).trim();
         if (pid.length < 4 || pid.length > 20)
-          return res.status(400).json({ success: false, message: 'Papara ID 4-20 karakter olmalı' });
+          return res
+            .status(400)
+            .json({
+              success: false,
+              message: "Papara ID 4-20 karakter olmalı",
+            });
         if (pname.length < 2 || pname.length > 100)
-          return res.status(400).json({ success: false, message: 'Papara hesap sahibi 2-100 karakter olmalı' });
+          return res
+            .status(400)
+            .json({
+              success: false,
+              message: "Papara hesap sahibi 2-100 karakter olmalı",
+            });
         updateData.paparaId = pid;
         updateData.paparaName = pname;
         break;
       }
-      case 'paypal': {
+      case "paypal": {
         if (!paypalEmail)
-          return res.status(400).json({ success: false, message: 'PayPal e-posta gerekli' });
+          return res
+            .status(400)
+            .json({ success: false, message: "PayPal e-posta gerekli" });
         const ppemail = String(paypalEmail).trim().toLowerCase();
         if (!isValidEmail(ppemail) || ppemail.length > 254)
-          return res.status(400).json({ success: false, message: 'Geçersiz PayPal e-posta' });
+          return res
+            .status(400)
+            .json({ success: false, message: "Geçersiz PayPal e-posta" });
         updateData.paypalEmail = ppemail;
         break;
       }
-      case 'crypto': {
+      case "crypto": {
         if (!cryptoAddress)
-          return res.status(400).json({ success: false, message: 'Kripto cüzdan adresi gerekli' });
+          return res
+            .status(400)
+            .json({ success: false, message: "Kripto cüzdan adresi gerekli" });
         const addr = String(cryptoAddress).trim();
         if (addr.length < 10 || addr.length > 130)
-          return res.status(400).json({ success: false, message: 'Geçersiz kripto cüzdan adresi' });
-        const ALLOWED_NETWORKS = ['TRC20', 'ERC20', 'BEP20', 'BTC', 'SOL'];
-        const net = String(cryptoNetwork || 'TRC20').toUpperCase();
+          return res
+            .status(400)
+            .json({ success: false, message: "Geçersiz kripto cüzdan adresi" });
+        const ALLOWED_NETWORKS = ["TRC20", "ERC20", "BEP20", "BTC", "SOL"];
+        const net = String(cryptoNetwork || "TRC20").toUpperCase();
         if (!ALLOWED_NETWORKS.includes(net))
-          return res.status(400).json({ success: false, message: 'Geçersiz kripto ağ tipi' });
+          return res
+            .status(400)
+            .json({ success: false, message: "Geçersiz kripto ağ tipi" });
         updateData.cryptoAddress = addr;
         updateData.cryptoNetwork = net;
         break;
       }
-      case 'wise': {
+      case "wise": {
         if (!wiseEmail || !wiseName)
-          return res.status(400).json({ success: false, message: 'Wise e-posta ve hesap sahibi gerekli' });
+          return res
+            .status(400)
+            .json({
+              success: false,
+              message: "Wise e-posta ve hesap sahibi gerekli",
+            });
         const wemail = String(wiseEmail).trim().toLowerCase();
         const wname = String(wiseName).trim();
         if (!isValidEmail(wemail) || wemail.length > 254)
-          return res.status(400).json({ success: false, message: 'Geçersiz Wise e-posta' });
+          return res
+            .status(400)
+            .json({ success: false, message: "Geçersiz Wise e-posta" });
         if (wname.length < 2 || wname.length > 100)
-          return res.status(400).json({ success: false, message: 'Wise hesap sahibi 2-100 karakter olmalı' });
+          return res
+            .status(400)
+            .json({
+              success: false,
+              message: "Wise hesap sahibi 2-100 karakter olmalı",
+            });
         updateData.wiseEmail = wemail;
         updateData.wiseName = wname;
         break;
       }
-      default: { // bank
+      default: {
+        // bank
         if (!iban || !bankName || !accountHolder)
-          return res.status(400).json({ success: false, message: 'IBAN, banka adı ve hesap sahibi gerekli' });
-        const cleanIban = String(iban).replace(/\s/g, '').toUpperCase();
+          return res
+            .status(400)
+            .json({
+              success: false,
+              message: "IBAN, banka adı ve hesap sahibi gerekli",
+            });
+        const cleanIban = String(iban).replace(/\s/g, "").toUpperCase();
         if (cleanIban.length < 15 || cleanIban.length > 34)
-          return res.status(400).json({ success: false, message: 'Geçersiz IBAN formatı' });
+          return res
+            .status(400)
+            .json({ success: false, message: "Geçersiz IBAN formatı" });
         const bname = String(bankName).trim();
         const holder = String(accountHolder).trim();
         if (bname.length < 2 || bname.length > 100)
-          return res.status(400).json({ success: false, message: 'Banka adı 2-100 karakter olmalı' });
+          return res
+            .status(400)
+            .json({
+              success: false,
+              message: "Banka adı 2-100 karakter olmalı",
+            });
         if (holder.length < 2 || holder.length > 100)
-          return res.status(400).json({ success: false, message: 'Hesap sahibi 2-100 karakter olmalı' });
+          return res
+            .status(400)
+            .json({
+              success: false,
+              message: "Hesap sahibi 2-100 karakter olmalı",
+            });
         updateData.iban = cleanIban;
         updateData.bankName = bname;
         updateData.accountHolder = holder;
@@ -462,10 +605,10 @@ exports.updateBankInfo = async (req, res) => {
     }
 
     await User.findByIdAndUpdate(userId, { $set: updateData });
-    res.json({ success: true, message: 'Ödeme bilgileri güncellendi' });
+    res.json({ success: true, message: "Ödeme bilgileri güncellendi" });
   } catch (err) {
-    logger.error('updateBankInfo error:', err);
-    res.status(500).json({ success: false, message: 'Sunucu hatası' });
+    logger.error("updateBankInfo error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
@@ -480,54 +623,87 @@ exports.createWithdrawalRequest = async (req, res) => {
     const { amountCoins } = req.body;
 
     if (!amountCoins || amountCoins <= 0) {
-      return res.status(400).json({ success: false, message: "Geçerli bir miktar girin" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Geçerli bir miktar girin" });
     }
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     // Kadın kontrolü
     if (user.gender !== "female") {
-      return res.status(403).json({ success: false, message: "Bu özellik yalnızca kadın yayıncılar için geçerlidir" });
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "Bu özellik yalnızca kadın yayıncılar için geçerlidir",
+        });
     }
 
     // Sözleşme kontrolü
     if (!user.broadcasterContract?.signed) {
-      return res.status(403).json({ success: false, message: "Önce yayıncı sözleşmesini imzalamalısınız" });
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "Önce yayıncı sözleşmesini imzalamalısınız",
+        });
     }
 
     // Ödeme bilgisi kontrolü
-    const method = user.preferredWithdrawMethod || 'bank';
+    const method = user.preferredWithdrawMethod || "bank";
     let paymentDetails = {};
     let hasInfo = false;
 
     switch (method) {
-      case 'papara':
+      case "papara":
         hasInfo = !!(user.paparaId && user.paparaName);
-        paymentDetails = { paparaId: user.paparaId, accountHolder: user.paparaName };
+        paymentDetails = {
+          paparaId: user.paparaId,
+          accountHolder: user.paparaName,
+        };
         break;
-      case 'paypal':
+      case "paypal":
         hasInfo = !!user.paypalEmail;
         paymentDetails = { email: user.paypalEmail };
         break;
-      case 'crypto':
+      case "crypto":
         hasInfo = !!user.cryptoAddress;
-        paymentDetails = { address: user.cryptoAddress, network: user.cryptoNetwork || 'TRC20' };
+        paymentDetails = {
+          address: user.cryptoAddress,
+          network: user.cryptoNetwork || "TRC20",
+        };
         break;
-      case 'wise':
+      case "wise":
         hasInfo = !!(user.wiseEmail && user.wiseName);
-        paymentDetails = { email: user.wiseEmail, accountHolder: user.wiseName };
+        paymentDetails = {
+          email: user.wiseEmail,
+          accountHolder: user.wiseName,
+        };
         break;
       default: // bank
         hasInfo = !!(user.iban && user.bankName && user.accountHolder);
-        paymentDetails = { iban: user.iban, bankName: user.bankName, accountHolder: user.accountHolder };
+        paymentDetails = {
+          iban: user.iban,
+          bankName: user.bankName,
+          accountHolder: user.accountHolder,
+        };
         break;
     }
 
     if (!hasInfo) {
-      return res.status(400).json({ success: false, message: 'Önce ödeme bilgilerinizi kaydedin (Çekim sekmesi → Ödeme Bilgileri)' });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message:
+            "Önce ödeme bilgilerinizi kaydedin (Çekim sekmesi → Ödeme Bilgileri)",
+        });
     }
 
     // Minimum/Maksimum kontrolü
@@ -567,16 +743,18 @@ exports.createWithdrawalRequest = async (req, res) => {
       user: user._id,
       amountCoins,
       amountUSD,
-      bankName: method === 'bank' ? (user.bankName || '') : '',
-      iban: method === 'bank' ? (user.iban || '') : '',
-      accountHolder: paymentDetails.accountHolder || user.accountHolder || '',
+      bankName: method === "bank" ? user.bankName || "" : "",
+      iban: method === "bank" ? user.iban || "" : "",
+      accountHolder: paymentDetails.accountHolder || user.accountHolder || "",
       paymentMethod: method,
       paymentDetails,
       balanceBefore: user.coins,
       balanceAfter: user.coins - amountCoins,
     });
 
-    logger.info(`💰 Çekim talebi oluşturuldu: ${user.username} - ${amountCoins} coin ($${amountUSD.toFixed(2)})`);
+    logger.info(
+      `💰 Çekim talebi oluşturuldu: ${user.username} - ${amountCoins} coin ($${amountUSD.toFixed(2)})`,
+    );
 
     res.status(201).json({
       success: true,
@@ -636,7 +814,10 @@ exports.adminListWithdrawals = async (req, res) => {
 
     const total = await Withdrawal.countDocuments(query);
     const withdrawals = await Withdrawal.find(query)
-      .populate("user", "username name profileImage email iban bankName accountHolder coins totalEarnings")
+      .populate(
+        "user",
+        "username name profileImage email iban bankName accountHolder coins totalEarnings",
+      )
       .populate("reviewedBy", "username name")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
@@ -671,24 +852,35 @@ exports.adminApproveWithdrawal = async (req, res) => {
 
     const withdrawal = await Withdrawal.findById(id);
     if (!withdrawal) {
-      return res.status(404).json({ success: false, message: "Çekim talebi bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Çekim talebi bulunamadı" });
     }
 
     if (withdrawal.status !== "pending") {
-      return res.status(400).json({ success: false, message: `Bu talep zaten '${withdrawal.status}' durumunda` });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: `Bu talep zaten '${withdrawal.status}' durumunda`,
+        });
     }
 
     // Kullanıcının coin'ini atomik düşür (TOCTOU race condition önleme)
     const user = await User.findOneAndUpdate(
       { _id: withdrawal.user, coins: { $gte: withdrawal.amountCoins } },
       { $inc: { coins: -withdrawal.amountCoins } },
-      { new: true, select: "coins username" }
+      { new: true, select: "coins username" },
     );
     if (!user) {
       // Kullanıcı var mı yoksa coin mi yetersiz?
-      const userCheck = await User.findById(withdrawal.user).select("coins").lean();
+      const userCheck = await User.findById(withdrawal.user)
+        .select("coins")
+        .lean();
       if (!userCheck) {
-        return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Kullanıcı bulunamadı" });
       }
       return res.status(400).json({
         success: false,
@@ -715,7 +907,9 @@ exports.adminApproveWithdrawal = async (req, res) => {
     withdrawal.balanceAfter = user.coins;
     await withdrawal.save();
 
-    logger.info(`✅ Çekim onaylandı: ${user.username} - ${withdrawal.amountCoins} coin`);
+    logger.info(
+      `✅ Çekim onaylandı: ${user.username} - ${withdrawal.amountCoins} coin`,
+    );
 
     res.json({ success: true, message: "Çekim talebi onaylandı", withdrawal });
   } catch (err) {
@@ -732,11 +926,18 @@ exports.adminRejectWithdrawal = async (req, res) => {
 
     const withdrawal = await Withdrawal.findById(id);
     if (!withdrawal) {
-      return res.status(404).json({ success: false, message: "Çekim talebi bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Çekim talebi bulunamadı" });
     }
 
     if (withdrawal.status !== "pending") {
-      return res.status(400).json({ success: false, message: `Bu talep zaten '${withdrawal.status}' durumunda` });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: `Bu talep zaten '${withdrawal.status}' durumunda`,
+        });
     }
 
     withdrawal.status = "rejected";
@@ -762,21 +963,33 @@ exports.adminMarkPaid = async (req, res) => {
 
     const withdrawal = await Withdrawal.findById(id);
     if (!withdrawal) {
-      return res.status(404).json({ success: false, message: "Çekim talebi bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Çekim talebi bulunamadı" });
     }
 
     if (withdrawal.status !== "approved") {
-      return res.status(400).json({ success: false, message: "Sadece onaylanmış talepler 'ödendi' olarak işaretlenebilir" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Sadece onaylanmış talepler 'ödendi' olarak işaretlenebilir",
+        });
     }
 
     withdrawal.status = "paid";
     withdrawal.paidAt = new Date();
-    withdrawal.paymentReference = paymentReference || withdrawal.paymentReference;
+    withdrawal.paymentReference =
+      paymentReference || withdrawal.paymentReference;
     await withdrawal.save();
 
     logger.info(`💸 Ödeme yapıldı: withdrawal ${id}`);
 
-    res.json({ success: true, message: "Ödeme yapıldı olarak işaretlendi", withdrawal });
+    res.json({
+      success: true,
+      message: "Ödeme yapıldı olarak işaretlendi",
+      withdrawal,
+    });
   } catch (err) {
     logger.error("adminMarkPaid error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
@@ -798,7 +1011,7 @@ exports.getSalaryHistory = async (req, res) => {
 
     res.json({
       success: true,
-      salaryHistory: history.map(h => ({
+      salaryHistory: history.map((h) => ({
         id: h._id,
         weekStart: h.weekStart,
         weekEnd: h.weekEnd,
@@ -894,22 +1107,34 @@ exports.adminListSalaries = async (req, res) => {
 exports.adminAddViolation = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { reason, severity = "minor", penaltyPercent = 0, note = "", expiresAt } = req.body;
+    const {
+      reason,
+      severity = "minor",
+      penaltyPercent = 0,
+      note = "",
+      expiresAt,
+    } = req.body;
 
     if (!reason || !reason.trim()) {
-      return res.status(400).json({ success: false, message: "İhlal sebebi gerekli" });
+      return res
+        .status(400)
+        .json({ success: false, message: "İhlal sebebi gerekli" });
     }
 
     const validSeverities = ["warning", "minor", "major", "critical"];
     if (!validSeverities.includes(severity)) {
-      return res.status(400).json({ success: false, message: "Geçersiz ihlal seviyesi" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Geçersiz ihlal seviyesi" });
     }
 
     const penalty = Math.max(0, Math.min(Number(penaltyPercent) || 0, 100));
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     const violation = {
@@ -928,7 +1153,9 @@ exports.adminAddViolation = async (req, res) => {
 
     const addedViolation = user.violations[user.violations.length - 1];
 
-    logger.info(`[VIOLATION] Admin ${req.user.username} added violation to ${user.username}: ${reason} (${severity}, -%${penalty})`);
+    logger.info(
+      `[VIOLATION] Admin ${req.user.username} added violation to ${user.username}: ${reason} (${severity}, -%${penalty})`,
+    );
 
     res.json({
       success: true,
@@ -946,22 +1173,28 @@ exports.adminGetViolations = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const user = await User.findById(userId).select("violations name username").lean();
+    const user = await User.findById(userId)
+      .select("violations name username")
+      .lean();
     if (!user) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     // Süresi dolmuş ihlalleri filtrele
     const now = new Date();
-    const violations = (user.violations || []).map(v => ({
+    const violations = (user.violations || []).map((v) => ({
       ...v,
       active: v.active && (!v.expiresAt || new Date(v.expiresAt) > now),
     }));
 
-    const activeCount = violations.filter(v => v.active).length;
+    const activeCount = violations.filter((v) => v.active).length;
     const totalPenalty = Math.min(
-      violations.filter(v => v.active).reduce((sum, v) => sum + (v.penaltyPercent || 0), 0),
-      100
+      violations
+        .filter((v) => v.active)
+        .reduce((sum, v) => sum + (v.penaltyPercent || 0), 0),
+      100,
     );
 
     res.json({
@@ -983,28 +1216,40 @@ exports.adminGetViolations = async (req, res) => {
 exports.adminUpdateViolation = async (req, res) => {
   try {
     const { userId, violationId } = req.params;
-    const { active, reason, severity, penaltyPercent, note, expiresAt } = req.body;
+    const { active, reason, severity, penaltyPercent, note, expiresAt } =
+      req.body;
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     const violation = user.violations.id(violationId);
     if (!violation) {
-      return res.status(404).json({ success: false, message: "İhlal bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "İhlal bulunamadı" });
     }
 
     if (typeof active === "boolean") violation.active = active;
     if (reason) violation.reason = reason.trim();
     if (severity) violation.severity = severity;
-    if (penaltyPercent !== undefined) violation.penaltyPercent = Math.max(0, Math.min(Number(penaltyPercent), 100));
+    if (penaltyPercent !== undefined)
+      violation.penaltyPercent = Math.max(
+        0,
+        Math.min(Number(penaltyPercent), 100),
+      );
     if (note !== undefined) violation.note = (note || "").trim();
-    if (expiresAt !== undefined) violation.expiresAt = expiresAt ? new Date(expiresAt) : null;
+    if (expiresAt !== undefined)
+      violation.expiresAt = expiresAt ? new Date(expiresAt) : null;
 
     await user.save();
 
-    logger.info(`[VIOLATION] Admin ${req.user.username} updated violation ${violationId} for ${user.username}: active=${violation.active}`);
+    logger.info(
+      `[VIOLATION] Admin ${req.user.username} updated violation ${violationId} for ${user.username}: active=${violation.active}`,
+    );
 
     res.json({
       success: true,
@@ -1024,18 +1269,24 @@ exports.adminDeleteViolation = async (req, res) => {
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     const violation = user.violations.id(violationId);
     if (!violation) {
-      return res.status(404).json({ success: false, message: "İhlal bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "İhlal bulunamadı" });
     }
 
     violation.deleteOne();
     await user.save();
 
-    logger.info(`[VIOLATION] Admin ${req.user.username} deleted violation ${violationId} for ${user.username}`);
+    logger.info(
+      `[VIOLATION] Admin ${req.user.username} deleted violation ${violationId} for ${user.username}`,
+    );
 
     res.json({ success: true, message: "İhlal silindi" });
   } catch (err) {
@@ -1051,11 +1302,13 @@ exports.getMyViolations = async (req, res) => {
     const user = await User.findById(userId).select("violations").lean();
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     const now = new Date();
-    const violations = (user.violations || []).map(v => ({
+    const violations = (user.violations || []).map((v) => ({
       _id: v._id,
       reason: v.reason,
       severity: v.severity,
@@ -1066,10 +1319,12 @@ exports.getMyViolations = async (req, res) => {
       note: v.note,
     }));
 
-    const activeCount = violations.filter(v => v.active).length;
+    const activeCount = violations.filter((v) => v.active).length;
     const totalPenalty = Math.min(
-      violations.filter(v => v.active).reduce((sum, v) => sum + (v.penaltyPercent || 0), 0),
-      100
+      violations
+        .filter((v) => v.active)
+        .reduce((sum, v) => sum + (v.penaltyPercent || 0), 0),
+      100,
     );
 
     res.json({ success: true, violations, activeCount, totalPenalty });
@@ -1104,7 +1359,10 @@ exports.adminWeeklyReport = async (req, res) => {
 
     // O haftaya ait tüm maaş kayıtlarını çek
     const salaryRecords = await SalaryPayment.find({ weekStart })
-      .populate("user", "name username profileImage broadcasterContract violations createdAt")
+      .populate(
+        "user",
+        "name username profileImage broadcasterContract violations createdAt",
+      )
       .sort({ level: -1, calculatedSalaryUSD: -1 })
       .lean();
 
@@ -1114,12 +1372,12 @@ exports.adminWeeklyReport = async (req, res) => {
       const now = new Date();
 
       // Aktif ihlaller
-      const activeViolations = (user.violations || []).filter(v =>
-        v.active && (!v.expiresAt || new Date(v.expiresAt) > now)
+      const activeViolations = (user.violations || []).filter(
+        (v) => v.active && (!v.expiresAt || new Date(v.expiresAt) > now),
       );
       const violationPenalty = Math.min(
         activeViolations.reduce((s, v) => s + (v.penaltyPercent || 0), 0),
-        100
+        100,
       );
 
       return {
@@ -1150,36 +1408,59 @@ exports.adminWeeklyReport = async (req, res) => {
       weekStart: weekStart.toISOString(),
       weekEnd: weekEnd.toISOString(),
       totalHosts: rows.length,
-      paidCount: rows.filter(r => r.status === "paid").length,
-      skippedCount: rows.filter(r => r.status === "skipped").length,
-      failedCount: rows.filter(r => r.status === "failed").length,
-      totalSalaryUSD: Math.round(rows.reduce((s, r) => s + r.calculatedSalaryUSD, 0) * 100) / 100,
+      paidCount: rows.filter((r) => r.status === "paid").length,
+      skippedCount: rows.filter((r) => r.status === "skipped").length,
+      failedCount: rows.filter((r) => r.status === "failed").length,
+      totalSalaryUSD:
+        Math.round(rows.reduce((s, r) => s + r.calculatedSalaryUSD, 0) * 100) /
+        100,
       totalSalaryCoins: rows.reduce((s, r) => s + r.salaryCoins, 0),
-      avgStreamingHours: rows.length > 0
-        ? Math.round(rows.reduce((s, r) => s + r.weeklyStreamingHours, 0) / rows.length * 100) / 100
-        : 0,
-      hostsWithViolations: rows.filter(r => r.violations > 0).length,
-      hostsNotMeetingMinHours: rows.filter(r => !r.minHoursMet).length,
-      levelDistribution: HOST_SALARY_LEVELS.map(l => ({
+      avgStreamingHours:
+        rows.length > 0
+          ? Math.round(
+              (rows.reduce((s, r) => s + r.weeklyStreamingHours, 0) /
+                rows.length) *
+                100,
+            ) / 100
+          : 0,
+      hostsWithViolations: rows.filter((r) => r.violations > 0).length,
+      hostsNotMeetingMinHours: rows.filter((r) => !r.minHoursMet).length,
+      levelDistribution: HOST_SALARY_LEVELS.map((l) => ({
         level: l.level,
         label: l.label,
-        count: rows.filter(r => r.level === l.level).length,
+        count: rows.filter((r) => r.level === l.level).length,
       })),
     };
 
     // CSV formatı istendiyse
     if (req.query.format === "csv") {
-      const csvHeader = "Kullanıcı Adı,İsim,Seviye,Haftalık Saat,Yayın Günü,Hediye (Coin),Hediye+Görüşme (Coin),İhlal,İhlal Cezası %,Min Saat Met,Maaş ($),Maaş (Coin),Durum\n";
-      const csvRows = rows.map(r =>
-        [
-          r.username, r.name, r.level, r.weeklyStreamingHours, r.streamDaysCount,
-          r.weeklyGifts, r.weeklyGiftsWithCalls, r.violations, r.violationPenalty,
-          r.minHoursMet ? "Evet" : "Hayır", r.calculatedSalaryUSD, r.salaryCoins, r.status,
-        ].join(",")
-      ).join("\n");
+      const csvHeader =
+        "Kullanıcı Adı,İsim,Seviye,Haftalık Saat,Yayın Günü,Hediye (Coin),Hediye+Görüşme (Coin),İhlal,İhlal Cezası %,Min Saat Met,Maaş ($),Maaş (Coin),Durum\n";
+      const csvRows = rows
+        .map((r) =>
+          [
+            r.username,
+            r.name,
+            r.level,
+            r.weeklyStreamingHours,
+            r.streamDaysCount,
+            r.weeklyGifts,
+            r.weeklyGiftsWithCalls,
+            r.violations,
+            r.violationPenalty,
+            r.minHoursMet ? "Evet" : "Hayır",
+            r.calculatedSalaryUSD,
+            r.salaryCoins,
+            r.status,
+          ].join(","),
+        )
+        .join("\n");
 
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
-      res.setHeader("Content-Disposition", `attachment; filename=weekly-report-${weekStart.toISOString().slice(0, 10)}.csv`);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=weekly-report-${weekStart.toISOString().slice(0, 10)}.csv`,
+      );
       return res.send("\uFEFF" + csvHeader + csvRows); // BOM for Excel UTF-8
     }
 
