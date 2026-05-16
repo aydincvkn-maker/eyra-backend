@@ -50,7 +50,10 @@ exports.createIntent = async (req, res) => {
     const isControlled = !!err.statusCode;
     res
       .status(err.statusCode || 500)
-      .json({ success: false, message: isControlled ? err.message : "Sunucu hatası" });
+      .json({
+        success: false,
+        message: isControlled ? err.message : "Sunucu hatası",
+      });
   }
 };
 
@@ -103,7 +106,10 @@ exports.confirmMyPaymentByOrderId = async (req, res) => {
     const isControlled = !!err.statusCode;
     res
       .status(err.statusCode || 500)
-      .json({ success: false, message: isControlled ? err.message : "Sunucu hatası" });
+      .json({
+        success: false,
+        message: isControlled ? err.message : "Sunucu hatası",
+      });
   }
 };
 
@@ -179,7 +185,10 @@ exports.webhook = async (req, res) => {
     const isControlled = !!err.statusCode;
     res
       .status(err.statusCode || 500)
-      .json({ success: false, message: isControlled ? err.message : "Sunucu hatası" });
+      .json({
+        success: false,
+        message: isControlled ? err.message : "Sunucu hatası",
+      });
   }
 };
 
@@ -194,7 +203,10 @@ exports.refundPayment = async (req, res) => {
     const isControlled = !!err.statusCode;
     res
       .status(err.statusCode || 500)
-      .json({ success: false, message: isControlled ? err.message : "Sunucu hatası" });
+      .json({
+        success: false,
+        message: isControlled ? err.message : "Sunucu hatası",
+      });
   }
 };
 
@@ -542,7 +554,10 @@ exports.iapPurchase = async (req, res) => {
     const isControlled = !!err.statusCode;
     return res
       .status(500)
-      .json({ success: false, message: isControlled ? err.message : "Sunucu hatası" });
+      .json({
+        success: false,
+        message: isControlled ? err.message : "Sunucu hatası",
+      });
   }
 };
 
@@ -622,7 +637,10 @@ exports.mockComplete = async (req, res) => {
     const isControlled = !!err.statusCode;
     return res
       .status(err.statusCode || 500)
-      .json({ success: false, message: isControlled ? err.message : "Sunucu hatası" });
+      .json({
+        success: false,
+        message: isControlled ? err.message : "Sunucu hatası",
+      });
   }
 };
 

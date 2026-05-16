@@ -508,7 +508,9 @@ exports.updateStreamCoverImage = async (req, res) => {
     return res.json({ ok: true, coverUrl });
   } catch (err) {
     logger.error("❌ updateStreamCoverImage error:", err.message);
-    return res.status(500).json({ ok: false, error: "Kapak fotoğrafı güncellenemedi" });
+    return res
+      .status(500)
+      .json({ ok: false, error: "Kapak fotoğrafı güncellenemedi" });
   }
 };
 
@@ -1349,7 +1351,7 @@ exports.acceptCoHostInvite = async (req, res) => {
       return res.status(500).json({
         ok: false,
         error: "token_generation_failed",
-        details: tokenErr.message,
+        details: "Token oluşturulamadı",
       });
     }
 
