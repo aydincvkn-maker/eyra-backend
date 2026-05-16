@@ -19,7 +19,12 @@ const upload = multer({
 router.get("/:userId", highlightController.getHighlights);
 
 // POST /api/highlights  — authenticated
-router.post("/", authenticate, upload.single("media"), highlightController.addHighlight);
+router.post(
+  "/",
+  authenticate,
+  upload.single("media"),
+  highlightController.addHighlight,
+);
 
 // DELETE /api/highlights/:index  — authenticated
 router.delete("/:index", authenticate, highlightController.deleteHighlight);
