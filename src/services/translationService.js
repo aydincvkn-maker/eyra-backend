@@ -8,6 +8,33 @@ const { logger } = require("../utils/logger");
 const TRANSLATE_ENDPOINT =
   "https://translate.googleapis.com/translate_a/single";
 
+// ── Request queue: Google'ın gayri resmi API'si eş zamanlı isteklerde rate-limit
+// uygular. Sıralı işleme + küçük gecikme ile bu sorunu çözüyoruz.
+let _queueRunning = false;
+const _queue = [];
+
+function _enqueue(fn) {
+  return new Promise((resolve, reject) => {
+    _queue.push({ fn, resolve, reject });
+    if (!_queueRunning) _drainQueue();
+  });
+}
+
+async function _drainQueue() {
+  _queueRunning = true;
+  while (_queue.length > 0) {
+    const { fn, resolve, reject } = _queue.shift();
+    try {
+      resolve(await fn());
+    } catch (e) {
+      reject(e);
+    }
+    // Google unofficial API: 300ms bekleme rate-limit'i önler
+    if (_queue.length > 0) await new Promise((r) => setTimeout(r, 300));
+  }
+  _queueRunning = false;
+}
+
 // Desteklenen diller (Flutter LanguageProvider ile senkronize)
 const SUPPORTED_LANGUAGES = {
   tr: "Türkçe",
