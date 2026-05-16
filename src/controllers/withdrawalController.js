@@ -381,41 +381,82 @@ exports.updateBankInfo = async (req, res) => {
             cryptoAddress, cryptoNetwork,
             wiseEmail, wiseName } = req.body;
 
-    const updateData = { preferredWithdrawMethod: method };
+    const ALLOWED_METHODS = ['bank', 'papara', 'paypal', 'crypto', 'wise'];
+    const normalizedMethod = String(method || 'bank').trim().toLowerCase();
+    if (!ALLOWED_METHODS.includes(normalizedMethod)) {
+      return res.status(400).json({ success: false, message: 'Geçersiz ödeme yöntemi' });
+    }
 
-    switch (method) {
-      case 'papara':
+    // Simple email format check
+    const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || ''));
+
+    const updateData = { preferredWithdrawMethod: normalizedMethod };
+
+    switch (normalizedMethod) {
+      case 'papara': {
         if (!paparaId || !paparaName)
           return res.status(400).json({ success: false, message: 'Papara ID ve hesap sahibi gerekli' });
-        updateData.paparaId = paparaId.trim();
-        updateData.paparaName = paparaName.trim();
+        const pid = String(paparaId).trim();
+        const pname = String(paparaName).trim();
+        if (pid.length < 4 || pid.length > 20)
+          return res.status(400).json({ success: false, message: 'Papara ID 4-20 karakter olmalı' });
+        if (pname.length < 2 || pname.length > 100)
+          return res.status(400).json({ success: false, message: 'Papara hesap sahibi 2-100 karakter olmalı' });
+        updateData.paparaId = pid;
+        updateData.paparaName = pname;
         break;
-      case 'paypal':
+      }
+      case 'paypal': {
         if (!paypalEmail)
           return res.status(400).json({ success: false, message: 'PayPal e-posta gerekli' });
-        updateData.paypalEmail = paypalEmail.trim().toLowerCase();
+        const ppemail = String(paypalEmail).trim().toLowerCase();
+        if (!isValidEmail(ppemail) || ppemail.length > 254)
+          return res.status(400).json({ success: false, message: 'Geçersiz PayPal e-posta' });
+        updateData.paypalEmail = ppemail;
         break;
-      case 'crypto':
+      }
+      case 'crypto': {
         if (!cryptoAddress)
           return res.status(400).json({ success: false, message: 'Kripto cüzdan adresi gerekli' });
-        updateData.cryptoAddress = cryptoAddress.trim();
-        updateData.cryptoNetwork = (cryptoNetwork || 'TRC20').toUpperCase();
+        const addr = String(cryptoAddress).trim();
+        if (addr.length < 10 || addr.length > 130)
+          return res.status(400).json({ success: false, message: 'Geçersiz kripto cüzdan adresi' });
+        const ALLOWED_NETWORKS = ['TRC20', 'ERC20', 'BEP20', 'BTC', 'SOL'];
+        const net = String(cryptoNetwork || 'TRC20').toUpperCase();
+        if (!ALLOWED_NETWORKS.includes(net))
+          return res.status(400).json({ success: false, message: 'Geçersiz kripto ağ tipi' });
+        updateData.cryptoAddress = addr;
+        updateData.cryptoNetwork = net;
         break;
-      case 'wise':
+      }
+      case 'wise': {
         if (!wiseEmail || !wiseName)
           return res.status(400).json({ success: false, message: 'Wise e-posta ve hesap sahibi gerekli' });
-        updateData.wiseEmail = wiseEmail.trim();
-        updateData.wiseName = wiseName.trim();
+        const wemail = String(wiseEmail).trim().toLowerCase();
+        const wname = String(wiseName).trim();
+        if (!isValidEmail(wemail) || wemail.length > 254)
+          return res.status(400).json({ success: false, message: 'Geçersiz Wise e-posta' });
+        if (wname.length < 2 || wname.length > 100)
+          return res.status(400).json({ success: false, message: 'Wise hesap sahibi 2-100 karakter olmalı' });
+        updateData.wiseEmail = wemail;
+        updateData.wiseName = wname;
         break;
+      }
       default: { // bank
         if (!iban || !bankName || !accountHolder)
           return res.status(400).json({ success: false, message: 'IBAN, banka adı ve hesap sahibi gerekli' });
-        const cleanIban = iban.replace(/\s/g, '').toUpperCase();
+        const cleanIban = String(iban).replace(/\s/g, '').toUpperCase();
         if (cleanIban.length < 15 || cleanIban.length > 34)
           return res.status(400).json({ success: false, message: 'Geçersiz IBAN formatı' });
+        const bname = String(bankName).trim();
+        const holder = String(accountHolder).trim();
+        if (bname.length < 2 || bname.length > 100)
+          return res.status(400).json({ success: false, message: 'Banka adı 2-100 karakter olmalı' });
+        if (holder.length < 2 || holder.length > 100)
+          return res.status(400).json({ success: false, message: 'Hesap sahibi 2-100 karakter olmalı' });
         updateData.iban = cleanIban;
-        updateData.bankName = bankName.trim();
-        updateData.accountHolder = accountHolder.trim();
+        updateData.bankName = bname;
+        updateData.accountHolder = holder;
         break;
       }
     }
