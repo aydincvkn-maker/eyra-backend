@@ -12,7 +12,9 @@ exports.getHighlights = async (req, res) => {
     const { userId } = req.params;
     const user = await User.findById(userId).select("highlights").lean();
     if (!user) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
     res.json({ success: true, highlights: user.highlights || [] });
   } catch (err) {
@@ -32,7 +34,9 @@ exports.addHighlight = async (req, res) => {
 
     const user = await User.findById(userId).select("highlights").lean();
     if (!user) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     if ((user.highlights || []).length >= MAX_HIGHLIGHTS) {
@@ -52,8 +56,11 @@ exports.addHighlight = async (req, res) => {
       {
         folder: "highlights",
         resourceType: isVideo ? "video" : "image",
-        ...(isVideo && { format: "mp4", transformation: [{ quality: "auto" }] }),
-      }
+        ...(isVideo && {
+          format: "mp4",
+          transformation: [{ quality: "auto" }],
+        }),
+      },
     );
 
     const newHighlight = {
@@ -62,7 +69,7 @@ exports.addHighlight = async (req, res) => {
       thumbnailUrl: isVideo
         ? (uploadResult.secure_url || uploadResult.url || "").replace(
             "/upload/",
-            "/upload/so_0/"
+            "/upload/so_0/",
           )
         : null,
       createdAt: new Date(),
@@ -87,11 +94,15 @@ exports.deleteHighlight = async (req, res) => {
 
     const user = await User.findById(userId).select("highlights");
     if (!user) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     if (isNaN(index) || index < 0 || index >= (user.highlights || []).length) {
-      return res.status(400).json({ success: false, message: "Geçersiz index" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Geçersiz index" });
     }
 
     const highlight = user.highlights[index];
