@@ -175,6 +175,7 @@ const formatUser = (user, presenceData = {}) => {
     name: user.name,
     email: user.email,
     profileImage: user.profileImage || "",
+    phone: user.phone || "",
     gender: user.gender || "other",
     age: user.age || 20,
     location: user.location || "TR",
