@@ -190,8 +190,10 @@ exports.purchaseVip = async (req, res) => {
       await createNotification({
         recipientId: userId,
         type: "system",
-        title: "VIP Aktif! ­şÄë",
-        body: `${tier.charAt(0).toUpperCase() + tier.slice(1)} VIP ├╝yeli─şiniz ${days} g├╝n s├╝reyle aktif!`,
+        title: "VIP Aktif! 🎉",
+        titleEn: "VIP Active! 🎉",
+        body: `${tier.charAt(0).toUpperCase() + tier.slice(1)} VIP üyeliğiniz ${days} gün süreyle aktif!`,
+        bodyEn: `Your ${tier.charAt(0).toUpperCase() + tier.slice(1)} VIP membership is active for ${days} days!`,
       });
     } catch (_) {}
 
@@ -352,8 +354,10 @@ exports.adminSetVip = async (req, res) => {
       await createNotification({
         recipientId: userId,
         type: "system",
-        title: "VIP Hediye! ­şÄü",
-        body: `Admin taraf─▒ndan ${tier} VIP ├╝yeli─şi ${grantDays} g├╝n s├╝reyle verildi!`,
+        title: "VIP Hediye! 🎉",
+        titleEn: "VIP Gift! 🎉",
+        body: `Admin tarafından ${tier} VIP üyeliği ${grantDays} gün süreyle verildi!`,
+        bodyEn: `${tier} VIP membership granted by admin for ${grantDays} days!`,
       });
     } catch (_) {}
 
