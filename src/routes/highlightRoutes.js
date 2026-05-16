@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const { authenticate } = require("../middleware/auth");
+const auth = require("../middleware/auth");
 const highlightController = require("../controllers/highlightController");
 
 const upload = multer({
@@ -21,12 +21,12 @@ router.get("/:userId", highlightController.getHighlights);
 // POST /api/highlights  — authenticated
 router.post(
   "/",
-  authenticate,
+  auth,
   upload.single("media"),
   highlightController.addHighlight,
 );
 
 // DELETE /api/highlights/:index  — authenticated
-router.delete("/:index", authenticate, highlightController.deleteHighlight);
+router.delete("/:index", auth, highlightController.deleteHighlight);
 
 module.exports = router;
