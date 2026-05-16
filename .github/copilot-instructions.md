@@ -17,6 +17,20 @@
 - Keep responses short, avoid repeated summaries, and do not offer multiple alternatives unless asked.
 - Prefer the smallest effective change and report only changed files, a short result, and any blocker.
 
+## Security Rule — MANDATORY on every JS file change
+After editing any file, check the changed code for the following and fix immediately if found:
+- Hardcoded secrets, tokens, API keys, or connection strings.
+- Raw user input used directly in MongoDB queries (injection risk — use Mongoose schema types or explicit cast).
+- Auth bypasses, rate-limit removals, or debug-only routes left enabled.
+- Missing `await` on async DB calls followed by response sends.
+- Any `$where` or `$function` operator with user-controlled data.
+
+## Translation Rule — MANDATORY on every JS file change
+After editing any `.js` file that contains user-facing string responses (`message:`, `error:`, SnackBar-equivalent API responses):
+- Strings returned to the client should be neutral or use translation keys if the project uses i18n.
+- Do NOT mix Turkish and English in the same response object (e.g. `{ message: 'Kullanıcı bulunamadı' }` and `{ message: 'Not found' }` in the same controller is inconsistent — pick one and keep it consistent per endpoint).
+These two checks (translation consistency + security) apply to EVERY file touched in a session.
+
 ## Terminal Management
 - ALL AI agents must use ONLY ONE persistent terminal session.
 - REUSE the existing terminal - do NOT spawn new terminals.
