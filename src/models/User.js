@@ -202,6 +202,19 @@ const userSchema = new mongoose.Schema(
     fcmToken: { type: String, default: null },
     fcmTokenUpdatedAt: { type: Date, default: null },
 
+    // HIGHLIGHTS
+    highlights: {
+      type: [
+        {
+          url: { type: String, required: true },
+          type: { type: String, enum: ["photo", "video"], default: "photo" },
+          thumbnailUrl: { type: String, default: null },
+          createdAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
+
     // PROFİL DOĞRULAMA
     verificationStatus: {
       type: String,
