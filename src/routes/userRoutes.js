@@ -91,6 +91,57 @@ router.post(
 // DELETE /api/users/me/avatar - Avatar sil
 router.delete("/me/avatar", auth, userController.deleteAvatar);
 
+// POST /api/users/me/profile-cover - Profil kapak fotoğrafı yükle
+const coverUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (allowedAvatarMimeTypes.has(file.mimetype)) return cb(null, true);
+    const e = new Error("Sadece resim dosyaları kabul edilir");
+    e.statusCode = 400;
+    cb(e, false);
+  },
+});
+
+router.post(
+  "/me/profile-cover",
+  auth,
+  coverUpload.single("cover"),
+  async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ success: false, message: "Dosya gerekli" });
+      const userId = req.user._id || req.user.id;
+      const storageService = require("../services/storageService");
+      const User = require("../models/User");
+      const { logger } = require("../utils/logger");
+      const result = await storageService.uploadBuffer(req.file.buffer, {
+        folder: "profile_covers",
+        publicId: `cover_${userId}`,
+        overwrite: true,
+      });
+      const url = result.secure_url || result.url;
+      await User.findByIdAndUpdate(userId, { profileCoverImage: url });
+      res.json({ success: true, profileCoverImage: url });
+    } catch (err) {
+      const { logger } = require("../utils/logger");
+      logger.error("profile-cover upload error:", err);
+      res.status(500).json({ success: false, message: "Kapak yüklenemedi" });
+    }
+  }
+);
+
+// DELETE /api/users/me/profile-cover - Profil kapak fotoğrafını kaldır
+router.delete("/me/profile-cover", auth, async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.id;
+    const User = require("../models/User");
+    await User.findByIdAndUpdate(userId, { profileCoverImage: "" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Kapak silinemedi" });
+  }
+});
+
 // GET /api/users/me/stats - İstatistikleri getir
 router.get("/me/stats", auth, userController.getMyStats);
 
