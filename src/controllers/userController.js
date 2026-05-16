@@ -1238,23 +1238,48 @@ exports.deleteAvatar = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).select(
+      "profileImage profileImagePublicId gender username",
+    );
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+        .json({ success: false, message: "Kullanici bulunamadi" });
     }
 
     if (user.profileImage) {
-      const filePath = path.join(__dirname, "../..", user.profileImage);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      const oldPublicId =
+        user.profileImagePublicId ||
+        storageService.extractPublicId(user.profileImage || "");
+      if (oldPublicId) {
+        storageService.destroy(oldPublicId, "image").catch(() => {});
+      } else if (user.profileImage.startsWith("/uploads/")) {
+        const filePath = path.join(__dirname, "../..", user.profileImage);
+        try {
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        } catch (_) {}
       }
     }
 
-    await User.findByIdAndUpdate(userId, { $set: { profileImage: "" } });
+    const updateFields = { profileImage: "", profileImagePublicId: "" };
 
-    logger.info(`ğŸ—‘ï¸ Avatar silindi: ${user.username}`);
+    // Kadin kullanici profil resmini kaldirarsa otomatik gizle
+    if (user.gender === "female") {
+      updateFields["settings.profileVisibility"] = false;
+      createNotification({
+        recipientId: userId,
+        type: "system",
+        title: "Profilin gizlendi",
+        titleEn: "Your profile is now hidden",
+        body: "Profil fotografin olmadigi icin erkek kullanicilar seni goremez. Gorunur olmak icin yeni bir fotograf yukle.",
+        bodyEn: "Male users cannot see your profile without a photo. Upload a new photo to become visible.",
+        actionData: {},
+      }).catch(() => {});
+    }
+
+    await User.findByIdAndUpdate(userId, { $set: updateFields });
+
+    logger.info(`Avatar silindi: ${user.username}`);
 
     res.json({ success: true, message: "Avatar silindi" });
   } catch (err) {
@@ -1262,8 +1287,6 @@ exports.deleteAvatar = async (req, res) => {
     res.status(500).json({ success: false, message: "Avatar silinemedi" });
   }
 };
-
-// GET /api/users/me/stats - Ä°statistikleri getir
 exports.getMyStats = async (req, res) => {
   try {
     const userId = req.user.id;
