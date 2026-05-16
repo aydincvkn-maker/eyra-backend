@@ -880,11 +880,61 @@ exports.adminDeleteUser = async (req, res) => {
 
     await User.findByIdAndDelete(userId);
 
-    // Ä°lişkili yayınları da temizle
+    // İlişkili yayınları da temizle
     try {
       await LiveStream.deleteMany({ host: userId });
     } catch (e) {
       logger.warn("LiveStream cleanup warning:", e.message);
+    }
+
+    // Firebase Auth kullanıcısını da sil (Google/Apple/telefon/email girişi)
+    try {
+      const firebaseAdmin = require("firebase-admin");
+      if (firebaseAdmin.apps.length) {
+        const firebaseDeletePromises = [];
+        if (user.firebaseUid) {
+          firebaseDeletePromises.push(
+            firebaseAdmin
+              .auth()
+              .deleteUser(user.firebaseUid)
+              .catch((e) =>
+                logger.warn(
+                  `Firebase UID silme basarisiz (${user.firebaseUid}): ${e.message}`,
+                ),
+              ),
+          );
+        } else {
+          if (user.email) {
+            firebaseDeletePromises.push(
+              firebaseAdmin
+                .auth()
+                .getUserByEmail(user.email)
+                .then((fbUser) => firebaseAdmin.auth().deleteUser(fbUser.uid))
+                .catch((e) =>
+                  logger.warn(
+                    `Firebase email silme basarisiz (${user.email}): ${e.message}`,
+                  ),
+                ),
+            );
+          }
+          if (user.phone) {
+            firebaseDeletePromises.push(
+              firebaseAdmin
+                .auth()
+                .getUserByPhoneNumber(user.phone)
+                .then((fbUser) => firebaseAdmin.auth().deleteUser(fbUser.uid))
+                .catch((e) =>
+                  logger.warn(
+                    `Firebase telefon silme basarisiz (${user.phone}): ${e.message}`,
+                  ),
+                ),
+            );
+          }
+        }
+        await Promise.all(firebaseDeletePromises);
+      }
+    } catch (e) {
+      logger.warn("Firebase Auth cleanup warning:", e.message);
     }
 
     logger.info("Admin deleted user", {
