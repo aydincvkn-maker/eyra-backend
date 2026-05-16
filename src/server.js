@@ -79,6 +79,7 @@ const achievementRoutes = require("./routes/achievementRoutes");
 const verificationRoutes = require("./routes/verificationRoutes");
 const transactionRoutes = require("./routes/transactionRoutes");
 const vipRoutes = require("./routes/vipRoutes");
+const highlightRoutes = require("./routes/highlightRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const withdrawalRoutes = require("./routes/withdrawalRoutes");
 const translateRoutes = require("./routes/translateRoutes");
@@ -432,6 +433,7 @@ app.use("/api/withdrawals", withdrawalRoutes);
 app.use("/api/translate", translateRoutes);
 app.use("/api/admin-chat", adminChatRoutes);
 app.use("/api/posts", postRoutes);
+app.use("/api/highlights", highlightRoutes);
 app.use("/api/admin", backupRoutes);
 
 // Debug/maintenance endpoints — PRODUCTION'DA TAMAMEN DEVRE DIŞI
