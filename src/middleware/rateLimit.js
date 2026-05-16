@@ -420,6 +420,17 @@ const paymentLimiter = createRateLimiter({
   keyPrefix: "payment",
 });
 
+/**
+ * File upload rate limiter (avatar, profile photo, verification photos)
+ * 10 uploads per 10 minutes per user
+ */
+const uploadLimiter = createRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  message: "Çok fazla dosya yükleme denemesi. Lütfen 10 dakika bekleyin.",
+  keyPrefix: "upload",
+});
+
 module.exports = {
   createRateLimiter,
   generalLimiter,
@@ -430,4 +441,5 @@ module.exports = {
   reportLimiter,
   panelAdminLimiter,
   paymentLimiter,
+  uploadLimiter,
 };
