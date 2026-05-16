@@ -117,7 +117,7 @@ exports.translateText = async (text, targetLang, sourceLang = "auto") => {
   }
 
   try {
-    const response = await axios.get(TRANSLATE_ENDPOINT, {
+    const response = await _enqueue(() => axios.get(TRANSLATE_ENDPOINT, {
       params: {
         client: "gtx",
         sl: sourceLang,
@@ -125,8 +125,8 @@ exports.translateText = async (text, targetLang, sourceLang = "auto") => {
         dt: "t",
         q: text,
       },
-      timeout: 5000,
-    });
+      timeout: 8000,
+    }));
 
     // Response formatı: [[["çeviri","orijinal",null,null,1]],null,"en"]
     const translatedText =
