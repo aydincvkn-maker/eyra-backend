@@ -18,7 +18,7 @@ exports.getVipPackages = async (req, res) => {
         features: [
           "G├╝nde 2 ├ğark ├ğevirme",
           "VIP rozeti",
-          "├ûzel hediyeler",
+          "Özel hediyeler",
         ],
       },
       {
@@ -42,11 +42,11 @@ exports.getVipPackages = async (req, res) => {
         features: [
           "S─▒n─▒rs─▒z ├ğark ├ğevirme",
           "Diamond rozeti",
-          "├ûzel hediyeler",
-          "├ûncelikli destek",
+          "Özel hediyeler",
+          "Öncelikli destek",
           "%20 hediye bonusu",
           "Profil vurgulama",
-          "├ûzel animasyonlar",
+          "Özel animasyonlar",
         ],
       },
     ];
