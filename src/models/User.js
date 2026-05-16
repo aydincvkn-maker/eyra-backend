@@ -93,6 +93,7 @@ const userSchema = new mongoose.Schema(
     profileImage: { type: String, default: "" },
     profileImagePublicId: { type: String, default: "" },
     streamCoverImage: { type: String, default: "" }, // Yayın kapak fotoğrafı
+    profileCoverImage: { type: String, default: "" }, // Profil arka plan fotoğrafı
     bio: { type: String, default: "", maxlength: 500 },
     gender: {
       type: String,
