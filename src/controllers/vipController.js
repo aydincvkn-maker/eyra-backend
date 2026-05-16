@@ -16,7 +16,7 @@ exports.getVipPackages = async (req, res) => {
         price: settings?.vipSilverPrice || 5000,
         days: settings?.vipSilverDays || 30,
         features: [
-          "G├╝nde 2 ├ğark ├ğevirme",
+          "Günde 2 Otomatik Çeviri",
           "VIP rozeti",
           "Özel hediyeler",
         ],
@@ -27,10 +27,10 @@ exports.getVipPackages = async (req, res) => {
         price: settings?.vipGoldPrice || 15000,
         days: settings?.vipGoldDays || 30,
         features: [
-          "G├╝nde 3 ├ğark ├ğevirme",
+          "Günde 3 Otomatik Çeviri",
           "Gold rozeti",
-          "├ûzel hediyeler",
-          "├ûncelikli destek",
+          "Özel hediyeler",
+          "Öncelikli destek",
           "%10 hediye bonusu",
         ],
       },
@@ -40,7 +40,7 @@ exports.getVipPackages = async (req, res) => {
         price: settings?.vipDiamondPrice || 50000,
         days: settings?.vipDiamondDays || 30,
         features: [
-          "S─▒n─▒rs─▒z ├ğark ├ğevirme",
+          "Sınırsız Otomatik Çeviri",
           "Diamond rozeti",
           "Özel hediyeler",
           "Öncelikli destek",
