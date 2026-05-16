@@ -16,6 +16,7 @@ const NOTIFICATION_TYPE_TO_SETTING = {
   profile_visit: "visitorNotifications",
   follow: "followNotifications",
   gift_received: "giftNotifications",
+  live_started: "followNotifications",
   // Bu tipler her zaman gönderilir (ayarla filtrelenmez)
   system: null,
   achievement: null,
