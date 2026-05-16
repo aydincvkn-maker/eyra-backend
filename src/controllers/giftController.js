@@ -8,13 +8,15 @@ const { logger } = require("../utils/logger");
  */
 exports.getGifts = async (req, res) => {
   try {
-    const { category } = req.query;
+    const VALID_CATEGORIES = ["basic", "vip", "premium", "special"];
+    const raw = req.query.category ? String(req.query.category).trim().toLowerCase() : undefined;
+    const category = raw && VALID_CATEGORIES.includes(raw) ? raw : undefined;
     const gifts = await giftService.getAllGifts(category);
 
     res.json({
       ok: true,
       gifts,
-      categories: ["basic", "vip", "premium", "special"],
+      categories: VALID_CATEGORIES,
     });
   } catch (err) {
     logger.error("getGifts error:", err);
@@ -85,9 +87,9 @@ exports.sendGift = async (req, res) => {
 exports.getMyGiftHistory = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { limit = 50 } = req.query;
+    const limit = Math.min(Math.max(parseInt(req.query.limit || "50"), 1), 200);
 
-    const gifts = await giftService.getGiftHistory(userId, parseInt(limit));
+    const gifts = await giftService.getGiftHistory(userId, limit);
 
     res.json({ ok: true, gifts });
   } catch (err) {
@@ -102,9 +104,9 @@ exports.getMyGiftHistory = async (req, res) => {
 exports.getReceivedGifts = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { limit = 50 } = req.query;
+    const limit = Math.min(Math.max(parseInt(req.query.limit || "50"), 1), 200);
 
-    const gifts = await giftService.getReceivedGifts(userId, parseInt(limit));
+    const gifts = await giftService.getReceivedGifts(userId, limit);
 
     res.json({ ok: true, gifts });
   } catch (err) {
