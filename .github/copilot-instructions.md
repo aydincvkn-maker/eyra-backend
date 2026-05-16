@@ -24,6 +24,9 @@ After editing any file, check the changed code for the following and fix immedia
 - Auth bypasses, rate-limit removals, or debug-only routes left enabled.
 - Missing `await` on async DB calls followed by response sends.
 - Any `$where` or `$function` operator with user-controlled data.
+- Stack traces, internal error messages, or DB error strings sent directly to the client in `error:` / `message:` fields.
+- `console.log` / `console.error` printing passwords, tokens, or PII without a dev-mode guard.
+- Missing input length/format validation on user-submitted fields (email, phone, username, etc.) before DB writes.
 
 ## Translation Rule — MANDATORY on every JS file change
 After editing any `.js` file that contains user-facing string responses (`message:`, `error:`, SnackBar-equivalent API responses):
