@@ -1195,37 +1195,29 @@ exports.updateMyProfile = async (req, res) => {
     if (name !== undefined) {
       const v = String(name).trim();
       if (v.length < 1 || v.length > 60)
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "Ad 1-60 karakter arasında olmalı",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "Ad 1-60 karakter arasında olmalı",
+        });
     }
     if (username !== undefined) {
       const v = String(username).trim();
       if (v.length < 3 || v.length > 30)
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "Kullanıcı adı 3-30 karakter arasında olmalı",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "Kullanıcı adı 3-30 karakter arasında olmalı",
+        });
       if (!/^[a-zA-Z0-9_.]+$/.test(v))
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "Kullanıcı adı yalnızca harf, rakam, _ ve . içerebilir",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "Kullanıcı adı yalnızca harf, rakam, _ ve . içerebilir",
+        });
     }
     if (bio !== undefined && String(bio).length > 300)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Biyografi en fazla 300 karakter olabilir",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Biyografi en fazla 300 karakter olabilir",
+      });
     if (age !== undefined) {
       const n = Number(age);
       if (!Number.isInteger(n) || n < 13 || n > 120)
@@ -1234,19 +1226,15 @@ exports.updateMyProfile = async (req, res) => {
           .json({ success: false, message: "Geçerli bir yaş girin (13-120)" });
     }
     if (location !== undefined && String(location).length > 100)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Konum en fazla 100 karakter olabilir",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Konum en fazla 100 karakter olabilir",
+      });
     if (country !== undefined && String(country).length > 60)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Ülke en fazla 60 karakter olabilir",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Ülke en fazla 60 karakter olabilir",
+      });
     if (preferredLanguage !== undefined) {
       const lang = String(preferredLanguage).trim().toLowerCase();
       if (!ALLOWED_LANGUAGES.includes(lang))
