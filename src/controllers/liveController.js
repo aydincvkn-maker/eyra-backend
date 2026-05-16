@@ -22,6 +22,8 @@ const {
 } = require("../services/moderationAuditService");
 const { trackMissionProgress } = require("./missionController");
 const { checkStreamAchievements } = require("./achievementController");
+const { createNotification } = require("./notificationController");
+const Follow = require("../models/Follow");
 const adminSocket = require("../socket/adminNamespace");
 const { logger } = require("../utils/logger");
 
@@ -389,6 +391,35 @@ exports.startLive = async (req, res) => {
       hostUsername: host.username,
       title: stream.title,
       category: stream.category,
+    });
+
+    // 🔔 Takipçilere yayın başladı bildirimi gönder (fire & forget)
+    setImmediate(async () => {
+      try {
+        const followers = await Follow.find({ following: userId })
+          .select("follower")
+          .lean()
+          .limit(500); // max 500 follower için bildirim
+        const hostName = host.name || host.username || "Yayıncı";
+        const notifPromises = followers.map((f) =>
+          createNotification({
+            recipientId: f.follower,
+            type: "live_started",
+            title: `${hostName} yayında! 🔴`,
+            titleEn: `${hostName} is live! 🔴`,
+            body: stream.title || `${hostName} canlı yayına başladı`,
+            bodyEn: stream.title || `${hostName} started a live stream`,
+            senderId: userId,
+            relatedId: stream._id,
+            relatedType: "live",
+            imageUrl: host.streamCoverImage || host.profileImage,
+          }).catch(() => {})
+        );
+        await Promise.all(notifPromises);
+        logger.info(`🔔 ${followers.length} takipçiye yayın bildirimi gönderildi`);
+      } catch (e) {
+        logger.warn("⚠️ Follower live notification failed:", e.message);
+      }
     });
 
     res.status(201).json({
