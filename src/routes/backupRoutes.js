@@ -32,7 +32,7 @@ router.post("/backup", auth, admin, superAdminOnly, async (req, res) => {
     }, statusCode);
   } catch (err) {
     logger.error("Manuel backup hatası:", err.message);
-    return sendError(res, 500, "Backup sırasında hata oluştu: " + err.message);
+    return sendError(res, 500, "Backup sırasında hata oluştu");
   }
 });
 
@@ -75,7 +75,7 @@ router.post("/backup/restore", auth, admin, superAdminOnly, async (req, res) => 
     }, statusCode);
   } catch (err) {
     logger.error("Restore hatası:", err.message);
-    return sendError(res, 500, "Restore sırasında hata oluştu: " + err.message);
+    return sendError(res, 500, "Restore sırasında hata oluştu");
   }
 });
 
