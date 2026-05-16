@@ -29,7 +29,10 @@ const getClientIp = (req) => {
   const forwardedFor = req.headers["x-forwarded-for"];
   if (typeof forwardedFor === "string" && forwardedFor.trim()) {
     // Take the last (rightmost) IP — added by the trusted proxy, not the client.
-    const ips = forwardedFor.split(",").map((s) => s.trim()).filter(Boolean);
+    const ips = forwardedFor
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
     if (ips.length > 0) return ips[ips.length - 1];
   }
 
