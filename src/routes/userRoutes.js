@@ -5,6 +5,7 @@ const userController = require("../controllers/userController");
 const blockController = require("../controllers/blockController");
 const auth = require("../middleware/auth");
 const requirePermission = require("../middleware/requirePermission");
+const { uploadLimiter } = require("../middleware/rateLimit");
 const multer = require("multer");
 
 const allowedAvatarMimeTypes = new Set([
@@ -84,6 +85,7 @@ router.delete("/me", auth, userController.deleteAccount);
 router.post(
   "/me/avatar",
   auth,
+  uploadLimiter,
   upload.single("avatar"),
   userController.uploadAvatar,
 );
@@ -106,6 +108,7 @@ const coverUpload = multer({
 router.post(
   "/me/profile-cover",
   auth,
+  uploadLimiter,
   coverUpload.single("cover"),
   async (req, res) => {
     try {
