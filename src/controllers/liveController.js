@@ -449,7 +449,7 @@ exports.startLive = async (req, res) => {
     res.status(500).json({
       ok: false,
       error: "live_start_failed",
-      details: err.message,
+      details: "Yayın başlatılamadı",
     });
   }
 };
@@ -508,7 +508,7 @@ exports.updateStreamCoverImage = async (req, res) => {
     return res.json({ ok: true, coverUrl });
   } catch (err) {
     logger.error("❌ updateStreamCoverImage error:", err.message);
-    return res.status(500).json({ ok: false, error: err.message });
+    return res.status(500).json({ ok: false, error: "Kapak fotoğrafı güncellenemedi" });
   }
 };
 
@@ -522,7 +522,7 @@ exports.getStreamCoverImage = async (req, res) => {
     const user = await User.findById(userId).select("streamCoverImage");
     return res.json({ ok: true, coverUrl: user?.streamCoverImage || "" });
   } catch (err) {
-    return res.status(500).json({ ok: false, error: err.message });
+    return res.status(500).json({ ok: false, error: "Sunucu hatası" });
   }
 };
 
