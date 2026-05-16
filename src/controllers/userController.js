@@ -1209,14 +1209,22 @@ exports.uploadAvatar = async (req, res) => {
       }
     }
 
+    // Kadin kullanici yeni fotograf yuklediginde gorunurlugu geri ac
+    const uploadingUser = await User.findById(userId).select("gender settings");
+    const setFields = {
+      profileImage: avatarUrl,
+      profileImagePublicId: uploaded.publicId,
+    };
+    if (
+      uploadingUser?.gender === "female" &&
+      uploadingUser?.settings?.profileVisibility === false
+    ) {
+      setFields["settings.profileVisibility"] = true;
+    }
+
     const user = await User.findByIdAndUpdate(
       userId,
-      {
-        $set: {
-          profileImage: avatarUrl,
-          profileImagePublicId: uploaded.publicId,
-        },
-      },
+      { $set: setFields },
       { new: true },
     ).select("-password -refreshToken");
 
