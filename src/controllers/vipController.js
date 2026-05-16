@@ -363,7 +363,7 @@ exports.adminSetVip = async (req, res) => {
 
     res.json({
       success: true,
-      message: `${tier} VIP ${grantDays} g├╝n verildi`,
+      message: `${tier} VIP ${grantDays} gün verildi`,
       user: { _id: user._id, name: user.name, vipTier: tier, vipExpiresAt: newExpiry },
     });
   } catch (err) {
