@@ -296,7 +296,10 @@ exports.adminGetPosts = async (req, res) => {
     if (req.query.reported === "true") {
       query.isReported = true;
     }
-    if (req.query.type && ["photo", "note", "photo_note"].includes(req.query.type)) {
+    if (
+      req.query.type &&
+      ["photo", "note", "photo_note"].includes(req.query.type)
+    ) {
       query.type = req.query.type;
     }
 
@@ -338,7 +341,9 @@ exports.adminDeletePost = async (req, res) => {
     const { postId } = req.params;
     const post = await Post.findById(postId);
     if (!post) {
-      return res.status(404).json({ success: false, message: "Post bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Post bulunamadı" });
     }
     await removePostAsset(post);
     await Post.findByIdAndDelete(postId);
@@ -355,7 +360,9 @@ exports.adminTogglePostActive = async (req, res) => {
     const { postId } = req.params;
     const post = await Post.findById(postId);
     if (!post) {
-      return res.status(404).json({ success: false, message: "Post bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Post bulunamadı" });
     }
     post.isActive = !post.isActive;
     await post.save();

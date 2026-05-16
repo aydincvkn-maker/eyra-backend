@@ -63,6 +63,11 @@ router.post("/:postId/like", auth, postController.toggleLike);
 const admin = require("../middleware/admin");
 router.get("/admin", auth, admin, postController.adminGetPosts);
 router.delete("/admin/:postId", auth, admin, postController.adminDeletePost);
-router.patch("/admin/:postId/toggle-active", auth, admin, postController.adminTogglePostActive);
+router.patch(
+  "/admin/:postId/toggle-active",
+  auth,
+  admin,
+  postController.adminTogglePostActive,
+);
 
 module.exports = router;
