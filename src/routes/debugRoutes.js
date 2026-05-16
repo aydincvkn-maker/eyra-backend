@@ -14,7 +14,12 @@ const logger = require("../utils/logger");
 // Production'da debug route'ları devre dışı bırak (health check hariç)
 const blockInProduction = (req, res, next) => {
   if (NODE_ENV === "production") {
-    return res.status(403).json({ success: false, message: "Debug endpoints are disabled in production" });
+    return res
+      .status(403)
+      .json({
+        success: false,
+        message: "Debug endpoints are disabled in production",
+      });
   }
   next();
 };
@@ -38,8 +43,14 @@ router.get("/user-counts", async (req, res) => {
   try {
     const total = await User.countDocuments({});
     const notBanned = await User.countDocuments({ isBanned: { $ne: true } });
-    const females = await User.countDocuments({ gender: "female", isBanned: { $ne: true } });
-    const males = await User.countDocuments({ gender: "male", isBanned: { $ne: true } });
+    const females = await User.countDocuments({
+      gender: "female",
+      isBanned: { $ne: true },
+    });
+    const males = await User.countDocuments({
+      gender: "male",
+      isBanned: { $ne: true },
+    });
 
     res.json({
       total,
@@ -50,15 +61,17 @@ router.get("/user-counts", async (req, res) => {
       visibleForFemaleViewer: notBanned - 1,
     });
   } catch (err) {
-    logger.error('user-counts error:', err);
-    res.status(500).json({ success: false, message: 'Sunucu hatası' });
+    logger.error("user-counts error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 });
 
 router.get("/socket-status", (req, res) => {
   const io = global.io;
   const userSockets = global.userSockets;
-  const metrics = presenceService.getMetrics ? presenceService.getMetrics() : null;
+  const metrics = presenceService.getMetrics
+    ? presenceService.getMetrics()
+    : null;
 
   res.json({
     connectedSockets: io?.engine?.clientsCount ?? 0,
@@ -79,8 +92,10 @@ router.get("/socket-status", (req, res) => {
 router.get("/presence", async (req, res) => {
   try {
     const onlineUsers = await presenceService.getOnlineUsers();
-    const metrics = presenceService.getMetrics ? presenceService.getMetrics() : null;
-    
+    const metrics = presenceService.getMetrics
+      ? presenceService.getMetrics()
+      : null;
+
     res.json({
       totalOnline: onlineUsers.length,
       users: onlineUsers,
@@ -88,8 +103,8 @@ router.get("/presence", async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    logger.error('presence error:', err);
-    res.status(500).json({ success: false, message: 'Sunucu hatası' });
+    logger.error("presence error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 });
 
@@ -119,15 +134,17 @@ router.delete("/delete-fake-users", async (req, res) => {
       users: remainingUsers,
     });
   } catch (error) {
-    logger.error('delete-fake-users error:', error);
-    res.status(500).json({ success: false, message: 'Sunucu hatası' });
+    logger.error("delete-fake-users error:", error);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 });
 
 // ✅ TÜM KULLANICILARI LİSTELE (Debugging için)
 router.get("/list-all-users", async (req, res) => {
   try {
-    const users = await User.find().select("username email gender age isOnline isLive createdAt");
+    const users = await User.find().select(
+      "username email gender age isOnline isLive createdAt",
+    );
 
     res.json({
       success: true,
@@ -135,8 +152,8 @@ router.get("/list-all-users", async (req, res) => {
       users: users,
     });
   } catch (error) {
-    logger.error('list-all-users error:', error);
-    res.status(500).json({ success: false, message: 'Sunucu hatası' });
+    logger.error("list-all-users error:", error);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 });
 
@@ -144,11 +161,13 @@ router.get("/list-all-users", async (req, res) => {
 router.get("/check-online-status", async (req, res) => {
   try {
     // Veritabanından - DB durumu
-    const dbOnlineUsers = await User.find({ isOnline: true })
-      .select("username email gender isOnline isLive isBusy lastOnlineAt lastOfflineAt");
-    
-    const dbLiveUsers = await User.find({ isLive: true })
-      .select("username email gender isLive isOnline");
+    const dbOnlineUsers = await User.find({ isOnline: true }).select(
+      "username email gender isOnline isLive isBusy lastOnlineAt lastOfflineAt",
+    );
+
+    const dbLiveUsers = await User.find({ isLive: true }).select(
+      "username email gender isLive isOnline",
+    );
 
     // Bellekten - Socket durumu
     const memoryOnlineUsers = await presenceService.getOnlineUsers();
@@ -169,8 +188,8 @@ router.get("/check-online-status", async (req, res) => {
       note: "DB ve Memory arasında uyumsuzluk varsa, socket'ler bağlantısız demektir",
     });
   } catch (error) {
-    logger.error('check-online-status error:', error);
-    res.status(500).json({ success: false, message: 'Sunucu hatası' });
+    logger.error("check-online-status error:", error);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 });
 
@@ -185,8 +204,8 @@ router.post("/reset-all-offline", async (req, res) => {
           isBusy: false,
           isLive: false,
           lastOfflineAt: new Date(),
-        }
-      }
+        },
+      },
     );
 
     res.json({
@@ -195,8 +214,8 @@ router.post("/reset-all-offline", async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    logger.error('reset-all-offline error:', error);
-    res.status(500).json({ success: false, message: 'Sunucu hatası' });
+    logger.error("reset-all-offline error:", error);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 });
 
@@ -205,9 +224,13 @@ router.post("/update-user-gender", async (req, res) => {
   try {
     const { email, gender } = req.body;
 
-    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const normalizedEmail = String(email || "")
+      .trim()
+      .toLowerCase();
     if (!normalizedEmail || !gender) {
-      return res.status(400).json({ success: false, message: "Email ve gender gerekli" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email ve gender gerekli" });
     }
 
     const normalizedGender = normalizeGender(gender);
@@ -215,11 +238,13 @@ router.post("/update-user-gender", async (req, res) => {
     const user = await User.findOneAndUpdate(
       { email: normalizedEmail },
       { $set: { gender: normalizedGender } },
-      { new: true }
+      { new: true },
     ).select("username email gender");
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     res.json({
@@ -228,8 +253,8 @@ router.post("/update-user-gender", async (req, res) => {
       user,
     });
   } catch (error) {
-    logger.error('update-user-gender error:', error);
-    res.status(500).json({ success: false, message: 'Sunucu hatası' });
+    logger.error("update-user-gender error:", error);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 });
 
@@ -249,8 +274,8 @@ router.delete("/delete-guest-users", async (req, res) => {
       users: remaining,
     });
   } catch (error) {
-    logger.error('delete-guest-users error:', error);
-    res.status(500).json({ success: false, message: 'Sunucu hatası' });
+    logger.error("delete-guest-users error:", error);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 });
 
