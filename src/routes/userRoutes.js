@@ -109,7 +109,10 @@ router.post(
   coverUpload.single("cover"),
   async (req, res) => {
     try {
-      if (!req.file) return res.status(400).json({ success: false, message: "Dosya gerekli" });
+      if (!req.file)
+        return res
+          .status(400)
+          .json({ success: false, message: "Dosya gerekli" });
       const userId = req.user._id || req.user.id;
       const storageService = require("../services/storageService");
       const User = require("../models/User");
@@ -127,7 +130,7 @@ router.post(
       logger.error("profile-cover upload error:", err);
       res.status(500).json({ success: false, message: "Kapak yüklenemedi" });
     }
-  }
+  },
 );
 
 // DELETE /api/users/me/profile-cover - Profil kapak fotoğrafını kaldır
