@@ -576,4 +576,57 @@ router.get("/history", auth, async (req, res) => {
   }
 });
 
+// ============ ADMIN ENDPOINTS ============
+const admin = require("../middleware/admin");
+
+/**
+ * GET /api/calls/admin/history
+ * Admin: Tüm arama geçmişini getir (sayfalı + filtreli)
+ */
+router.get("/admin/history", auth, admin, async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const query = {};
+    if (req.query.status && ["completed", "missed", "rejected", "cancelled"].includes(req.query.status)) {
+      query.status = req.query.status;
+    }
+    if (req.query.type && ["video", "audio", "paid_video"].includes(req.query.type)) {
+      query.type = req.query.type;
+    }
+    if (req.query.userId) {
+      const uid = String(req.query.userId).trim();
+      query.$or = [{ caller: uid }, { receiver: uid }];
+    }
+    if (req.query.from) {
+      query.createdAt = { ...query.createdAt, $gte: new Date(req.query.from) };
+    }
+    if (req.query.to) {
+      query.createdAt = { ...query.createdAt, $lte: new Date(req.query.to) };
+    }
+
+    const [calls, total] = await Promise.all([
+      CallHistory.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("caller", "username name profileImage")
+        .populate("receiver", "username name profileImage")
+        .lean(),
+      CallHistory.countDocuments(query),
+    ]);
+
+    res.json({
+      success: true,
+      calls,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
+  } catch (error) {
+    logger.error("❌ Admin call history error:", error);
+    sendError(res, 500, "Sunucu hatası");
+  }
+});
+
 module.exports = router;
