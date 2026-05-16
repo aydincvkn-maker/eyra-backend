@@ -1643,8 +1643,8 @@ exports.followUser = async (req, res) => {
     createNotification({
       recipientId: userId,
       type: "follow",
-      title: "Yeni Takipçi! ğŸ‘‹",
-      titleEn: "New Follower! ğŸ‘‹",
+      title: "Yeni Takipçi! 👋",
+      titleEn: "New Follower! 👋",
       body: `${currentUser?.name || currentUser?.username || "Birisi"} seni takip etmeye başladı`,
       bodyEn: `${currentUser?.name || currentUser?.username || "Someone"} started following you`,
       senderId: currentUserId,
