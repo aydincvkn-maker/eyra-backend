@@ -9,7 +9,9 @@ const { logger } = require("../utils/logger");
 exports.getGifts = async (req, res) => {
   try {
     const VALID_CATEGORIES = ["basic", "vip", "premium", "special"];
-    const raw = req.query.category ? String(req.query.category).trim().toLowerCase() : undefined;
+    const raw = req.query.category
+      ? String(req.query.category).trim().toLowerCase()
+      : undefined;
     const category = raw && VALID_CATEGORIES.includes(raw) ? raw : undefined;
     const gifts = await giftService.getAllGifts(category);
 
