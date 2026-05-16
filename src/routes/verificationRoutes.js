@@ -43,6 +43,7 @@ const upload = multer({
 router.post(
   "/profile-photo",
   auth,
+  uploadLimiter,
   upload.single("profilePhoto"),
   verificationController.uploadProfilePhoto,
 );
@@ -50,6 +51,7 @@ router.post(
 router.post(
   "/face-photos",
   auth,
+  uploadLimiter,
   upload.fields([
     { name: "faceCenter", maxCount: 1 },
     { name: "faceLeft", maxCount: 1 },
@@ -61,6 +63,7 @@ router.post(
 router.post(
   "/request",
   auth,
+  uploadLimiter,
   upload.fields([
     { name: "faceCenter", maxCount: 1 },
     { name: "faceLeft", maxCount: 1 },
