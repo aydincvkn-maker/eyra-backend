@@ -1509,10 +1509,12 @@ exports.getUserById = async (req, res) => {
     }
 
     // Profil fotoğrafı olmayan kadın kullanıcıyı erkek izleyiciden gizle
+    // Sözleşme imzalamayan kadın kullanıcıyı da gizle
     const viewerId = req.user?.id ? String(req.user.id) : null;
     if (
       user.gender === "female" &&
-      user.settings?.profileVisibility === false
+      (user.settings?.profileVisibility === false ||
+        user.broadcasterContract?.signed !== true)
     ) {
       if (!viewerId || viewerId !== String(user._id)) {
         const viewer = viewerId
