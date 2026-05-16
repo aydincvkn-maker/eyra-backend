@@ -260,6 +260,8 @@ exports.getUsers = async (req, res) => {
 
     // Profil fotoğrafı olmayan (gizli) kadın kullanıcıları listeden çıkar
     query["settings.profileVisibility"] = { $ne: false };
+    // Sözleşme imzalamayan kadın kullanıcıları gizle
+    query["$nor"] = [{ gender: "female", "broadcasterContract.signed": { $ne: true } }];
 
     // ✅ Kullanıcı listesi getir (limit zorunlu — sınırsız sorgu önlenir)
     const users = await User.find(query)
@@ -715,6 +717,8 @@ exports.getFemaleUsers = async (req, res) => {
 
     // Profil fotoğrafı olmayan (gizli) kadın kullanıcıları listeden çıkar
     baseQuery["settings.profileVisibility"] = { $ne: false };
+    // Sözleşme imzalamayan kadın kullanıcıları gizle
+    baseQuery["$nor"] = [{ gender: "female", "broadcasterContract.signed": { $ne: true } }];
 
     const users = await User.find(baseQuery)
       .select("-password -refreshToken")
