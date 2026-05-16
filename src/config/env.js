@@ -96,9 +96,39 @@ module.exports = {
   JWT_EXPIRES_IN: required("JWT_EXPIRES_IN", "7d"),
 
   // 🔥 LIVEKIT Değerleri - Development'ta fallback, production'da mutlaka eklenmeli
-  LIVEKIT_URL: required("LIVEKIT_URL", "wss://livekit.example.com"),
-  LIVEKIT_API_KEY: required("LIVEKIT_API_KEY", ""),
-  LIVEKIT_API_SECRET: required("LIVEKIT_API_SECRET", ""),
+  LIVEKIT_URL: (() => {
+    const val = process.env.LIVEKIT_URL;
+    if (!isEmpty(val)) return val;
+    if (NODE_ENV === "production") {
+      throw new Error(
+        "[ENV] LIVEKIT_URL production'da tanımlı olmalı! Render Dashboard > Environment içinde ekleyin.",
+      );
+    }
+    console.warn("[ENV] LIVEKIT_URL tanımlı değil, dev fallback kullanılıyor");
+    return "wss://livekit.example.com";
+  })(),
+  LIVEKIT_API_KEY: (() => {
+    const val = process.env.LIVEKIT_API_KEY;
+    if (!isEmpty(val)) return val;
+    if (NODE_ENV === "production") {
+      throw new Error(
+        "[ENV] LIVEKIT_API_KEY production'da tanımlı olmalı! Render Dashboard > Environment içinde ekleyin.",
+      );
+    }
+    console.warn("[ENV] LIVEKIT_API_KEY tanımlı değil");
+    return "";
+  })(),
+  LIVEKIT_API_SECRET: (() => {
+    const val = process.env.LIVEKIT_API_SECRET;
+    if (!isEmpty(val)) return val;
+    if (NODE_ENV === "production") {
+      throw new Error(
+        "[ENV] LIVEKIT_API_SECRET production'da tanımlı olmalı! Render Dashboard > Environment içinde ekleyin.",
+      );
+    }
+    console.warn("[ENV] LIVEKIT_API_SECRET tanımlı değil");
+    return "";
+  })(),
 
   PAYMENT_PROVIDER: (() => {
     const val = String(process.env.PAYMENT_PROVIDER || "")
