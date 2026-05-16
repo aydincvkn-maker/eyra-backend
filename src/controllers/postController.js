@@ -278,6 +278,94 @@ exports.toggleLike = async (req, res) => {
   }
 };
 
+// =============================================
+// ADMIN ENDPOINTS
+// =============================================
+
+// GET /api/posts/admin - Tüm postları listele (admin)
+exports.adminGetPosts = async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const query = {};
+    if (req.query.userId) {
+      query.user = String(req.query.userId).trim();
+    }
+    if (req.query.reported === "true") {
+      query.isReported = true;
+    }
+    if (req.query.type && ["photo", "note", "photo_note"].includes(req.query.type)) {
+      query.type = req.query.type;
+    }
+
+    const [posts, total] = await Promise.all([
+      Post.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("user", "username name profileImage gender isOnline isBanned")
+        .lean(),
+      Post.countDocuments(query),
+    ]);
+
+    res.json({
+      success: true,
+      posts: posts.map((p) => ({
+        _id: p._id,
+        type: p.type,
+        text: p.text,
+        imageUrl: p.imageUrl,
+        likeCount: p.likeCount,
+        isActive: p.isActive,
+        isReported: p.isReported,
+        createdAt: p.createdAt,
+        expiresAt: p.expiresAt,
+        user: p.user,
+      })),
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
+  } catch (err) {
+    logger.error("adminGetPosts error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+// DELETE /api/posts/admin/:postId - Post sil (admin)
+exports.adminDeletePost = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ success: false, message: "Post bulunamadı" });
+    }
+    await removePostAsset(post);
+    await Post.findByIdAndDelete(postId);
+    res.json({ success: true, message: "Post silindi" });
+  } catch (err) {
+    logger.error("adminDeletePost error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+// PATCH /api/posts/admin/:postId/toggle-active - Post aktif/pasif et (admin)
+exports.adminTogglePostActive = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ success: false, message: "Post bulunamadı" });
+    }
+    post.isActive = !post.isActive;
+    await post.save();
+    res.json({ success: true, isActive: post.isActive });
+  } catch (err) {
+    logger.error("adminTogglePostActive error:", err);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
 // DELETE /api/posts/:postId - Post sil (sadece sahibi)
 exports.deletePost = async (req, res) => {
   try {
