@@ -249,10 +249,12 @@ exports.getUsers = async (req, res) => {
     }
 
     // ✅ Cinsiyet filtreleme
+    let _viewerGender1 = null;
     if (currentUserId) {
       const currentUser = await User.findById(currentUserId).select("gender");
-      logger.debug("Gender filter", { gender: currentUser?.gender });
-      query.gender = genderVisibilityQueryForViewer(currentUser?.gender);
+      _viewerGender1 = currentUser?.gender ?? null;
+      logger.debug("Gender filter", { gender: _viewerGender1 });
+      query.gender = genderVisibilityQueryForViewer(_viewerGender1);
     } else {
       logger.debug("Unauthenticated user - showing only female");
       query.gender = genderVisibilityQueryForViewer(null);
@@ -260,10 +262,12 @@ exports.getUsers = async (req, res) => {
 
     // Profil fotoğrafı olmayan (gizli) kadın kullanıcıları listeden çıkar
     query["settings.profileVisibility"] = { $ne: false };
-    // Sözleşme imzalamayan kadın kullanıcıları gizle
-    query["$nor"] = [
-      { gender: "female", "broadcasterContract.signed": { $ne: true } },
-    ];
+    // Sözleşme imzalamayan kadın kullanıcıları erkek izleyicilerden gizle (kadın izleyiciler görebilir)
+    if (_viewerGender1 !== "female") {
+      query["$nor"] = [
+        { gender: "female", "broadcasterContract.signed": { $ne: true } },
+      ];
+    }
 
     // ✅ Kullanıcı listesi getir (limit zorunlu — sınırsız sorgu önlenir)
     const users = await User.find(query)
@@ -709,9 +713,11 @@ exports.getFemaleUsers = async (req, res) => {
       isActive: { $ne: false },
     });
 
+    let _viewerGender2 = null;
     if (currentUserId) {
       const currentUser = await User.findById(currentUserId).select("gender");
-      baseQuery.gender = genderVisibilityQueryForViewer(currentUser?.gender);
+      _viewerGender2 = currentUser?.gender ?? null;
+      baseQuery.gender = genderVisibilityQueryForViewer(_viewerGender2);
       baseQuery._id = { $ne: new mongoose.Types.ObjectId(currentUserId) };
     } else {
       baseQuery.gender = genderVisibilityQueryForViewer(null);
@@ -719,10 +725,12 @@ exports.getFemaleUsers = async (req, res) => {
 
     // Profil fotoğrafı olmayan (gizli) kadın kullanıcıları listeden çıkar
     baseQuery["settings.profileVisibility"] = { $ne: false };
-    // Sözleşme imzalamayan kadın kullanıcıları gizle
-    baseQuery["$nor"] = [
-      { gender: "female", "broadcasterContract.signed": { $ne: true } },
-    ];
+    // Sözleşme imzalamayan kadın kullanıcıları erkek izleyicilerden gizle (kadın izleyiciler görebilir)
+    if (_viewerGender2 !== "female") {
+      baseQuery["$nor"] = [
+        { gender: "female", "broadcasterContract.signed": { $ne: true } },
+      ];
+    }
 
     const users = await User.find(baseQuery)
       .select("-password -refreshToken")
