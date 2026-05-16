@@ -2,7 +2,12 @@
 const fs = require("fs");
 const path = require("path");
 
-const filePath = path.join(__dirname, "src", "controllers", "userController.js");
+const filePath = path.join(
+  __dirname,
+  "src",
+  "controllers",
+  "userController.js",
+);
 let str = fs.readFileSync(filePath, "utf8");
 
 const fixes = [

@@ -15,11 +15,7 @@ exports.getVipPackages = async (req, res) => {
         name: "Silver VIP",
         price: settings?.vipSilverPrice || 5000,
         days: settings?.vipSilverDays || 30,
-        features: [
-          "Günde 2 Otomatik Çeviri",
-          "VIP rozeti",
-          "Özel hediyeler",
-        ],
+        features: ["Günde 2 Otomatik Çeviri", "VIP rozeti", "Özel hediyeler"],
       },
       {
         tier: "gold",
@@ -70,10 +66,10 @@ exports.purchaseVip = async (req, res) => {
 
     if (!["silver", "gold", "diamond"].includes(tier)) {
       return res.status(400).json({
-      success: false,
-      message: "Geçersiz VIP tipi",
-      error: "Geçersiz VIP tipi",
-    });
+        success: false,
+        message: "Geçersiz VIP tipi",
+        error: "Geçersiz VIP tipi",
+      });
     }
 
     const settings = await SystemSettings.findOne().lean();
@@ -94,10 +90,10 @@ exports.purchaseVip = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
-      success: false,
-      message: "Kullanıcı bulunamadı",
-      error: "Kullanıcı bulunamadı",
-    });
+        success: false,
+        message: "Kullanıcı bulunamadı",
+        error: "Kullanıcı bulunamadı",
+      });
     }
 
     if (user.coins < price) {
@@ -128,39 +124,50 @@ exports.purchaseVip = async (req, res) => {
             // Mevcut süre dolmamışsa uzat, dolmuşsa şimdiden başlat
             vipExpiresAt: {
               $add: [
-                { $cond: {
-                  if: { $and: [
-                    { $ne: ["$vipExpiresAt", null] },
-                    { $gt: ["$vipExpiresAt", now] }
-                  ]},
-                  then: "$vipExpiresAt",
-                  else: now
-                }},
-                daysMs
-              ]
+                {
+                  $cond: {
+                    if: {
+                      $and: [
+                        { $ne: ["$vipExpiresAt", null] },
+                        { $gt: ["$vipExpiresAt", now] },
+                      ],
+                    },
+                    then: "$vipExpiresAt",
+                    else: now,
+                  },
+                },
+                daysMs,
+              ],
             },
             // Tier upgrade: sadece eşit veya yüksek tier'e geçiş
             vipTier: {
               $cond: {
-                if: { $gte: [
-                  purchasedTierRank,
-                  { $switch: {
-                    branches: [
-                      { case: { $eq: ["$vipTier", "silver"] }, then: 1 },
-                      { case: { $eq: ["$vipTier", "gold"] }, then: 2 },
-                      { case: { $eq: ["$vipTier", "diamond"] }, then: 3 },
-                    ],
-                    default: 0
-                  }}
-                ]},
+                if: {
+                  $gte: [
+                    purchasedTierRank,
+                    {
+                      $switch: {
+                        branches: [
+                          { case: { $eq: ["$vipTier", "silver"] }, then: 1 },
+                          { case: { $eq: ["$vipTier", "gold"] }, then: 2 },
+                          { case: { $eq: ["$vipTier", "diamond"] }, then: 3 },
+                        ],
+                        default: 0,
+                      },
+                    },
+                  ],
+                },
                 then: tier,
-                else: "$vipTier"
-              }
-            }
-          }
-        }
+                else: "$vipTier",
+              },
+            },
+          },
+        },
       ],
-      { new: true, projection: { coins: 1, isVip: 1, vipTier: 1, vipExpiresAt: 1 } }
+      {
+        new: true,
+        projection: { coins: 1, isVip: 1, vipTier: 1, vipExpiresAt: 1 },
+      },
     );
     if (!updatedUser) {
       // Coin sonradan düşmüş olabilir (eş zamanlı işlem)
@@ -183,7 +190,9 @@ exports.purchaseVip = async (req, res) => {
     });
 
     // Mission tracking
-    try { await trackMissionProgress(userId, "vip_purchase"); } catch (_) {}
+    try {
+      await trackMissionProgress(userId, "vip_purchase");
+    } catch (_) {}
 
     // Notification
     try {
@@ -222,14 +231,16 @@ exports.purchaseVip = async (req, res) => {
 exports.getVipStatus = async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
-    const user = await User.findById(userId).select("isVip vipTier vipExpiresAt vipPurchasedAt").lean();
+    const user = await User.findById(userId)
+      .select("isVip vipTier vipExpiresAt vipPurchasedAt")
+      .lean();
 
     if (!user) {
       return res.status(404).json({
-      success: false,
-      message: "Kullanıcı bulunamadı",
-      error: "Kullanıcı bulunamadı",
-    });
+        success: false,
+        message: "Kullanıcı bulunamadı",
+        error: "Kullanıcı bulunamadı",
+      });
     }
 
     const now = new Date();
@@ -304,19 +315,19 @@ exports.adminSetVip = async (req, res) => {
 
     if (!userId) {
       return res.status(400).json({
-      success: false,
-      message: "userId gerekli",
-      error: "userId gerekli",
-    });
+        success: false,
+        message: "userId gerekli",
+        error: "userId gerekli",
+      });
     }
 
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
-      success: false,
-      message: "Kullanıcı bulunamadı",
-      error: "Kullanıcı bulunamadı",
-    });
+        success: false,
+        message: "Kullanıcı bulunamadı",
+        error: "Kullanıcı bulunamadı",
+      });
     }
 
     if (tier === "none" || !tier) {
@@ -331,18 +342,19 @@ exports.adminSetVip = async (req, res) => {
 
     if (!["silver", "gold", "diamond"].includes(tier)) {
       return res.status(400).json({
-      success: false,
-      message: "Geçersiz tier",
-      error: "Geçersiz tier",
-    });
+        success: false,
+        message: "Geçersiz tier",
+        error: "Geçersiz tier",
+      });
     }
 
     const grantDays = days || 30;
     const now = new Date();
-    const currentExpiry = user.vipExpiresAt && user.vipExpiresAt > now
-      ? user.vipExpiresAt
-      : now;
-    const newExpiry = new Date(currentExpiry.getTime() + grantDays * 24 * 60 * 60 * 1000);
+    const currentExpiry =
+      user.vipExpiresAt && user.vipExpiresAt > now ? user.vipExpiresAt : now;
+    const newExpiry = new Date(
+      currentExpiry.getTime() + grantDays * 24 * 60 * 60 * 1000,
+    );
 
     user.isVip = true;
     user.vipTier = tier;
@@ -364,7 +376,12 @@ exports.adminSetVip = async (req, res) => {
     res.json({
       success: true,
       message: `${tier} VIP ${grantDays} gün verildi`,
-      user: { _id: user._id, name: user.name, vipTier: tier, vipExpiresAt: newExpiry },
+      user: {
+        _id: user._id,
+        name: user.name,
+        vipTier: tier,
+        vipExpiresAt: newExpiry,
+      },
     });
   } catch (err) {
     logger.error("adminSetVip error:", err);
