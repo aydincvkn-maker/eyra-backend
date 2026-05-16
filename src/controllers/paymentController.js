@@ -47,9 +47,10 @@ exports.createIntent = async (req, res) => {
     res.status(201).json({ success: true, payment });
   } catch (err) {
     logger.error("createIntent error:", err);
+    const isControlled = !!err.statusCode;
     res
       .status(err.statusCode || 500)
-      .json({ success: false, message: err.message || "Sunucu hatası" });
+      .json({ success: false, message: isControlled ? err.message : "Sunucu hatası" });
   }
 };
 
@@ -99,9 +100,10 @@ exports.confirmMyPaymentByOrderId = async (req, res) => {
     res.json({ success: true, payment });
   } catch (err) {
     logger.error("confirmMyPaymentByOrderId error:", err);
+    const isControlled = !!err.statusCode;
     res
       .status(err.statusCode || 500)
-      .json({ success: false, message: err.message || "Sunucu hatası" });
+      .json({ success: false, message: isControlled ? err.message : "Sunucu hatası" });
   }
 };
 
@@ -174,9 +176,10 @@ exports.webhook = async (req, res) => {
     });
   } catch (err) {
     logger.error("payment webhook error:", err);
+    const isControlled = !!err.statusCode;
     res
       .status(err.statusCode || 500)
-      .json({ success: false, message: err.message || "Sunucu hatası" });
+      .json({ success: false, message: isControlled ? err.message : "Sunucu hatası" });
   }
 };
 
@@ -188,9 +191,10 @@ exports.refundPayment = async (req, res) => {
     res.json({ success: true, payment });
   } catch (err) {
     logger.error("refundPayment error:", err);
+    const isControlled = !!err.statusCode;
     res
       .status(err.statusCode || 500)
-      .json({ success: false, message: err.message || "Sunucu hatası" });
+      .json({ success: false, message: isControlled ? err.message : "Sunucu hatası" });
   }
 };
 
