@@ -159,20 +159,20 @@ exports.translateText = async (text, targetLang, sourceLang = "auto") => {
  * @returns {Promise<Array<{original: string, translated: string, detectedLanguage: string}>>}
  */
 exports.translateBatch = async (texts, targetLang, sourceLang = "auto") => {
-  const results = await Promise.all(
-    texts.map(async (text) => {
-      const { translatedText, detectedLanguage } = await exports.translateText(
-        text,
-        targetLang,
-        sourceLang,
-      );
-      return {
-        original: text,
-        translated: translatedText,
-        detectedLanguage,
-      };
-    }),
-  );
+  // Sıralı çeviri: eş zamanlı istekler rate-limit'e düşürür
+  const results = [];
+  for (const text of texts) {
+    const { translatedText, detectedLanguage } = await exports.translateText(
+      text,
+      targetLang,
+      sourceLang,
+    );
+    results.push({
+      original: text,
+      translated: translatedText,
+      detectedLanguage,
+    });
+  }
   return results;
 };
 
