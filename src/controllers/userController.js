@@ -153,13 +153,13 @@ const buildUserStats = async (userId, existingUser = null) => {
 // =============================================
 
 /**
- * KullanÄ±cÄ± nesnesini format et
+ * Kullanıcı nesnesini format et
  * Presence bilgisi Socket heartbeat (memory) ile okunur
- * âš ï¸ NOT: MongoDB fallback KALDIRILDI - Socket baÄŸlÄ± olmayan kullanÄ±cÄ± OFFLINE'dÄ±r
+ * âš ï¸ NOT: MongoDB fallback KALDIRILDI - Socket baÄŸlı olmayan kullanıcı OFFLINE'dır
  */
 const formatUser = (user, presenceData = {}) => {
-  // âœ… Socket-driven presence: SINGLE SOURCE OF TRUTH
-  // presenceData.online = true ise kullanÄ±cÄ± gerÃ§ekten socket'e baÄŸlÄ± demektir
+  // ✅ Socket-driven presence: SINGLE SOURCE OF TRUTH
+  // presenceData.online = true ise kullanıcı gerÃ§ekten socket'e baÄŸlı demektir
   // MongoDB'deki isOnline deÄŸeri eski/stale olabilir, KULLANILMAZ
   const presenceStatus = normalizePresenceStatus(presenceData);
 
@@ -222,13 +222,13 @@ exports.getUsers = async (req, res) => {
     const skip = (page - 1) * limit;
     logger.debug("getUsers", { currentUserId, searchQuery, page, limit });
 
-    // âœ… Query: banned olmayan, kendisi hariÃ§
+    // ✅ Query: banned olmayan, kendisi hariÃ§
     const query = buildAppUserQuery({
       isBanned: { $ne: true },
       isActive: { $ne: false },
     });
 
-    // âœ… Kendisini hariÃ§ tut (ObjectId olarak)
+    // ✅ Kendisini hariÃ§ tut (ObjectId olarak)
     if (currentUserId) {
       try {
         query._id = { $ne: new mongoose.Types.ObjectId(currentUserId) };
@@ -238,9 +238,9 @@ exports.getUsers = async (req, res) => {
       }
     }
 
-    // âœ… Arama filtresi - REGEX INJECTION + ReDoS PROTECTED
+    // ✅ Arama filtresi - REGEX INJECTION + ReDoS PROTECTED
     if (searchQuery) {
-      const trimmedQuery = searchQuery.substring(0, 100); // Max 100 karakter (ReDoS korumasÄ±)
+      const trimmedQuery = searchQuery.substring(0, 100); // Max 100 karakter (ReDoS koruması)
       const escapedQuery = escapeRegex(trimmedQuery);
       query.$or = [
         { username: { $regex: escapedQuery, $options: "i" } },
@@ -248,7 +248,7 @@ exports.getUsers = async (req, res) => {
       ];
     }
 
-    // âœ… Cinsiyet filtreleme
+    // ✅ Cinsiyet filtreleme
     if (currentUserId) {
       const currentUser = await User.findById(currentUserId).select("gender");
       logger.debug("Gender filter", { gender: currentUser?.gender });
@@ -269,11 +269,11 @@ exports.getUsers = async (req, res) => {
       .limit(limit)
       .lean();
 
-    // âœ… Presence: in-memory (socket) snapshot
+    // ✅ Presence: in-memory (socket) snapshot
     const userIds = users.map((u) => String(u._id));
     const presenceMap = await presenceService.getMultiplePresence(userIds);
 
-    // âœ… KullanÄ±cÄ±larÄ± format et ve sÄ±rala
+    // ✅ Kullanıcıları format et ve sırala
     const formattedUsers = users
       .map((user) => {
         const presenceData = presenceMap[String(user._id)] || {
@@ -288,13 +288,13 @@ exports.getUsers = async (req, res) => {
         return formatUser(user, presenceData);
       })
       .sort((a, b) => {
-        // SÄ±rala: Live > Online > Offline
+        // Sırala: Live > Online > Offline
         const aScore = a.isLive ? 3 : a.isOnline ? 2 : 1;
         const bScore = b.isLive ? 3 : b.isOnline ? 2 : 1;
 
         if (aScore !== bScore) return bScore - aScore;
 
-        // AynÄ± statÃ¼deyse, en yeni ilk
+        // Aynı statÃ¼deyse, en yeni ilk
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
 
@@ -313,11 +313,11 @@ exports.getUsers = async (req, res) => {
     });
   } catch (err) {
     logger.error("getUsers error", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
-// ADMIN: TÃ¼m kullanÄ±cÄ±larÄ± listele (pagination destekli) - panel adminler hariÃ§
+// ADMIN: TÃ¼m kullanıcıları listele (pagination destekli) - panel adminler hariÃ§
 exports.getAdminUsers = async (req, res) => {
   try {
     const searchQuery = req.query.search
@@ -398,11 +398,11 @@ exports.getAdminUsers = async (req, res) => {
     });
   } catch (err) {
     logger.error("âŒ getAdminUsers error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
-// ADMIN: Panel admin kullanÄ±cÄ±larÄ±nÄ± listele (admin, super_admin, moderator)
+// ADMIN: Panel admin kullanıcılarını listele (admin, super_admin, moderator)
 // ADMIN: Elle kullanici olustur (panelden)
 exports.adminCreateUser = async (req, res) => {
   try {
@@ -523,11 +523,11 @@ exports.getPanelAdmins = async (req, res) => {
     res.json({ success: true, admins: formattedAdmins });
   } catch (err) {
     logger.error("âŒ getPanelAdmins error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
-// DELETE /api/users/:userId/panel-admin - Panel admin hesabÄ±nÄ± sil (sadece super_admin, patron hariÃ§)
+// DELETE /api/users/:userId/panel-admin - Panel admin hesabını sil (sadece super_admin, patron hariÃ§)
 exports.deletePanelAdminUser = async (req, res) => {
   try {
     const requestingUser = await User.findById(req.user.id)
@@ -536,7 +536,7 @@ exports.deletePanelAdminUser = async (req, res) => {
     if (!requestingUser) {
       return res
         .status(401)
-        .json({ success: false, message: "Yetkilendirme hatasÄ±" });
+        .json({ success: false, message: "Yetkilendirme hatası" });
     }
 
     // Sadece sÃ¼per admin veya patron kullanabilir
@@ -546,7 +546,7 @@ exports.deletePanelAdminUser = async (req, res) => {
     if (!isRequesterSuperAdmin) {
       return res.status(403).json({
         success: false,
-        message: "Bu iÅŸlem iÃ§in sÃ¼per admin yetkisi gerekli",
+        message: "Bu işlem için sÃ¼per admin yetkisi gerekli",
       });
     }
 
@@ -557,7 +557,7 @@ exports.deletePanelAdminUser = async (req, res) => {
     if (!target) {
       return res
         .status(404)
-        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     // Kendini silemez
@@ -571,14 +571,14 @@ exports.deletePanelAdminUser = async (req, res) => {
     if (target.isOwner === true) {
       return res
         .status(403)
-        .json({ success: false, message: "Patron hesabÄ± silinemez" });
+        .json({ success: false, message: "Patron hesabı silinemez" });
     }
 
-    // Patron deÄŸilse sÃ¼per admin hesabÄ±nÄ± silemez
+    // Patron deÄŸilse sÃ¼per admin hesabını silemez
     if (target.role === "super_admin" && !isRequesterOwner) {
       return res
         .status(403)
-        .json({ success: false, message: "SÃ¼per admin hesabÄ± silinemez" });
+        .json({ success: false, message: "SÃ¼per admin hesabı silinemez" });
     }
 
     if (
@@ -588,7 +588,7 @@ exports.deletePanelAdminUser = async (req, res) => {
     ) {
       return res.status(400).json({
         success: false,
-        message: "Sadece panel hesaplarÄ± silinebilir",
+        message: "Sadece panel hesapları silinebilir",
       });
     }
 
@@ -606,15 +606,15 @@ exports.deletePanelAdminUser = async (req, res) => {
 
     res.json({
       success: true,
-      message: `"${target.username}" panel hesabÄ± silindi`,
+      message: `"${target.username}" panel hesabı silindi`,
     });
   } catch (err) {
     logger.error("deletePanelAdminUser error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
-// PATCH /api/users/:userId/restrict-admin - Panel admin kÄ±sÄ±tla/kÄ±sÄ±tÄ± kaldÄ±r
+// PATCH /api/users/:userId/restrict-admin - Panel admin kısıtla/kısıtı kaldır
 exports.restrictPanelAdmin = async (req, res) => {
   try {
     const requestingUser = await User.findById(req.user.id)
@@ -623,7 +623,7 @@ exports.restrictPanelAdmin = async (req, res) => {
     if (!requestingUser) {
       return res
         .status(401)
-        .json({ success: false, message: "Yetkilendirme hatasÄ±" });
+        .json({ success: false, message: "Yetkilendirme hatası" });
     }
 
     const { userId } = req.params;
@@ -633,51 +633,51 @@ exports.restrictPanelAdmin = async (req, res) => {
     if (!targetUser) {
       return res
         .status(404)
-        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
-    // Kendini kÄ±sÄ±tlayamazsÄ±n
+    // Kendini kısıtlayamazsın
     if (String(targetUser._id) === String(req.user.id)) {
       return res
         .status(403)
-        .json({ success: false, message: "Kendinizi kÄ±sÄ±tlayamazsÄ±nÄ±z" });
+        .json({ success: false, message: "Kendinizi kısıtlayamazsınız" });
     }
 
-    // Owner (patron) hiÃ§bir zaman kÄ±sÄ±tlanamaz
+    // Owner (patron) hiÃ§bir zaman kısıtlanamaz
     if (targetUser.isOwner === true) {
       return res
         .status(403)
-        .json({ success: false, message: "Patron kÄ±sÄ±tlanamaz" });
+        .json({ success: false, message: "Patron kısıtlanamaz" });
     }
 
     const isRequesterOwner = requestingUser.isOwner === true;
     const isRequesterSuperAdmin = requestingUser.role === "super_admin";
 
     // Yetki kontrolÃ¼:
-    // - Patron: herkesi kÄ±sÄ±tlayabilir (super_admin dahil, kendisi hariÃ§, patron hariÃ§)
-    // - Super admin: sadece admin/moderator'Ä± kÄ±sÄ±tlayabilir; diÄŸer super_admin'larÄ± kÄ±sÄ±tlayamaz
-    // - Admin/moderator: kimseyi kÄ±sÄ±tlayamaz
+    // - Patron: herkesi kısıtlayabilir (super_admin dahil, kendisi hariÃ§, patron hariÃ§)
+    // - Super admin: sadece admin/moderator'ı kısıtlayabilir; diÄŸer super_admin'ları kısıtlayamaz
+    // - Admin/moderator: kimseyi kısıtlayamaz
     if (!isRequesterOwner && !isRequesterSuperAdmin) {
       return res
         .status(403)
-        .json({ success: false, message: "Bu iÅŸlem iÃ§in yetkiniz yok" });
+        .json({ success: false, message: "Bu işlem için yetkiniz yok" });
     }
 
     if (!isRequesterOwner && isRequesterSuperAdmin) {
       if (targetUser.role === "super_admin") {
         return res.status(403).json({
           success: false,
-          message: "SÃ¼per adminler birbirini kÄ±sÄ±tlayamaz",
+          message: "SÃ¼per adminler birbirini kısıtlayamaz",
         });
       }
     }
 
-    const { restrict } = req.body; // true = kÄ±sÄ±tla, false = kÄ±sÄ±tÄ± kaldÄ±r
+    const { restrict } = req.body; // true = kısıtla, false = kısıtı kaldır
     const newValue = restrict === true || restrict === "true";
     targetUser.isPanelRestricted = newValue;
     await targetUser.save();
 
-    // TokenlarÄ± geÃ§ersiz kÄ±l (kÄ±sÄ±tlanan kullanÄ±cÄ± panelden dÃ¼ÅŸsÃ¼n)
+    // Tokenları geÃ§ersiz kıl (kısıtlanan kullanıcı panelden dÃ¼şsÃ¼n)
     if (newValue) {
       await User.findByIdAndUpdate(userId, { $inc: { tokenVersion: 1 } });
     }
@@ -685,13 +685,13 @@ exports.restrictPanelAdmin = async (req, res) => {
     res.json({
       success: true,
       message: newValue
-        ? `${targetUser.username} panel eriÅŸimi kÄ±sÄ±tlandÄ±`
-        : `${targetUser.username} panel eriÅŸimi aÃ§Ä±ldÄ±`,
+        ? `${targetUser.username} panel erişimi kısıtlandı`
+        : `${targetUser.username} panel erişimi aÃ§ıldı`,
       isPanelRestricted: newValue,
     });
   } catch (err) {
     logger.error("âŒ restrictPanelAdmin error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
@@ -722,11 +722,11 @@ exports.getFemaleUsers = async (req, res) => {
       .limit(100)
       .lean();
 
-    // âœ… Presence: in-memory (socket) snapshot
+    // ✅ Presence: in-memory (socket) snapshot
     const userIds = users.map((u) => String(u._id));
     const presenceMap = await presenceService.getMultiplePresence(userIds);
 
-    // âœ… KullanÄ±cÄ±larÄ± format et ve sÄ±rala
+    // ✅ Kullanıcıları format et ve sırala
     const formattedUsers = users
       .map((user) => {
         const presenceData = presenceMap[String(user._id)] || {
@@ -741,13 +741,13 @@ exports.getFemaleUsers = async (req, res) => {
         return formatUser(user, presenceData);
       })
       .sort((a, b) => {
-        // SÄ±rala: Live > Online > Offline
+        // Sırala: Live > Online > Offline
         const aScore = a.isLive ? 3 : a.isOnline ? 2 : 1;
         const bScore = b.isLive ? 3 : b.isOnline ? 2 : 1;
 
         if (aScore !== bScore) return bScore - aScore;
 
-        // AynÄ± statÃ¼deyse, en yeni ilk
+        // Aynı statÃ¼deyse, en yeni ilk
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
 
@@ -759,7 +759,7 @@ exports.getFemaleUsers = async (req, res) => {
     });
   } catch (err) {
     logger.error("âŒ getFemaleUsers error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
@@ -767,11 +767,11 @@ exports.toggleBan = async (req, res) => {
   try {
     const { userId } = req.params;
     const user = await User.findById(userId);
-    if (!user) return sendError(res, 404, "KullanÄ±cÄ± bulunamadÄ±");
+    if (!user) return sendError(res, 404, "Kullanıcı bulunamadı");
 
-    // Admin kendini banlamasÄ±n
+    // Admin kendini banlamasın
     if (String(user._id) === String(req.user.id)) {
-      return sendError(res, 400, "Kendinizi banlayamazsÄ±nÄ±z");
+      return sendError(res, 400, "Kendinizi banlayamazsınız");
     }
 
     // Super admin hiÃ§bir zaman banlanamaz
@@ -779,12 +779,12 @@ exports.toggleBan = async (req, res) => {
       return sendError(res, 403, "Super admin banlanamaz");
     }
 
-    // Admin sadece super_admin tarafÄ±ndan banlanabilir
+    // Admin sadece super_admin tarafından banlanabilir
     if (user.role === "admin" && req.user.role !== "super_admin") {
       return sendError(
         res,
         403,
-        "Admin hesaplar sadece super admin tarafÄ±ndan banlanabilir",
+        "Admin hesaplar sadece super admin tarafından banlanabilir",
       );
     }
 
@@ -807,7 +807,7 @@ exports.toggleBan = async (req, res) => {
     });
   } catch (err) {
     logger.error("toggleBan error:", err);
-    sendError(res, 500, "Sunucu hatasÄ±");
+    sendError(res, 500, "Sunucu hatası");
   }
 };
 
@@ -820,16 +820,16 @@ exports.unbanUser = async (req, res) => {
       { new: true },
     ).select("-password");
 
-    if (!updated) return sendError(res, 404, "KullanÄ±cÄ± yok");
+    if (!updated) return sendError(res, 404, "Kullanıcı yok");
 
-    res.json({ message: "Ban kaldÄ±rÄ±ldÄ±", isBanned: false });
+    res.json({ message: "Ban kaldırıldı", isBanned: false });
   } catch (err) {
     logger.error("unbanUser error:", err);
-    sendError(res, 500, "Sunucu hatasÄ±");
+    sendError(res, 500, "Sunucu hatası");
   }
 };
 
-// ADMIN: KullanÄ±cÄ±yÄ± kalÄ±cÄ± olarak sil
+// ADMIN: Kullanıcıyı kalıcı olarak sil
 exports.adminDeleteUser = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -837,7 +837,7 @@ exports.adminDeleteUser = async (req, res) => {
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     // Admin kendini silemesin
@@ -854,17 +854,17 @@ exports.adminDeleteUser = async (req, res) => {
         .json({ success: false, message: "Super admin silinemez" });
     }
 
-    // Admin sadece super_admin tarafÄ±ndan silinebilir
+    // Admin sadece super_admin tarafından silinebilir
     if (user.role === "admin" && req.user.role !== "super_admin") {
       return res.status(403).json({
         success: false,
-        message: "Admin hesaplar sadece super admin tarafÄ±ndan silinebilir",
+        message: "Admin hesaplar sadece super admin tarafından silinebilir",
       });
     }
 
     await User.findByIdAndDelete(userId);
 
-    // Ä°liÅŸkili yayÄ±nlarÄ± da temizle
+    // Ä°lişkili yayınları da temizle
     try {
       await LiveStream.deleteMany({ host: userId });
     } catch (e) {
@@ -879,11 +879,11 @@ exports.adminDeleteUser = async (req, res) => {
 
     res.json({
       success: true,
-      message: `"${user.username}" baÅŸarÄ±yla silindi`,
+      message: `"${user.username}" başarıyla silindi`,
     });
   } catch (err) {
     logger.error("adminDeleteUser error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
@@ -898,16 +898,16 @@ exports.updateCoins = async (req, res) => {
       { new: true, runValidators: false },
     ).select("-password");
 
-    if (!user) return sendError(res, 404, "KullanÄ±cÄ± bulunamadÄ±");
+    if (!user) return sendError(res, 404, "Kullanıcı bulunamadı");
 
     res.json(user);
   } catch (err) {
     logger.error("updateCoins error:", err);
-    sendError(res, 500, "Sunucu hatasÄ±");
+    sendError(res, 500, "Sunucu hatası");
   }
 };
 
-// ADMIN: KullanÄ±cÄ±dan coin Ã§Ä±kar (bakiyesi 0'Ä±n altÄ±na dÃ¼ÅŸmez)
+// ADMIN: Kullanıcıdan coin Ã§ıkar (bakiyesi 0'ın altına dÃ¼şmez)
 exports.removeCoins = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -924,7 +924,7 @@ exports.removeCoins = async (req, res) => {
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     const currentCoins = user.coins || 0;
@@ -951,7 +951,7 @@ exports.removeCoins = async (req, res) => {
           global.io.to(socketId).emit("coins:updated", {
             coins: updated.coins,
             removed: actualRemoved,
-            message: `${actualRemoved} coin hesabÄ±nÄ±zdan Ã§Ä±karÄ±ldÄ±.`,
+            message: `${actualRemoved} coin hesabınızdan Ã§ıkarıldı.`,
           });
         });
       }
@@ -959,17 +959,17 @@ exports.removeCoins = async (req, res) => {
 
     res.json({
       success: true,
-      message: `${actualRemoved} coin Ã§Ä±karÄ±ldÄ±`,
+      message: `${actualRemoved} coin Ã§ıkarıldı`,
       coins: updated.coins,
       username: updated.username,
     });
   } catch (err) {
     logger.error("removeCoins error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
-// ADMIN: KullanÄ±cÄ±ya coin ekle (mevcut bakiyeye ekleme yapar)
+// ADMIN: Kullanıcıya coin ekle (mevcut bakiyeye ekleme yapar)
 exports.addCoins = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -986,7 +986,7 @@ exports.addCoins = async (req, res) => {
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     const updated = await User.findByIdAndUpdate(
@@ -999,7 +999,7 @@ exports.addCoins = async (req, res) => {
       `ğŸ’° Admin ${req.user.id} â†’ ${user.username}'a ${amount} coin ekledi (yeni: ${updated.coins})`,
     );
 
-    // Socket ile kullanÄ±cÄ±ya anlÄ±k bildirim gÃ¶nder
+    // Socket ile kullanıcıya anlık bildirim gÃ¶nder
     if (global.io && global.userSockets) {
       const targetKey = String(userId);
       const targetSockets = global.userSockets.get(targetKey);
@@ -1008,7 +1008,7 @@ exports.addCoins = async (req, res) => {
           global.io.to(socketId).emit("coins:updated", {
             coins: updated.coins,
             added: amount,
-            message: `${amount} coin hesabÄ±nÄ±za eklendi!`,
+            message: `${amount} coin hesabınıza eklendi!`,
           });
         });
         logger.info(
@@ -1019,13 +1019,13 @@ exports.addCoins = async (req, res) => {
 
     res.json({
       success: true,
-      message: `${amount} coin baÅŸarÄ±yla eklendi`,
+      message: `${amount} coin başarıyla eklendi`,
       coins: updated.coins,
       username: updated.username,
     });
   } catch (err) {
     logger.error("addCoins error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
@@ -1043,7 +1043,7 @@ exports.getMyProfile = async (req, res) => {
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     res.json({
@@ -1084,7 +1084,7 @@ exports.getMyProfile = async (req, res) => {
     });
   } catch (err) {
     logger.error("getMyProfile error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
@@ -1112,7 +1112,7 @@ exports.updateMyProfile = async (req, res) => {
       if (existingUser) {
         return res.status(400).json({
           success: false,
-          message: "Bu kullanÄ±cÄ± adÄ± zaten kullanÄ±mda",
+          message: "Bu kullanıcı adı zaten kullanımda",
         });
       }
     }
@@ -1138,10 +1138,10 @@ exports.updateMyProfile = async (req, res) => {
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
-    logger.info(`âœ… Profil gÃ¼ncellendi: ${user.username}`);
+    logger.info(`✅ Profil gÃ¼ncellendi: ${user.username}`);
 
     res.json({
       success: true,
@@ -1162,7 +1162,7 @@ exports.updateMyProfile = async (req, res) => {
     });
   } catch (err) {
     logger.error("updateMyProfile error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
@@ -1187,7 +1187,7 @@ exports.uploadAvatar = async (req, res) => {
 
     const avatarUrl = uploaded.url;
 
-    // Eski avatarÄ± sil (Cloudinary publicId varsa)
+    // Eski avatarı sil (Cloudinary publicId varsa)
     const oldUser = await User.findById(userId).select(
       "profileImage profileImagePublicId",
     );
@@ -1304,17 +1304,17 @@ exports.getMyStats = async (req, res) => {
     if (!stats) {
       return res
         .status(404)
-        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     res.json({ success: true, stats });
   } catch (err) {
     logger.error("getMyStats error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
-// GET /api/users/:userId/stats - BaÅŸka bir kullanÄ±cÄ±nÄ±n istatistiklerini getir
+// GET /api/users/:userId/stats - Başka bir kullanıcının istatistiklerini getir
 exports.getUserStats = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -1334,7 +1334,7 @@ exports.getUserStats = async (req, res) => {
     if (!user || isPanelUser(user)) {
       return res
         .status(404)
-        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     const stats = await buildUserStats(user._id, user);
@@ -1342,11 +1342,11 @@ exports.getUserStats = async (req, res) => {
     res.json({ success: true, stats });
   } catch (err) {
     logger.error("getUserStats error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
-// PUT /api/users/me/settings - AyarlarÄ± gÃ¼ncelle
+// PUT /api/users/me/settings - Ayarları gÃ¼ncelle
 exports.updateSettings = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -1367,7 +1367,7 @@ exports.updateSettings = async (req, res) => {
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     logger.info(`âš™ï¸ Ayarlar gÃ¼ncellendi: ${userId}`);
@@ -1379,11 +1379,11 @@ exports.updateSettings = async (req, res) => {
     });
   } catch (err) {
     logger.error("updateSettings error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
-// POST /api/users/me/freeze - HesabÄ± dondur
+// POST /api/users/me/freeze - Hesabı dondur
 exports.freezeAccount = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -1397,19 +1397,19 @@ exports.freezeAccount = async (req, res) => {
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     logger.info(`â„ Hesap donduruldu: ${user.username}`);
 
-    res.json({ success: true, message: "HesabÄ±nÄ±z donduruldu" });
+    res.json({ success: true, message: "Hesabınız donduruldu" });
   } catch (err) {
     logger.error("freezeAccount error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
-// DELETE /api/users/me - HesabÄ± sil
+// DELETE /api/users/me - Hesabı sil
 exports.deleteAccount = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -1480,7 +1480,7 @@ exports.deleteAccount = async (req, res) => {
   }
 };
 
-// GET /api/users/:userId - BaÅŸka bir kullanÄ±cÄ±nÄ±n profilini getir
+// GET /api/users/:userId - Başka bir kullanıcının profilini getir
 exports.getUserById = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -1553,7 +1553,7 @@ exports.getUserById = async (req, res) => {
     });
   } catch (err) {
     logger.error("getUserById error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
@@ -1579,7 +1579,7 @@ exports.followUser = async (req, res) => {
     if (!userToFollow) {
       return res
         .status(404)
-        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
     // Zaten takip ediyor mu kontrol et
@@ -1595,7 +1595,7 @@ exports.followUser = async (req, res) => {
       });
     }
 
-    // Follow kaydÄ± oluÅŸtur
+    // Follow kaydı oluştur
     try {
       await Follow.create({ follower: currentUserId, following: userId });
     } catch (createErr) {
@@ -1607,7 +1607,7 @@ exports.followUser = async (req, res) => {
         });
 
         if (already) {
-          // Ä°stek yarÄ±ÅŸÄ±nda baÅŸka bir worker/istek kaydÄ± oluÅŸturduysa idempotent baÅŸarÄ± dÃ¶n
+          // Ä°stek yarışında başka bir worker/istek kaydı oluşturduysa idempotent başarı dÃ¶n
           return res.json({
             success: true,
             message: "Zaten takip ediyorsunuz",
@@ -1615,7 +1615,7 @@ exports.followUser = async (req, res) => {
           });
         }
 
-        // 11000 alÄ±ndÄ± ama kayÄ±t bulunamadÄ±ysa gerÃ§ek index/veri problemi olabilir
+        // 11000 alındı ama kayıt bulunamadıysa gerÃ§ek index/veri problemi olabilir
         throw createErr;
       } else {
         throw createErr;
@@ -1636,16 +1636,16 @@ exports.followUser = async (req, res) => {
       );
     }
 
-    // TakipÃ§iye bildirim gÃ¶nder
+    // Takipçiye bildirim gÃ¶nder
     const currentUser = await User.findById(currentUserId).select(
       "username name profileImage",
     );
     createNotification({
       recipientId: userId,
       type: "follow",
-      title: "Yeni TakipÃ§i! ğŸ‘‹",
+      title: "Yeni Takipçi! ğŸ‘‹",
       titleEn: "New Follower! ğŸ‘‹",
-      body: `${currentUser?.name || currentUser?.username || "Birisi"} seni takip etmeye baÅŸladÄ±`,
+      body: `${currentUser?.name || currentUser?.username || "Birisi"} seni takip etmeye başladı`,
       bodyEn: `${currentUser?.name || currentUser?.username || "Someone"} started following you`,
       senderId: currentUserId,
       relatedId: currentUserId,
@@ -1653,16 +1653,16 @@ exports.followUser = async (req, res) => {
       imageUrl: currentUser?.profileImage,
     }).catch(() => {});
 
-    logger.info(`âœ… ${currentUserId} -> ${userId} takip etti`);
+    logger.info(`✅ ${currentUserId} -> ${userId} takip etti`);
 
     res.json({ success: true, message: "Takip edildi", isFollowing: true });
   } catch (err) {
     logger.error("followUser error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
-// DELETE /api/users/:userId/follow - Takibi bÄ±rak
+// DELETE /api/users/:userId/follow - Takibi bırak
 exports.unfollowUser = async (req, res) => {
   try {
     const currentUserId = req.user.id;
@@ -1671,11 +1671,11 @@ exports.unfollowUser = async (req, res) => {
     if (currentUserId === userId) {
       return res.status(400).json({
         success: false,
-        message: "Kendinizi takipten Ã§Ä±karamazsÄ±nÄ±z",
+        message: "Kendinizi takipten Ã§ıkaramazsınız",
       });
     }
 
-    // Follow kaydÄ±nÄ± sil
+    // Follow kaydını sil
     const deleted = await Follow.findOneAndDelete({
       follower: currentUserId,
       following: userId,
@@ -1697,20 +1697,20 @@ exports.unfollowUser = async (req, res) => {
       );
     }
 
-    logger.info(`âœ… ${currentUserId} -> ${userId} takipten Ã§Ä±ktÄ±`);
+    logger.info(`✅ ${currentUserId} -> ${userId} takipten Ã§ıktı`);
 
     res.json({
       success: true,
-      message: "Takipten Ã§Ä±kÄ±ldÄ±",
+      message: "Takipten Ã§ıkıldı",
       isFollowing: false,
     });
   } catch (err) {
     logger.error("unfollowUser error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
-// GET /api/users/me/followers - TakipÃ§ileri getir
+// GET /api/users/me/followers - Takipçileri getir
 exports.getMyFollowers = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -1751,7 +1751,7 @@ exports.getMyFollowers = async (req, res) => {
     res.json({ success: true, users });
   } catch (err) {
     logger.error("getMyFollowers error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
@@ -1796,7 +1796,7 @@ exports.getMyFollowing = async (req, res) => {
     res.json({ success: true, users });
   } catch (err) {
     logger.error("getMyFollowing error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
@@ -1811,7 +1811,7 @@ exports.visitProfile = async (req, res) => {
       return res.json({ success: true, message: "Kendi profiliniz" });
     }
 
-    // Upsert: varsa gÃ¼ncelle, yoksa oluÅŸtur
+    // Upsert: varsa gÃ¼ncelle, yoksa oluştur
     await Visitor.findOneAndUpdate(
       { profileOwner: userId, visitor: visitorId },
       { $set: { lastVisitAt: new Date() }, $inc: { visitCount: 1 } },
@@ -1821,11 +1821,11 @@ exports.visitProfile = async (req, res) => {
     res.json({ success: true, message: "Ziyaret kaydedildi" });
   } catch (err) {
     logger.error("visitProfile error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
-// GET /api/users/me/visitors - Son ziyaretÃ§ileri getir
+// GET /api/users/me/visitors - Son ziyaretçileri getir
 exports.getMyVisitors = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -1871,7 +1871,7 @@ exports.getMyVisitors = async (req, res) => {
     res.json({ success: true, visitors: result });
   } catch (err) {
     logger.error("getMyVisitors error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
@@ -1888,7 +1888,7 @@ exports.isFollowing = async (req, res) => {
     res.json({ success: true, isFollowing: !!existing });
   } catch (err) {
     logger.error("isFollowing error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
@@ -1899,7 +1899,7 @@ exports.updateVisibility = async (req, res) => {
     const { userId } = req.params;
     const { isHidden } = req.body;
 
-    // Sadece kendi visibility'sini deÄŸiÅŸtirebilir
+    // Sadece kendi visibility'sini deÄŸiştirebilir
     if (currentUserId !== userId) {
       return res.status(403).json({ success: false, message: "Yetkiniz yok" });
     }
@@ -1913,10 +1913,10 @@ exports.updateVisibility = async (req, res) => {
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
-    logger.info(`âœ… ${userId} visibility gÃ¼ncellendi: ${!isHidden}`);
+    logger.info(`✅ ${userId} visibility gÃ¼ncellendi: ${!isHidden}`);
 
     res.json({
       success: true,
@@ -1925,16 +1925,16 @@ exports.updateVisibility = async (req, res) => {
     });
   } catch (err) {
     logger.error("updateVisibility error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
-// GET /api/users/vip - VIP kullanÄ±cÄ±larÄ± getir
+// GET /api/users/vip - VIP kullanıcıları getir
 exports.getVipUsers = async (req, res) => {
   try {
     const currentUserId = req.user?.id ? String(req.user.id) : null;
 
-    // VIP = level >= 5 olan kullanÄ±cÄ±lar
+    // VIP = level >= 5 olan kullanıcılar
     const query = buildAppUserQuery({
       isBanned: { $ne: true },
       isActive: { $ne: false },
@@ -1974,7 +1974,7 @@ exports.getVipUsers = async (req, res) => {
       return formatUser(user, presenceData);
     });
 
-    logger.info(`âœ… getVipUsers: ${formattedUsers.length} users`);
+    logger.info(`✅ getVipUsers: ${formattedUsers.length} users`);
     res.json({
       success: true,
       users: formattedUsers,
@@ -1982,18 +1982,18 @@ exports.getVipUsers = async (req, res) => {
     });
   } catch (err) {
     logger.error("getVipUsers error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
-// POST /api/users/:userId/start-broadcast - YayÄ±n baÅŸlat
+// POST /api/users/:userId/start-broadcast - Yayın başlat
 exports.startBroadcast = async (req, res) => {
   try {
     const currentUserId = req.user.id;
     const { userId } = req.params;
     const { title, category } = req.body;
 
-    // Sadece kendisi yayÄ±n baÅŸlatabilir
+    // Sadece kendisi yayın başlatabilir
     if (currentUserId !== userId) {
       return res.status(403).json({ success: false, message: "Yetkiniz yok" });
     }
@@ -2002,29 +2002,29 @@ exports.startBroadcast = async (req, res) => {
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
-    // Sadece kadÄ±n kullanÄ±cÄ±lar yayÄ±n yapabilir
+    // Sadece kadın kullanıcılar yayın yapabilir
     if (user.gender !== "female") {
       return res.status(403).json({
         success: false,
-        message: "Sadece kadÄ±n kullanÄ±cÄ±lar yayÄ±n yapabilir",
+        message: "Sadece kadın kullanıcılar yayın yapabilir",
       });
     }
 
-    // âœ… Presence is socket-driven: require an active presence record
+    // ✅ Presence is socket-driven: require an active presence record
     // to prevent marking offline users as LIVE in the database.
     const currentPresence = await presenceService.getPresence(userId);
     if (!currentPresence?.online) {
       return res.status(409).json({
         success: false,
         message:
-          "YayÄ±n baÅŸlatmak iÃ§in online (socket baÄŸlÄ±) olmalÄ±sÄ±nÄ±z",
+          "Yayın başlatmak için online (socket baÄŸlı) olmalısınız",
       });
     }
 
-    // User'Ä± live olarak iÅŸaretle
+    // User'ı live olarak işaretle
     await User.findByIdAndUpdate(userId, {
       $set: {
         isLive: true,
@@ -2035,31 +2035,31 @@ exports.startBroadcast = async (req, res) => {
     // Presence service'i gÃ¼ncelle
     await presenceService.setLive(userId, true);
 
-    logger.info(`ğŸ¬ ${user.username} yayÄ±n baÅŸlattÄ±: ${title}`);
+    logger.info(`ğŸ¬ ${user.username} yayın başlattı: ${title}`);
 
     res.json({
       success: true,
-      message: "YayÄ±n baÅŸlatÄ±ldÄ±",
+      message: "Yayın başlatıldı",
       broadcast: {
         userId: userId,
-        title: title || "CanlÄ± YayÄ±n",
+        title: title || "Canlı Yayın",
         category: category || "Genel",
         startedAt: new Date(),
       },
     });
   } catch (err) {
     logger.error("startBroadcast error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
-// POST /api/users/:userId/end-broadcast - YayÄ±n sonlandÄ±r
+// POST /api/users/:userId/end-broadcast - Yayın sonlandır
 exports.endBroadcast = async (req, res) => {
   try {
     const currentUserId = req.user.id;
     const { userId } = req.params;
 
-    // Sadece kendisi yayÄ±nÄ± sonlandÄ±rabilir
+    // Sadece kendisi yayını sonlandırabilir
     if (currentUserId !== userId) {
       return res.status(403).json({ success: false, message: "Yetkiniz yok" });
     }
@@ -2068,10 +2068,10 @@ exports.endBroadcast = async (req, res) => {
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: "KullanÄ±cÄ± bulunamadÄ±" });
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
-    // User'Ä± offline olarak iÅŸaretle (yayÄ±n bitti = online)
+    // User'ı offline olarak işaretle (yayın bitti = online)
     await User.findByIdAndUpdate(userId, {
       $set: {
         isLive: false,
@@ -2082,19 +2082,19 @@ exports.endBroadcast = async (req, res) => {
     // Presence service'i gÃ¼ncelle
     await presenceService.setLive(userId, false);
 
-    logger.info(`ğŸ”´ ${user.username} yayÄ±nÄ± sonlandÄ±rdÄ±`);
+    logger.info(`ğŸ”´ ${user.username} yayını sonlandırdı`);
 
     res.json({
       success: true,
-      message: "YayÄ±n sonlandÄ±rÄ±ldÄ±",
+      message: "Yayın sonlandırıldı",
     });
   } catch (err) {
     logger.error("endBroadcast error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
-// PUT /api/users/:userId/status - KullanÄ±cÄ± durumu gÃ¼ncelle
+// PUT /api/users/:userId/status - Kullanıcı durumu gÃ¼ncelle
 exports.updateUserStatus = async (req, res) => {
   try {
     const currentUserId = req.user.id;
@@ -2122,8 +2122,8 @@ exports.updateUserStatus = async (req, res) => {
 
     // NOT: Presence service'i HTTP'den gÃ¼ncellemiyoruz!
     // GerÃ§ek online/offline durumu socket connection'dan gelir.
-    // Bu endpoint sadece DB'yi gÃ¼nceller (Ã¶rn: visibility ayarlarÄ± iÃ§in).
-    // Socket baÄŸlantÄ±sÄ± olmadan kullanÄ±cÄ± zaten gerÃ§ekten online olamaz.
+    // Bu endpoint sadece DB'yi gÃ¼nceller (Ã¶rn: visibility ayarları için).
+    // Socket baÄŸlantısı olmadan kullanıcı zaten gerÃ§ekten online olamaz.
 
     res.json({
       success: true,
@@ -2131,7 +2131,7 @@ exports.updateUserStatus = async (req, res) => {
     });
   } catch (err) {
     logger.error("updateUserStatus error:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatasÄ±" });
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
   }
 };
 
