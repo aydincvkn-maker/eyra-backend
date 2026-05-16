@@ -56,13 +56,13 @@ exports.getVipPackages = async (req, res) => {
     logger.error("getVipPackages error:", err);
     res.status(500).json({
       success: false,
-      message: "Paketler al─▒namad─▒",
-      error: "Paketler al─▒namad─▒",
+      message: "Paketler alınamadı",
+      error: "Paketler alınamadı",
     });
   }
 };
 
-// VIP sat─▒n al (coin ile)
+// VIP satın al (coin ile)
 exports.purchaseVip = async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
@@ -71,8 +71,8 @@ exports.purchaseVip = async (req, res) => {
     if (!["silver", "gold", "diamond"].includes(tier)) {
       return res.status(400).json({
       success: false,
-      message: "Ge├ğersiz VIP tipi",
-      error: "Ge├ğersiz VIP tipi",
+      message: "Geçersiz VIP tipi",
+      error: "Geçersiz VIP tipi",
     });
     }
 
@@ -95,8 +95,8 @@ exports.purchaseVip = async (req, res) => {
     if (!user) {
       return res.status(404).json({
       success: false,
-      message: "Kullan─▒c─▒ bulunamad─▒",
-      error: "Kullan─▒c─▒ bulunamad─▒",
+      message: "Kullanıcı bulunamadı",
+      error: "Kullanıcı bulunamadı",
     });
     }
 
@@ -163,22 +163,22 @@ exports.purchaseVip = async (req, res) => {
       { new: true, projection: { coins: 1, isVip: 1, vipTier: 1, vipExpiresAt: 1 } }
     );
     if (!updatedUser) {
-      // Coin sonradan d├╝┼şm├╝┼ş olabilir (e┼ş zamanl─▒ i┼şlem)
+      // Coin sonradan d├╝şm├╝ş olabilir (eş zamanlı işlem)
       return res.status(400).json({
         success: false,
-        message: "Yetersiz coin (e┼ş zamanl─▒ i┼şlem)",
-        error: "Yetersiz coin (e┼ş zamanl─▒ i┼şlem)",
+        message: "Yetersiz coin (eş zamanlı işlem)",
+        error: "Yetersiz coin (eş zamanlı işlem)",
         required: price,
       });
     }
 
-    // Transaction kayd─▒
+    // Transaction kaydı
     await Transaction.create({
       user: userId,
       type: "vip_purchase",
       amount: -price,
       balanceAfter: updatedUser.coins,
-      description: `${tier.charAt(0).toUpperCase() + tier.slice(1)} VIP sat─▒n al─▒nd─▒ (${days} g├╝n)`,
+      description: `${tier.charAt(0).toUpperCase() + tier.slice(1)} VIP satın alındı (${days} g├╝n)`,
       status: "completed",
     });
 
@@ -212,8 +212,8 @@ exports.purchaseVip = async (req, res) => {
     logger.error("purchaseVip error:", err);
     res.status(500).json({
       success: false,
-      message: "VIP sat─▒n al─▒namad─▒",
-      error: "VIP sat─▒n al─▒namad─▒",
+      message: "VIP satın alınamadı",
+      error: "VIP satın alınamadı",
     });
   }
 };
@@ -227,8 +227,8 @@ exports.getVipStatus = async (req, res) => {
     if (!user) {
       return res.status(404).json({
       success: false,
-      message: "Kullan─▒c─▒ bulunamad─▒",
-      error: "Kullan─▒c─▒ bulunamad─▒",
+      message: "Kullanıcı bulunamadı",
+      error: "Kullanıcı bulunamadı",
     });
     }
 
@@ -252,8 +252,8 @@ exports.getVipStatus = async (req, res) => {
     logger.error("getVipStatus error:", err);
     res.status(500).json({
       success: false,
-      message: "VIP durumu al─▒namad─▒",
-      error: "VIP durumu al─▒namad─▒",
+      message: "VIP durumu alınamadı",
+      error: "VIP durumu alınamadı",
     });
   }
 };
@@ -291,13 +291,13 @@ exports.adminGetVipStats = async (req, res) => {
     logger.error("adminGetVipStats error:", err);
     res.status(500).json({
       success: false,
-      message: "─░statistikler al─▒namad─▒",
-      error: "─░statistikler al─▒namad─▒",
+      message: "İstatistikler alınamadı",
+      error: "İstatistikler alınamadı",
     });
   }
 };
 
-// Admin: VIP ver/kald─▒r
+// Admin: VIP ver/kaldır
 exports.adminSetVip = async (req, res) => {
   try {
     const { userId, tier, days } = req.body;
@@ -314,26 +314,26 @@ exports.adminSetVip = async (req, res) => {
     if (!user) {
       return res.status(404).json({
       success: false,
-      message: "Kullan─▒c─▒ bulunamad─▒",
-      error: "Kullan─▒c─▒ bulunamad─▒",
+      message: "Kullanıcı bulunamadı",
+      error: "Kullanıcı bulunamadı",
     });
     }
 
     if (tier === "none" || !tier) {
-      // VIP kald─▒r
+      // VIP kaldır
       user.isVip = false;
       user.vipTier = "none";
       user.vipExpiresAt = null;
       await user.save();
 
-      return res.json({ success: true, message: "VIP kald─▒r─▒ld─▒" });
+      return res.json({ success: true, message: "VIP kaldırıldı" });
     }
 
     if (!["silver", "gold", "diamond"].includes(tier)) {
       return res.status(400).json({
       success: false,
-      message: "Ge├ğersiz tier",
-      error: "Ge├ğersiz tier",
+      message: "Geçersiz tier",
+      error: "Geçersiz tier",
     });
     }
 
@@ -370,8 +370,8 @@ exports.adminSetVip = async (req, res) => {
     logger.error("adminSetVip error:", err);
     res.status(500).json({
       success: false,
-      message: "VIP ayarlanamad─▒",
-      error: "VIP ayarlanamad─▒",
+      message: "VIP ayarlanamadı",
+      error: "VIP ayarlanamadı",
     });
   }
 };
