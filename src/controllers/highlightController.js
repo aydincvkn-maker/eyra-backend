@@ -97,8 +97,12 @@ exports.deleteHighlight = async (req, res) => {
     const highlight = user.highlights[index];
     // Best-effort Cloudinary cleanup
     if (highlight?.url) {
-      storageService.destroyByUrl &&
-        storageService.destroyByUrl(highlight.url).catch(() => {});
+      const publicId = storageService.extractPublicId(highlight.url);
+      if (publicId) {
+        storageService
+          .destroy(publicId, highlight.type === "video" ? "video" : "image")
+          .catch(() => {});
+      }
     }
 
     user.highlights.splice(index, 1);
