@@ -413,10 +413,12 @@ exports.startLive = async (req, res) => {
             relatedId: stream._id,
             relatedType: "live",
             imageUrl: host.streamCoverImage || host.profileImage,
-          }).catch(() => {})
+          }).catch(() => {}),
         );
         await Promise.all(notifPromises);
-        logger.info(`🔔 ${followers.length} takipçiye yayın bildirimi gönderildi`);
+        logger.info(
+          `🔔 ${followers.length} takipçiye yayın bildirimi gönderildi`,
+        );
       } catch (e) {
         logger.warn("⚠️ Follower live notification failed:", e.message);
       }
