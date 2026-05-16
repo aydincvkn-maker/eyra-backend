@@ -49,7 +49,8 @@ router.get("/user-counts", async (req, res) => {
       visibleForFemaleViewer: notBanned - 1,
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message, error: err.message });
+    logger.error('user-counts error:', err);
+    res.status(500).json({ success: false, message: 'Sunucu hatası' });
   }
 });
 
@@ -86,7 +87,8 @@ router.get("/presence", async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message, error: err.message });
+    logger.error('presence error:', err);
+    res.status(500).json({ success: false, message: 'Sunucu hatası' });
   }
 });
 
@@ -116,7 +118,8 @@ router.delete("/delete-fake-users", async (req, res) => {
       users: remainingUsers,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message, error: error.message });
+    logger.error('delete-fake-users error:', error);
+    res.status(500).json({ success: false, message: 'Sunucu hatası' });
   }
 });
 
@@ -131,7 +134,8 @@ router.get("/list-all-users", async (req, res) => {
       users: users,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message, error: error.message });
+    logger.error('list-all-users error:', error);
+    res.status(500).json({ success: false, message: 'Sunucu hatası' });
   }
 });
 
@@ -164,7 +168,8 @@ router.get("/check-online-status", async (req, res) => {
       note: "DB ve Memory arasında uyumsuzluk varsa, socket'ler bağlantısız demektir",
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message, error: error.message });
+    logger.error('check-online-status error:', error);
+    res.status(500).json({ success: false, message: 'Sunucu hatası' });
   }
 });
 
@@ -189,7 +194,8 @@ router.post("/reset-all-offline", async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message, error: error.message });
+    logger.error('reset-all-offline error:', error);
+    res.status(500).json({ success: false, message: 'Sunucu hatası' });
   }
 });
 
@@ -221,7 +227,8 @@ router.post("/update-user-gender", async (req, res) => {
       user,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message, error: error.message });
+    logger.error('update-user-gender error:', error);
+    res.status(500).json({ success: false, message: 'Sunucu hatası' });
   }
 });
 
@@ -241,7 +248,8 @@ router.delete("/delete-guest-users", async (req, res) => {
       users: remaining,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message, error: error.message });
+    logger.error('delete-guest-users error:', error);
+    res.status(500).json({ success: false, message: 'Sunucu hatası' });
   }
 });
 
