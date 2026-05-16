@@ -47,15 +47,24 @@ exports.addHighlight = async (req, res) => {
     const mediaType = isVideo ? "video" : "photo";
 
     // Upload to Cloudinary
-    const uploadResult = await storageService.uploadHighlight(
-      file.path || file.buffer,
-      { resourceType: isVideo ? "video" : "image", folder: "highlights" }
+    const uploadResult = await storageService.uploadBuffer(
+      file.buffer || require("fs").readFileSync(file.path),
+      {
+        folder: "highlights",
+        resourceType: isVideo ? "video" : "image",
+        ...(isVideo && { format: "mp4", transformation: [{ quality: "auto" }] }),
+      }
     );
 
     const newHighlight = {
-      url: uploadResult.url || uploadResult.secure_url,
+      url: uploadResult.secure_url || uploadResult.url,
       type: mediaType,
-      thumbnailUrl: isVideo ? (uploadResult.thumbnailUrl || null) : null,
+      thumbnailUrl: isVideo
+        ? (uploadResult.secure_url || uploadResult.url || "").replace(
+            "/upload/",
+            "/upload/so_0/"
+          )
+        : null,
       createdAt: new Date(),
     };
 
