@@ -261,7 +261,9 @@ exports.getUsers = async (req, res) => {
     // Profil fotoğrafı olmayan (gizli) kadın kullanıcıları listeden çıkar
     query["settings.profileVisibility"] = { $ne: false };
     // Sözleşme imzalamayan kadın kullanıcıları gizle
-    query["$nor"] = [{ gender: "female", "broadcasterContract.signed": { $ne: true } }];
+    query["$nor"] = [
+      { gender: "female", "broadcasterContract.signed": { $ne: true } },
+    ];
 
     // ✅ Kullanıcı listesi getir (limit zorunlu — sınırsız sorgu önlenir)
     const users = await User.find(query)
@@ -718,7 +720,9 @@ exports.getFemaleUsers = async (req, res) => {
     // Profil fotoğrafı olmayan (gizli) kadın kullanıcıları listeden çıkar
     baseQuery["settings.profileVisibility"] = { $ne: false };
     // Sözleşme imzalamayan kadın kullanıcıları gizle
-    baseQuery["$nor"] = [{ gender: "female", "broadcasterContract.signed": { $ne: true } }];
+    baseQuery["$nor"] = [
+      { gender: "female", "broadcasterContract.signed": { $ne: true } },
+    ];
 
     const users = await User.find(baseQuery)
       .select("-password -refreshToken")
@@ -1284,7 +1288,8 @@ exports.deleteAvatar = async (req, res) => {
         title: "Profilin gizlendi",
         titleEn: "Your profile is now hidden",
         body: "Profil fotografin olmadigi icin erkek kullanicilar seni goremez. Gorunur olmak icin yeni bir fotograf yukle.",
-        bodyEn: "Male users cannot see your profile without a photo. Upload a new photo to become visible.",
+        bodyEn:
+          "Male users cannot see your profile without a photo. Upload a new photo to become visible.",
         actionData: {},
       }).catch(() => {});
     }
@@ -2025,8 +2030,7 @@ exports.startBroadcast = async (req, res) => {
     if (!currentPresence?.online) {
       return res.status(409).json({
         success: false,
-        message:
-          "Yayın başlatmak için online (socket baÄŸlı) olmalısınız",
+        message: "Yayın başlatmak için online (socket baÄŸlı) olmalısınız",
       });
     }
 
