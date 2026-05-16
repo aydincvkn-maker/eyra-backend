@@ -163,7 +163,7 @@ exports.purchaseVip = async (req, res) => {
       { new: true, projection: { coins: 1, isVip: 1, vipTier: 1, vipExpiresAt: 1 } }
     );
     if (!updatedUser) {
-      // Coin sonradan d├╝şm├╝ş olabilir (eş zamanlı işlem)
+      // Coin sonradan düşmüş olabilir (eş zamanlı işlem)
       return res.status(400).json({
         success: false,
         message: "Yetersiz coin (eş zamanlı işlem)",
@@ -178,7 +178,7 @@ exports.purchaseVip = async (req, res) => {
       type: "vip_purchase",
       amount: -price,
       balanceAfter: updatedUser.coins,
-      description: `${tier.charAt(0).toUpperCase() + tier.slice(1)} VIP satın alındı (${days} g├╝n)`,
+      description: `${tier.charAt(0).toUpperCase() + tier.slice(1)} VIP satın alındı (${days} gün)`,
       status: "completed",
     });
 
