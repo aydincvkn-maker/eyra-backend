@@ -18,12 +18,22 @@ const hashValue = (value) =>
   crypto.createHash("sha256").update(String(value)).digest("hex").slice(0, 12);
 
 const getClientIp = (req) => {
-  const forwardedFor = req.headers["x-forwarded-for"];
-  if (typeof forwardedFor === "string" && forwardedFor.trim()) {
-    return forwardedFor.split(",")[0].trim();
+  // ⚠️ X-Forwarded-For is only trusted when the app is behind a known reverse
+  // proxy (Render, Heroku, nginx). We take the LAST IP added by the trusted
+  // proxy (rightmost non-private entry) to prevent header spoofing.
+  // If the request has already had req.ip set by Express trust proxy, use that.
+  if (req.ip && req.ip !== "::1" && req.ip !== "127.0.0.1") {
+    return req.ip;
   }
 
-  return req.ip || req.connection?.remoteAddress || "unknown";
+  const forwardedFor = req.headers["x-forwarded-for"];
+  if (typeof forwardedFor === "string" && forwardedFor.trim()) {
+    // Take the last (rightmost) IP — added by the trusted proxy, not the client.
+    const ips = forwardedFor.split(",").map((s) => s.trim()).filter(Boolean);
+    if (ips.length > 0) return ips[ips.length - 1];
+  }
+
+  return req.connection?.remoteAddress || "unknown";
 };
 
 /**
