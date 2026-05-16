@@ -101,7 +101,7 @@ exports.uploadProfilePhoto = async (req, res) => {
     logger.error("uploadProfilePhoto error:", err);
     return res.status(500).json({
       success: false,
-      message: err.message || "Profil fotoğrafı yüklemesi başarısız",
+      message: "Profil fotoğrafı yüklemesi başarısız",
     });
   }
 };
@@ -225,7 +225,7 @@ exports.uploadFacePhotos = async (req, res) => {
     logger.error("uploadFacePhotos error:", err);
     return res.status(500).json({
       success: false,
-      message: err.message || "Yüz fotoğrafları yüklemesi başarısız",
+      message: "Yüz fotoğrafları yüklemesi başarısız",
     });
   }
 };
