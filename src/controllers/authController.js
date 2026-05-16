@@ -850,7 +850,7 @@ exports.logout = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Ô£à Veritaban─▒nda offline olarak i┼şaretle
+    // ✅ Veritabanında offline + tokenVersion increment (eski token'ları geçersiz kıl)
     try {
       await User.updateOne(
         { _id: userId },
@@ -862,14 +862,15 @@ exports.logout = async (req, res) => {
             lastOfflineAt: new Date(),
             lastSeen: new Date(),
           },
+          $inc: { tokenVersion: 1 },
         },
       );
     } catch (e) {
-      logger.warn("ÔÜá´©Å Logout: isOnline update ba┼şar─▒s─▒z:", e.message);
+      logger.warn("⚠️ Logout: isOnline update başarısız:", e.message);
       // Non-fatal: devam et
     }
 
-    // Ô£à CORRECT ORDER: First mark offline in presence, then disconnect socket
+    // ✅ CORRECT ORDER: First mark offline in presence, then disconnect socket
     // This prevents race condition where socket disconnect triggers presence offline
     // with different socketId
 
