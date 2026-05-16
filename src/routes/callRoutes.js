@@ -319,7 +319,10 @@ router.post("/end", auth, async (req, res) => {
       const { callerId, targetUserId } = callInfo;
 
       // Verify requester is a participant in this call
-      if (String(callerId) !== String(userId) && String(targetUserId) !== String(userId)) {
+      if (
+        String(callerId) !== String(userId) &&
+        String(targetUserId) !== String(userId)
+      ) {
         return sendError(res, 403, "Bu aramaya yetkili değilsiniz");
       }
 
@@ -387,7 +390,10 @@ router.post("/reject", auth, async (req, res) => {
       const { callerId, targetUserId } = callInfo;
 
       // Verify requester is a participant in this call
-      if (String(callerId) !== String(userId) && String(targetUserId) !== String(userId)) {
+      if (
+        String(callerId) !== String(userId) &&
+        String(targetUserId) !== String(userId)
+      ) {
         return sendError(res, 403, "Bu aramaya yetkili değilsiniz");
       }
 
