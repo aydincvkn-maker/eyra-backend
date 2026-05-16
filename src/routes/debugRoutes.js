@@ -9,6 +9,7 @@ const { PORT, NODE_ENV } = require("../config/env");
 const presenceService = require("../services/presenceService");
 const authMiddleware = require("../middleware/auth");
 const adminMiddleware = require("../middleware/admin");
+const logger = require("../utils/logger");
 
 // Production'da debug route'ları devre dışı bırak (health check hariç)
 const blockInProduction = (req, res, next) => {
