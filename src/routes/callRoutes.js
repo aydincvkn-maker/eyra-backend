@@ -590,10 +590,18 @@ router.get("/admin/history", auth, admin, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const query = {};
-    if (req.query.status && ["completed", "missed", "rejected", "cancelled"].includes(req.query.status)) {
+    if (
+      req.query.status &&
+      ["completed", "missed", "rejected", "cancelled"].includes(
+        req.query.status,
+      )
+    ) {
       query.status = req.query.status;
     }
-    if (req.query.type && ["video", "audio", "paid_video"].includes(req.query.type)) {
+    if (
+      req.query.type &&
+      ["video", "audio", "paid_video"].includes(req.query.type)
+    ) {
       query.type = req.query.type;
     }
     if (req.query.userId) {
