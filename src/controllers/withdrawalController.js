@@ -1008,7 +1008,7 @@ exports.adminListWithdrawals = async (req, res) => {
     const withdrawals = await Withdrawal.find(query)
       .populate(
         "user",
-        "username name profileImage email iban bankName accountHolder coins totalEarnings",
+        "username name profileImage email phone age iban bankName accountHolder coins totalEarnings preferredWithdrawMethod broadcasterOnboarding",
       )
       .populate("reviewedBy", "username name")
       .sort({ createdAt: -1 })
