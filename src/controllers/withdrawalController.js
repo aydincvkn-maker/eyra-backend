@@ -462,6 +462,30 @@ exports.getBroadcasterInfo = async (req, res) => {
 exports.updateHostOnboarding = async (req, res) => {
   try {
     const userId = req.user.id;
+    const user = await User.findById(userId).select(
+      "gender isVerified verificationStatus",
+    );
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
+    }
+
+    if (user.gender !== "female") {
+      return res.status(403).json({
+        success: false,
+        message: "Bu özellik yalnızca kadın yayıncılar için geçerlidir",
+      });
+    }
+
+    if (!(user.isVerified === true && user.verificationStatus === "approved")) {
+      return res.status(400).json({
+        success: false,
+        message: "Önce profil doğrulamasını tamamlayın",
+      });
+    }
+
     const {
       fullName,
       contactEmail,
