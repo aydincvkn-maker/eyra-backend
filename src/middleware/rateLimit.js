@@ -327,7 +327,10 @@ const generalLimiter = createRateLimiter({
   max: (req, ctx) => (ctx.userId ? 240 : 100),
   message: "Çok fazla istek gönderdiniz. Lütfen bekleyin.",
   keyPrefix: "general",
-  skip: (req) => req.method === "GET" && req.path.startsWith("/gifts"),
+  skip: (req) =>
+    (req.method === "GET" && req.path.startsWith("/gifts")) ||
+    req.path.startsWith("/translate") ||
+    req.path.startsWith("/live/translate"),
 });
 
 /**
