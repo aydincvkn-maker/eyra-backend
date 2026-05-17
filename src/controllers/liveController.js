@@ -325,12 +325,7 @@ exports.startLive = async (req, res) => {
         .length >= 8 &&
       Number.isInteger(hostBirthYear) &&
       hostBirthYear <= new Date().getFullYear() - 18 &&
-      hostBirthYear >= new Date().getFullYear() - 80 &&
-      String(onboarding.iban || host.iban || "").replace(/\s/g, "").length >=
-        15 &&
-      String(onboarding.bankName || host.bankName || "").trim().length >= 2 &&
-      String(onboarding.bitcoinAddress || host.cryptoAddress || "").trim()
-        .length >= 26;
+      hostBirthYear >= new Date().getFullYear() - 80;
 
     if (!(host.isVerified === true && host.verificationStatus === "approved")) {
       return res.status(403).json({
