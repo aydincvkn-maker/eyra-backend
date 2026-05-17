@@ -17,6 +17,58 @@ const { HOST_SALARY_LEVELS, calculateHostLevel } = salaryService;
 // SABİTLER
 // =============================================
 const PLATFORM_FEE_PERCENT = 0; // Çekim komisyonu %0 (isteğe bağlı)
+const HOST_MIN_BIRTH_YEAR = new Date().getFullYear() - 80;
+const HOST_MAX_BIRTH_YEAR = new Date().getFullYear() - 18;
+
+const isValidEmail = (value) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || ""));
+
+const sanitizePhone = (value) => String(value || "").replace(/[^\d+]/g, "");
+
+const resolveBirthYear = (user, onboarding) => {
+  if (Number.isInteger(onboarding?.birthYear)) return onboarding.birthYear;
+  const age = Number.parseInt(String(user?.age ?? ""), 10);
+  if (Number.isInteger(age) && age >= 18 && age <= 120) {
+    return new Date().getFullYear() - age;
+  }
+  return null;
+};
+
+const normalizeHostOnboarding = (user) => {
+  const onboarding = user?.broadcasterOnboarding || {};
+  return {
+    completed: onboarding.completed === true,
+    completedAt: onboarding.completedAt || null,
+    fullName: String(onboarding.fullName || user?.accountHolder || "").trim(),
+    contactEmail: String(onboarding.contactEmail || user?.email || "").trim().toLowerCase(),
+    contactPhone: sanitizePhone(onboarding.contactPhone || user?.phone || ""),
+    birthYear: resolveBirthYear(user, onboarding),
+    iban: String(onboarding.iban || user?.iban || "").replace(/\s/g, "").toUpperCase(),
+    bankName: String(onboarding.bankName || user?.bankName || "").trim(),
+    bitcoinAddress: String(onboarding.bitcoinAddress || user?.cryptoAddress || "").trim(),
+  };
+};
+
+const hasCompletedHostOnboarding = (user) => {
+  const onboarding = normalizeHostOnboarding(user);
+  return (
+    onboarding.completed &&
+    onboarding.fullName.length >= 2 &&
+    onboarding.fullName.length <= 120 &&
+    isValidEmail(onboarding.contactEmail) &&
+    onboarding.contactPhone.length >= 8 &&
+    onboarding.contactPhone.length <= 20 &&
+    Number.isInteger(onboarding.birthYear) &&
+    onboarding.birthYear >= HOST_MIN_BIRTH_YEAR &&
+    onboarding.birthYear <= HOST_MAX_BIRTH_YEAR &&
+    onboarding.iban.length >= 15 &&
+    onboarding.iban.length <= 34 &&
+    onboarding.bankName.length >= 2 &&
+    onboarding.bankName.length <= 100 &&
+    onboarding.bitcoinAddress.length >= 26 &&
+    onboarding.bitcoinAddress.length <= 120
+  );
+};
 
 // Birikim ödülleri (milestone bonusları)
 const SAVINGS_MILESTONES = [
@@ -44,7 +96,7 @@ exports.getBroadcasterInfo = async (req, res) => {
   try {
     const userId = req.user.id;
     const user = await User.findById(userId).select(
-      "coins totalEarnings gender broadcasterContract iban bankName accountHolder preferredWithdrawMethod paparaId paparaName paypalEmail cryptoAddress cryptoNetwork wiseEmail wiseName name username profileImage level followers violations",
+      "coins totalEarnings gender broadcasterContract broadcasterOnboarding iban bankName accountHolder preferredWithdrawMethod paparaId paparaName paypalEmail cryptoAddress cryptoNetwork wiseEmail wiseName name username profileImage level followers violations email phone age verificationStatus isVerified",
     );
 
     if (!user) {
@@ -238,6 +290,13 @@ exports.getBroadcasterInfo = async (req, res) => {
         contractSigned: user.broadcasterContract?.signed === true,
         contractSignedAt: user.broadcasterContract?.signedAt || null,
       },
+      onboarding: normalizeHostOnboarding(user),
+      liveAccess: {
+        verificationApproved:
+          user.isVerified === true && user.verificationStatus === "approved",
+        onboardingCompleted: hasCompletedHostOnboarding(user),
+        contractSigned: user.broadcasterContract?.signed === true,
+      },
       balance: {
         currentCoins: user.coins,
         availableCoins,
@@ -393,6 +452,115 @@ exports.getBroadcasterInfo = async (req, res) => {
   }
 };
 
+// PUT /api/withdrawals/host-onboarding — Yayıncı onboarding bilgileri güncelle
+exports.updateHostOnboarding = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const {
+      fullName,
+      contactEmail,
+      contactPhone,
+      birthYear,
+      iban,
+      bankName,
+      bitcoinAddress,
+    } = req.body || {};
+
+    const normalizedFullName = String(fullName || "").trim();
+    const normalizedEmail = String(contactEmail || "").trim().toLowerCase();
+    const normalizedPhone = sanitizePhone(contactPhone);
+    const normalizedBirthYear = Number.parseInt(String(birthYear || ""), 10);
+    const normalizedIban = String(iban || "").replace(/\s/g, "").toUpperCase();
+    const normalizedBankName = String(bankName || "").trim();
+    const normalizedBitcoinAddress = String(bitcoinAddress || "").trim();
+
+    if (normalizedFullName.length < 2 || normalizedFullName.length > 120) {
+      return res.status(400).json({
+        success: false,
+        message: "Ad soyad 2-120 karakter arasında olmalı",
+      });
+    }
+
+    if (!isValidEmail(normalizedEmail) || normalizedEmail.length > 254) {
+      return res.status(400).json({
+        success: false,
+        message: "Geçerli bir e-posta girin",
+      });
+    }
+
+    if (normalizedPhone.length < 8 || normalizedPhone.length > 20) {
+      return res.status(400).json({
+        success: false,
+        message: "Geçerli bir telefon numarası girin",
+      });
+    }
+
+    if (
+      !Number.isInteger(normalizedBirthYear) ||
+      normalizedBirthYear < HOST_MIN_BIRTH_YEAR ||
+      normalizedBirthYear > HOST_MAX_BIRTH_YEAR
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Geçerli bir doğum yılı girin",
+      });
+    }
+
+    if (normalizedIban.length < 15 || normalizedIban.length > 34) {
+      return res.status(400).json({
+        success: false,
+        message: "Geçerli bir IBAN girin",
+      });
+    }
+
+    if (normalizedBankName.length < 2 || normalizedBankName.length > 100) {
+      return res.status(400).json({
+        success: false,
+        message: "Banka adı 2-100 karakter arasında olmalı",
+      });
+    }
+
+    if (
+      normalizedBitcoinAddress.length < 26 ||
+      normalizedBitcoinAddress.length > 120
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Geçerli bir Bitcoin adresi girin",
+      });
+    }
+
+    await User.findByIdAndUpdate(userId, {
+      $set: {
+        accountHolder: normalizedFullName,
+        iban: normalizedIban,
+        bankName: normalizedBankName,
+        cryptoAddress: normalizedBitcoinAddress,
+        cryptoNetwork: "BTC",
+        broadcasterOnboarding: {
+          completed: true,
+          completedAt: new Date(),
+          fullName: normalizedFullName,
+          contactEmail: normalizedEmail,
+          contactPhone: normalizedPhone,
+          birthYear: normalizedBirthYear,
+          iban: normalizedIban,
+          bankName: normalizedBankName,
+          bitcoinAddress: normalizedBitcoinAddress,
+        },
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: "Yayıncı kayıt bilgileri kaydedildi",
+    });
+  } catch (err) {
+    logger.error("updateHostOnboarding error:", err);
+    return res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
 // =============================================
 // SÖZLEŞME İMZALAMA
 // =============================================
@@ -423,6 +591,20 @@ exports.signContract = async (req, res) => {
         success: true,
         message: "Sözleşme zaten imzalanmış",
         alreadySigned: true,
+      });
+    }
+
+    if (!(user.isVerified === true && user.verificationStatus === "approved")) {
+      return res.status(400).json({
+        success: false,
+        message: "Sözleşme öncesi profil doğrulaması tamamlanmalı",
+      });
+    }
+
+    if (!hasCompletedHostOnboarding(user)) {
+      return res.status(400).json({
+        success: false,
+        message: "Sözleşme öncesi yayıncı kayıt bilgileri tamamlanmalı",
       });
     }
 

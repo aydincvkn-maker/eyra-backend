@@ -7,6 +7,7 @@ const withdrawalController = require("../controllers/withdrawalController");
 
 // ─── Yayıncı (kullanıcı) endpointleri ───────────────────────────
 router.get("/broadcaster-info", auth, withdrawalController.getBroadcasterInfo);
+router.put("/host-onboarding", auth, withdrawalController.updateHostOnboarding);
 router.post("/sign-contract", auth, withdrawalController.signContract);
 router.put("/bank-info", auth, withdrawalController.updateBankInfo);
 router.post("/request", auth, withdrawalController.createWithdrawalRequest);

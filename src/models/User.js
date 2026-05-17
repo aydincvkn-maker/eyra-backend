@@ -186,6 +186,17 @@ const userSchema = new mongoose.Schema(
       userAgent: { type: String, default: "" },
       version: { type: String, default: "" },
     },
+    broadcasterOnboarding: {
+      completed: { type: Boolean, default: false },
+      completedAt: { type: Date, default: null },
+      fullName: { type: String, default: "" },
+      contactEmail: { type: String, default: "" },
+      contactPhone: { type: String, default: "" },
+      birthYear: { type: Number, default: null },
+      iban: { type: String, default: "" },
+      bankName: { type: String, default: "" },
+      bitcoinAddress: { type: String, default: "" },
+    },
     // Ödeme yöntemleri
     preferredWithdrawMethod: { type: String, default: "bank" }, // bank | papara | paypal | crypto | wise
     iban: { type: String, default: null },

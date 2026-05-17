@@ -283,7 +283,7 @@ exports.startLive = async (req, res) => {
 
     // Cinsiyet kontrolü
     const host = await User.findById(userId).select(
-      "gender isBanned isActive username name profileImage streamCoverImage",
+      "gender isBanned isActive username name profileImage streamCoverImage isVerified verificationStatus broadcasterContract broadcasterOnboarding email phone age iban bankName cryptoAddress accountHolder",
     );
     logger.info(
       "🔵 [startLive] Host found:",
@@ -302,6 +302,51 @@ exports.startLive = async (req, res) => {
         ok: false,
         error: "only_female_can_broadcast",
         message: "Only female users can start a live broadcast",
+      });
+    }
+
+    const onboarding = host.broadcasterOnboarding || {};
+    const hostBirthYear = Number.isInteger(onboarding.birthYear)
+      ? onboarding.birthYear
+      : (() => {
+          const age = Number.parseInt(String(host.age ?? ""), 10);
+          return Number.isInteger(age) && age >= 18 && age <= 120
+            ? new Date().getFullYear() - age
+            : null;
+        })();
+    const onboardingCompleted =
+      onboarding.completed === true &&
+      String(onboarding.fullName || host.accountHolder || "").trim().length >= 2 &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(onboarding.contactEmail || host.email || "").trim()) &&
+      String(onboarding.contactPhone || host.phone || "").replace(/[^\d+]/g, "").length >= 8 &&
+      Number.isInteger(hostBirthYear) &&
+      hostBirthYear <= new Date().getFullYear() - 18 &&
+      hostBirthYear >= new Date().getFullYear() - 80 &&
+      String(onboarding.iban || host.iban || "").replace(/\s/g, "").length >= 15 &&
+      String(onboarding.bankName || host.bankName || "").trim().length >= 2 &&
+      String(onboarding.bitcoinAddress || host.cryptoAddress || "").trim().length >= 26;
+
+    if (!(host.isVerified === true && host.verificationStatus === "approved")) {
+      return res.status(403).json({
+        ok: false,
+        error: "host_verification_required",
+        message: "Profil doğrulaması tamamlanmadan yayın başlatılamaz",
+      });
+    }
+
+    if (!onboardingCompleted) {
+      return res.status(403).json({
+        ok: false,
+        error: "host_onboarding_required",
+        message: "Yayıncı kayıt bilgileri tamamlanmadan yayın başlatılamaz",
+      });
+    }
+
+    if (host.broadcasterContract?.signed !== true) {
+      return res.status(403).json({
+        ok: false,
+        error: "host_contract_required",
+        message: "Yayıncı sözleşmesi imzalanmadan yayın başlatılamaz",
       });
     }
 
