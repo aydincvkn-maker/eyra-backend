@@ -1122,6 +1122,7 @@ exports.getMyProfile = async (req, res) => {
         email: user.email,
         preferredLanguage: user.preferredLanguage || "tr",
         profileImage: user.profileImage || "",
+        profileCoverImage: user.profileCoverImage || "",
         gender: user.gender || "other",
         age: user.age || 0,
         location: user.location || "",
