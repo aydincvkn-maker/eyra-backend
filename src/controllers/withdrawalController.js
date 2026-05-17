@@ -45,18 +45,34 @@ const normalizeHostOnboarding = (user) => {
       .toLowerCase(),
     contactPhone: sanitizePhone(onboarding.contactPhone || user?.phone || ""),
     birthYear: resolveBirthYear(user, onboarding),
+    preferredWithdrawMethod: String(
+      onboarding.preferredWithdrawMethod || user?.preferredWithdrawMethod || "bank",
+    ),
     iban: String(onboarding.iban || user?.iban || "")
       .replace(/\s/g, "")
       .toUpperCase(),
     bankName: String(onboarding.bankName || user?.bankName || "").trim(),
-    bitcoinAddress: String(
-      onboarding.bitcoinAddress || user?.cryptoAddress || "",
+    paparaId: String(onboarding.paparaId || user?.paparaId || "").trim(),
+    paparaName: String(onboarding.paparaName || user?.paparaName || "").trim(),
+    paypalEmail: String(onboarding.paypalEmail || user?.paypalEmail || "")
+      .trim()
+      .toLowerCase(),
+    cryptoAddress: String(
+      onboarding.cryptoAddress || onboarding.bitcoinAddress || user?.cryptoAddress || "",
     ).trim(),
+    cryptoNetwork: String(
+      onboarding.cryptoNetwork || user?.cryptoNetwork || "TRC20",
+    ).toUpperCase(),
+    wiseEmail: String(onboarding.wiseEmail || user?.wiseEmail || "")
+      .trim()
+      .toLowerCase(),
+    wiseName: String(onboarding.wiseName || user?.wiseName || "").trim(),
   };
 };
 
 const hasCompletedHostOnboarding = (user) => {
   const onboarding = normalizeHostOnboarding(user);
+  // Payment method is optional — only personal info is required
   return (
     onboarding.completed &&
     onboarding.fullName.length >= 2 &&
@@ -66,13 +82,7 @@ const hasCompletedHostOnboarding = (user) => {
     onboarding.contactPhone.length <= 20 &&
     Number.isInteger(onboarding.birthYear) &&
     onboarding.birthYear >= HOST_MIN_BIRTH_YEAR &&
-    onboarding.birthYear <= HOST_MAX_BIRTH_YEAR &&
-    onboarding.iban.length >= 15 &&
-    onboarding.iban.length <= 34 &&
-    onboarding.bankName.length >= 2 &&
-    onboarding.bankName.length <= 100 &&
-    onboarding.bitcoinAddress.length >= 26 &&
-    onboarding.bitcoinAddress.length <= 120
+    onboarding.birthYear <= HOST_MAX_BIRTH_YEAR
   );
 };
 
@@ -491,9 +501,16 @@ exports.updateHostOnboarding = async (req, res) => {
       contactEmail,
       contactPhone,
       birthYear,
+      preferredWithdrawMethod,
       iban,
       bankName,
-      bitcoinAddress,
+      paparaId,
+      paparaName,
+      paypalEmail,
+      cryptoAddress,
+      cryptoNetwork,
+      wiseEmail,
+      wiseName,
     } = req.body || {};
 
     const normalizedFullName = String(fullName || "").trim();
@@ -502,11 +519,6 @@ exports.updateHostOnboarding = async (req, res) => {
       .toLowerCase();
     const normalizedPhone = sanitizePhone(contactPhone);
     const normalizedBirthYear = Number.parseInt(String(birthYear || ""), 10);
-    const normalizedIban = String(iban || "")
-      .replace(/\s/g, "")
-      .toUpperCase();
-    const normalizedBankName = String(bankName || "").trim();
-    const normalizedBitcoinAddress = String(bitcoinAddress || "").trim();
 
     if (normalizedFullName.length < 2 || normalizedFullName.length > 120) {
       return res.status(400).json({
@@ -540,50 +552,61 @@ exports.updateHostOnboarding = async (req, res) => {
       });
     }
 
-    if (normalizedIban.length < 15 || normalizedIban.length > 34) {
-      return res.status(400).json({
-        success: false,
-        message: "Geçerli bir IBAN girin",
-      });
-    }
+    // Payment fields — all optional
+    const validMethods = ["bank", "papara", "paypal", "crypto", "wise"];
+    const normalizedMethod = validMethods.includes(String(preferredWithdrawMethod || ""))
+      ? String(preferredWithdrawMethod)
+      : "bank";
+    const normalizedIban = String(iban || "").replace(/\s/g, "").toUpperCase();
+    const normalizedBankName = String(bankName || "").trim();
+    const normalizedPaparaId = String(paparaId || "").trim();
+    const normalizedPaparaName = String(paparaName || "").trim();
+    const normalizedPaypalEmail = String(paypalEmail || "").trim().toLowerCase();
+    const normalizedCryptoAddress = String(cryptoAddress || "").trim();
+    const validNetworks = ["TRC20", "ERC20", "BEP20", "BTC"];
+    const normalizedCryptoNetwork = validNetworks.includes(
+      String(cryptoNetwork || "").toUpperCase(),
+    )
+      ? String(cryptoNetwork).toUpperCase()
+      : "TRC20";
+    const normalizedWiseEmail = String(wiseEmail || "").trim().toLowerCase();
+    const normalizedWiseName = String(wiseName || "").trim();
 
-    if (normalizedBankName.length < 2 || normalizedBankName.length > 100) {
-      return res.status(400).json({
-        success: false,
-        message: "Banka adı 2-100 karakter arasında olmalı",
-      });
-    }
-
-    if (
-      normalizedBitcoinAddress.length < 26 ||
-      normalizedBitcoinAddress.length > 120
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Geçerli bir Bitcoin adresi girin",
-      });
-    }
-
-    await User.findByIdAndUpdate(userId, {
-      $set: {
-        accountHolder: normalizedFullName,
+    const userUpdate = {
+      accountHolder: normalizedFullName,
+      preferredWithdrawMethod: normalizedMethod,
+      broadcasterOnboarding: {
+        completed: true,
+        completedAt: new Date(),
+        fullName: normalizedFullName,
+        contactEmail: normalizedEmail,
+        contactPhone: normalizedPhone,
+        birthYear: normalizedBirthYear,
+        preferredWithdrawMethod: normalizedMethod,
         iban: normalizedIban,
         bankName: normalizedBankName,
-        cryptoAddress: normalizedBitcoinAddress,
-        cryptoNetwork: "BTC",
-        broadcasterOnboarding: {
-          completed: true,
-          completedAt: new Date(),
-          fullName: normalizedFullName,
-          contactEmail: normalizedEmail,
-          contactPhone: normalizedPhone,
-          birthYear: normalizedBirthYear,
-          iban: normalizedIban,
-          bankName: normalizedBankName,
-          bitcoinAddress: normalizedBitcoinAddress,
-        },
+        paparaId: normalizedPaparaId,
+        paparaName: normalizedPaparaName,
+        paypalEmail: normalizedPaypalEmail,
+        cryptoAddress: normalizedCryptoAddress,
+        cryptoNetwork: normalizedCryptoNetwork,
+        wiseEmail: normalizedWiseEmail,
+        wiseName: normalizedWiseName,
       },
-    });
+    };
+    if (normalizedIban) userUpdate.iban = normalizedIban;
+    if (normalizedBankName) userUpdate.bankName = normalizedBankName;
+    if (normalizedPaparaId) userUpdate.paparaId = normalizedPaparaId;
+    if (normalizedPaparaName) userUpdate.paparaName = normalizedPaparaName;
+    if (normalizedPaypalEmail) userUpdate.paypalEmail = normalizedPaypalEmail;
+    if (normalizedCryptoAddress) {
+      userUpdate.cryptoAddress = normalizedCryptoAddress;
+      userUpdate.cryptoNetwork = normalizedCryptoNetwork;
+    }
+    if (normalizedWiseEmail) userUpdate.wiseEmail = normalizedWiseEmail;
+    if (normalizedWiseName) userUpdate.wiseName = normalizedWiseName;
+
+    await User.findByIdAndUpdate(userId, { $set: userUpdate });
 
     return res.json({
       success: true,
