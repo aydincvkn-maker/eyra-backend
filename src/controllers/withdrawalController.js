@@ -40,12 +40,18 @@ const normalizeHostOnboarding = (user) => {
     completed: onboarding.completed === true,
     completedAt: onboarding.completedAt || null,
     fullName: String(onboarding.fullName || user?.accountHolder || "").trim(),
-    contactEmail: String(onboarding.contactEmail || user?.email || "").trim().toLowerCase(),
+    contactEmail: String(onboarding.contactEmail || user?.email || "")
+      .trim()
+      .toLowerCase(),
     contactPhone: sanitizePhone(onboarding.contactPhone || user?.phone || ""),
     birthYear: resolveBirthYear(user, onboarding),
-    iban: String(onboarding.iban || user?.iban || "").replace(/\s/g, "").toUpperCase(),
+    iban: String(onboarding.iban || user?.iban || "")
+      .replace(/\s/g, "")
+      .toUpperCase(),
     bankName: String(onboarding.bankName || user?.bankName || "").trim(),
-    bitcoinAddress: String(onboarding.bitcoinAddress || user?.cryptoAddress || "").trim(),
+    bitcoinAddress: String(
+      onboarding.bitcoinAddress || user?.cryptoAddress || "",
+    ).trim(),
   };
 };
 
@@ -467,10 +473,14 @@ exports.updateHostOnboarding = async (req, res) => {
     } = req.body || {};
 
     const normalizedFullName = String(fullName || "").trim();
-    const normalizedEmail = String(contactEmail || "").trim().toLowerCase();
+    const normalizedEmail = String(contactEmail || "")
+      .trim()
+      .toLowerCase();
     const normalizedPhone = sanitizePhone(contactPhone);
     const normalizedBirthYear = Number.parseInt(String(birthYear || ""), 10);
-    const normalizedIban = String(iban || "").replace(/\s/g, "").toUpperCase();
+    const normalizedIban = String(iban || "")
+      .replace(/\s/g, "")
+      .toUpperCase();
     const normalizedBankName = String(bankName || "").trim();
     const normalizedBitcoinAddress = String(bitcoinAddress || "").trim();
 
@@ -578,12 +588,10 @@ exports.signContract = async (req, res) => {
     }
 
     if (user.gender !== "female") {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Bu özellik yalnızca kadın yayıncılar için geçerlidir",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Bu özellik yalnızca kadın yayıncılar için geçerlidir",
+      });
     }
 
     if (user.broadcasterContract?.signed) {
@@ -665,28 +673,22 @@ exports.updateBankInfo = async (req, res) => {
     switch (normalizedMethod) {
       case "papara": {
         if (!paparaId || !paparaName)
-          return res
-            .status(400)
-            .json({
-              success: false,
-              message: "Papara ID ve hesap sahibi gerekli",
-            });
+          return res.status(400).json({
+            success: false,
+            message: "Papara ID ve hesap sahibi gerekli",
+          });
         const pid = String(paparaId).trim();
         const pname = String(paparaName).trim();
         if (pid.length < 4 || pid.length > 20)
-          return res
-            .status(400)
-            .json({
-              success: false,
-              message: "Papara ID 4-20 karakter olmalı",
-            });
+          return res.status(400).json({
+            success: false,
+            message: "Papara ID 4-20 karakter olmalı",
+          });
         if (pname.length < 2 || pname.length > 100)
-          return res
-            .status(400)
-            .json({
-              success: false,
-              message: "Papara hesap sahibi 2-100 karakter olmalı",
-            });
+          return res.status(400).json({
+            success: false,
+            message: "Papara hesap sahibi 2-100 karakter olmalı",
+          });
         updateData.paparaId = pid;
         updateData.paparaName = pname;
         break;
@@ -726,12 +728,10 @@ exports.updateBankInfo = async (req, res) => {
       }
       case "wise": {
         if (!wiseEmail || !wiseName)
-          return res
-            .status(400)
-            .json({
-              success: false,
-              message: "Wise e-posta ve hesap sahibi gerekli",
-            });
+          return res.status(400).json({
+            success: false,
+            message: "Wise e-posta ve hesap sahibi gerekli",
+          });
         const wemail = String(wiseEmail).trim().toLowerCase();
         const wname = String(wiseName).trim();
         if (!isValidEmail(wemail) || wemail.length > 254)
@@ -739,12 +739,10 @@ exports.updateBankInfo = async (req, res) => {
             .status(400)
             .json({ success: false, message: "Geçersiz Wise e-posta" });
         if (wname.length < 2 || wname.length > 100)
-          return res
-            .status(400)
-            .json({
-              success: false,
-              message: "Wise hesap sahibi 2-100 karakter olmalı",
-            });
+          return res.status(400).json({
+            success: false,
+            message: "Wise hesap sahibi 2-100 karakter olmalı",
+          });
         updateData.wiseEmail = wemail;
         updateData.wiseName = wname;
         break;
@@ -752,12 +750,10 @@ exports.updateBankInfo = async (req, res) => {
       default: {
         // bank
         if (!iban || !bankName || !accountHolder)
-          return res
-            .status(400)
-            .json({
-              success: false,
-              message: "IBAN, banka adı ve hesap sahibi gerekli",
-            });
+          return res.status(400).json({
+            success: false,
+            message: "IBAN, banka adı ve hesap sahibi gerekli",
+          });
         const cleanIban = String(iban).replace(/\s/g, "").toUpperCase();
         if (cleanIban.length < 15 || cleanIban.length > 34)
           return res
@@ -766,19 +762,15 @@ exports.updateBankInfo = async (req, res) => {
         const bname = String(bankName).trim();
         const holder = String(accountHolder).trim();
         if (bname.length < 2 || bname.length > 100)
-          return res
-            .status(400)
-            .json({
-              success: false,
-              message: "Banka adı 2-100 karakter olmalı",
-            });
+          return res.status(400).json({
+            success: false,
+            message: "Banka adı 2-100 karakter olmalı",
+          });
         if (holder.length < 2 || holder.length > 100)
-          return res
-            .status(400)
-            .json({
-              success: false,
-              message: "Hesap sahibi 2-100 karakter olmalı",
-            });
+          return res.status(400).json({
+            success: false,
+            message: "Hesap sahibi 2-100 karakter olmalı",
+          });
         updateData.iban = cleanIban;
         updateData.bankName = bname;
         updateData.accountHolder = holder;
@@ -819,22 +811,18 @@ exports.createWithdrawalRequest = async (req, res) => {
 
     // Kadın kontrolü
     if (user.gender !== "female") {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Bu özellik yalnızca kadın yayıncılar için geçerlidir",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Bu özellik yalnızca kadın yayıncılar için geçerlidir",
+      });
     }
 
     // Sözleşme kontrolü
     if (!user.broadcasterContract?.signed) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Önce yayıncı sözleşmesini imzalamalısınız",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Önce yayıncı sözleşmesini imzalamalısınız",
+      });
     }
 
     // Ödeme bilgisi kontrolü
@@ -879,13 +867,11 @@ exports.createWithdrawalRequest = async (req, res) => {
     }
 
     if (!hasInfo) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message:
-            "Önce ödeme bilgilerinizi kaydedin (Çekim sekmesi → Ödeme Bilgileri)",
-        });
+      return res.status(400).json({
+        success: false,
+        message:
+          "Önce ödeme bilgilerinizi kaydedin (Çekim sekmesi → Ödeme Bilgileri)",
+      });
     }
 
     // Minimum/Maksimum kontrolü
@@ -1040,12 +1026,10 @@ exports.adminApproveWithdrawal = async (req, res) => {
     }
 
     if (withdrawal.status !== "pending") {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: `Bu talep zaten '${withdrawal.status}' durumunda`,
-        });
+      return res.status(400).json({
+        success: false,
+        message: `Bu talep zaten '${withdrawal.status}' durumunda`,
+      });
     }
 
     // Kullanıcının coin'ini atomik düşür (TOCTOU race condition önleme)
@@ -1114,12 +1098,10 @@ exports.adminRejectWithdrawal = async (req, res) => {
     }
 
     if (withdrawal.status !== "pending") {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: `Bu talep zaten '${withdrawal.status}' durumunda`,
-        });
+      return res.status(400).json({
+        success: false,
+        message: `Bu talep zaten '${withdrawal.status}' durumunda`,
+      });
     }
 
     withdrawal.status = "rejected";
@@ -1151,12 +1133,10 @@ exports.adminMarkPaid = async (req, res) => {
     }
 
     if (withdrawal.status !== "approved") {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Sadece onaylanmış talepler 'ödendi' olarak işaretlenebilir",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Sadece onaylanmış talepler 'ödendi' olarak işaretlenebilir",
+      });
     }
 
     withdrawal.status = "paid";

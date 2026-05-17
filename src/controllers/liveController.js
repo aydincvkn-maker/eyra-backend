@@ -316,15 +316,21 @@ exports.startLive = async (req, res) => {
         })();
     const onboardingCompleted =
       onboarding.completed === true &&
-      String(onboarding.fullName || host.accountHolder || "").trim().length >= 2 &&
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(onboarding.contactEmail || host.email || "").trim()) &&
-      String(onboarding.contactPhone || host.phone || "").replace(/[^\d+]/g, "").length >= 8 &&
+      String(onboarding.fullName || host.accountHolder || "").trim().length >=
+        2 &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        String(onboarding.contactEmail || host.email || "").trim(),
+      ) &&
+      String(onboarding.contactPhone || host.phone || "").replace(/[^\d+]/g, "")
+        .length >= 8 &&
       Number.isInteger(hostBirthYear) &&
       hostBirthYear <= new Date().getFullYear() - 18 &&
       hostBirthYear >= new Date().getFullYear() - 80 &&
-      String(onboarding.iban || host.iban || "").replace(/\s/g, "").length >= 15 &&
+      String(onboarding.iban || host.iban || "").replace(/\s/g, "").length >=
+        15 &&
       String(onboarding.bankName || host.bankName || "").trim().length >= 2 &&
-      String(onboarding.bitcoinAddress || host.cryptoAddress || "").trim().length >= 26;
+      String(onboarding.bitcoinAddress || host.cryptoAddress || "").trim()
+        .length >= 26;
 
     if (!(host.isVerified === true && host.verificationStatus === "approved")) {
       return res.status(403).json({
