@@ -46,7 +46,9 @@ const normalizeHostOnboarding = (user) => {
     contactPhone: sanitizePhone(onboarding.contactPhone || user?.phone || ""),
     birthYear: resolveBirthYear(user, onboarding),
     preferredWithdrawMethod: String(
-      onboarding.preferredWithdrawMethod || user?.preferredWithdrawMethod || "bank",
+      onboarding.preferredWithdrawMethod ||
+        user?.preferredWithdrawMethod ||
+        "bank",
     ),
     iban: String(onboarding.iban || user?.iban || "")
       .replace(/\s/g, "")
@@ -58,7 +60,10 @@ const normalizeHostOnboarding = (user) => {
       .trim()
       .toLowerCase(),
     cryptoAddress: String(
-      onboarding.cryptoAddress || onboarding.bitcoinAddress || user?.cryptoAddress || "",
+      onboarding.cryptoAddress ||
+        onboarding.bitcoinAddress ||
+        user?.cryptoAddress ||
+        "",
     ).trim(),
     cryptoNetwork: String(
       onboarding.cryptoNetwork || user?.cryptoNetwork || "TRC20",
@@ -554,14 +559,20 @@ exports.updateHostOnboarding = async (req, res) => {
 
     // Payment fields — all optional
     const validMethods = ["bank", "papara", "paypal", "crypto", "wise"];
-    const normalizedMethod = validMethods.includes(String(preferredWithdrawMethod || ""))
+    const normalizedMethod = validMethods.includes(
+      String(preferredWithdrawMethod || ""),
+    )
       ? String(preferredWithdrawMethod)
       : "bank";
-    const normalizedIban = String(iban || "").replace(/\s/g, "").toUpperCase();
+    const normalizedIban = String(iban || "")
+      .replace(/\s/g, "")
+      .toUpperCase();
     const normalizedBankName = String(bankName || "").trim();
     const normalizedPaparaId = String(paparaId || "").trim();
     const normalizedPaparaName = String(paparaName || "").trim();
-    const normalizedPaypalEmail = String(paypalEmail || "").trim().toLowerCase();
+    const normalizedPaypalEmail = String(paypalEmail || "")
+      .trim()
+      .toLowerCase();
     const normalizedCryptoAddress = String(cryptoAddress || "").trim();
     const validNetworks = ["TRC20", "ERC20", "BEP20", "BTC"];
     const normalizedCryptoNetwork = validNetworks.includes(
@@ -569,7 +580,9 @@ exports.updateHostOnboarding = async (req, res) => {
     )
       ? String(cryptoNetwork).toUpperCase()
       : "TRC20";
-    const normalizedWiseEmail = String(wiseEmail || "").trim().toLowerCase();
+    const normalizedWiseEmail = String(wiseEmail || "")
+      .trim()
+      .toLowerCase();
     const normalizedWiseName = String(wiseName || "").trim();
 
     const userUpdate = {
