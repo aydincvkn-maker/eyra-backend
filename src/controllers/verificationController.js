@@ -374,7 +374,7 @@ exports.adminGetPending = async (req, res) => {
     const verifications = await Verification.find({ status: "pending" })
       .populate(
         "user",
-        "_id username name email phone profileImage gender age country broadcasterOnboarding broadcasterContract",
+        "_id username name email phone profileImage gender age country broadcasterOnboarding broadcasterContract preferredWithdrawMethod iban bankName paparaId paparaName paypalEmail cryptoAddress cryptoNetwork wiseEmail wiseName",
       )
       .sort({ createdAt: 1 }) // En eski önce
       .skip((page - 1) * limit)
@@ -406,7 +406,7 @@ exports.adminGetAll = async (req, res) => {
     const verifications = await Verification.find(query)
       .populate(
         "user",
-        "_id username name email phone profileImage gender age country broadcasterOnboarding broadcasterContract",
+        "_id username name email phone profileImage gender age country broadcasterOnboarding broadcasterContract preferredWithdrawMethod iban bankName paparaId paparaName paypalEmail cryptoAddress cryptoNetwork wiseEmail wiseName",
       )
       .populate("reviewedBy", "_id username name")
       .sort({ createdAt: -1 })
