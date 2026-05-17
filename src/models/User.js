@@ -193,9 +193,17 @@ const userSchema = new mongoose.Schema(
       contactEmail: { type: String, default: "" },
       contactPhone: { type: String, default: "" },
       birthYear: { type: Number, default: null },
+      preferredWithdrawMethod: { type: String, default: "bank" },
       iban: { type: String, default: "" },
       bankName: { type: String, default: "" },
-      bitcoinAddress: { type: String, default: "" },
+      paparaId: { type: String, default: "" },
+      paparaName: { type: String, default: "" },
+      paypalEmail: { type: String, default: "" },
+      cryptoAddress: { type: String, default: "" },
+      cryptoNetwork: { type: String, default: "TRC20" },
+      wiseEmail: { type: String, default: "" },
+      wiseName: { type: String, default: "" },
+      bitcoinAddress: { type: String, default: "" }, // legacy compat
     },
     // Ödeme yöntemleri
     preferredWithdrawMethod: { type: String, default: "bank" }, // bank | papara | paypal | crypto | wise
