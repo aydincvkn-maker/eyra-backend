@@ -197,7 +197,7 @@ exports.uploadFacePhotos = async (req, res) => {
       profileImageUrl: user.profileImage,
     });
 
-    // Kullanıcı durumunu güncelle ve mevcut token'ları geçersiz kıl
+    // Kullanıcı durumunu güncelle
     await User.findByIdAndUpdate(userId, {
       $set: {
         verificationStatus: "pending",
@@ -206,7 +206,6 @@ exports.uploadFacePhotos = async (req, res) => {
         verificationReviewedAt: null,
         verificationReviewedBy: null,
       },
-      $inc: { tokenVersion: 1 },
     });
 
     logger.info("Verification request submitted", {
