@@ -1123,6 +1123,7 @@ exports.getMyProfile = async (req, res) => {
         preferredLanguage: user.preferredLanguage || "tr",
         profileImage: user.profileImage || "",
         profileCoverImage: user.profileCoverImage || "",
+        streamCoverImage: user.streamCoverImage || "",
         gender: user.gender || "other",
         age: user.age || 0,
         location: user.location || "",
