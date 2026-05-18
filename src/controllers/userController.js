@@ -1149,6 +1149,8 @@ exports.getMyProfile = async (req, res) => {
           allowMessages: true,
           showActivity: false,
         },
+        authProvider: user.authProvider || "email",
+        isGuest: user.authProvider === "guest",
       },
     });
   } catch (err) {
@@ -1170,7 +1172,14 @@ exports.updateMyProfile = async (req, res) => {
       country,
       bio,
       preferredLanguage,
+      email,
+      password,
     } = req.body;
+
+    const normalizedEmail =
+      email !== undefined ? String(email).trim().toLowerCase() : undefined;
+    const normalizedPassword =
+      password !== undefined ? String(password) : undefined;
 
     // ─── Input validation ────────────────────────────────────
     const ALLOWED_LANGUAGES = [
@@ -1245,7 +1254,54 @@ exports.updateMyProfile = async (req, res) => {
           .status(400)
           .json({ success: false, message: "Geçersiz dil seçimi" });
     }
+    if ((email !== undefined) !== (password !== undefined)) {
+      return res.status(400).json({
+        success: false,
+        message: "E-posta ve şifre birlikte gönderilmelidir",
+      });
+    }
+    if (email !== undefined) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+      if (!normalizedEmail || normalizedEmail.length > 120 || !emailRegex.test(normalizedEmail)) {
+        return res.status(400).json({
+          success: false,
+          message: "Geçerli bir e-posta adresi girin",
+        });
+      }
+    }
+    if (password !== undefined) {
+      if (!normalizedPassword || normalizedPassword.length < 6 || normalizedPassword.length > 128) {
+        return res.status(400).json({
+          success: false,
+          message: "Şifre 6-128 karakter arasında olmalı",
+        });
+      }
+    }
     // ────────────────────────────────────────────────────────
+
+    const user = await User.findById(userId).select("-refreshToken");
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
+    }
+
+    const currentEmail = String(user.email || "")
+      .trim()
+      .toLowerCase();
+    const hasTemporaryEmail =
+      currentEmail.endsWith("@guest.local") ||
+      currentEmail.endsWith("@phone.com") ||
+      currentEmail.endsWith("@phone.eyra");
+    const canAttachPrimaryCredentials =
+      user.authProvider !== "email" || hasTemporaryEmail;
+
+    if ((email !== undefined || password !== undefined) && !canAttachPrimaryCredentials) {
+      return res.status(403).json({
+        success: false,
+        message: "Bu hesap için giriş bilgileri burada güncellenemez",
+      });
+    }
 
     // Username benzersizlik kontrolÃ¼
     if (username) {
@@ -1260,30 +1316,40 @@ exports.updateMyProfile = async (req, res) => {
         });
       }
     }
+    if (normalizedEmail) {
+      const existingEmailUser = await User.findOne({
+        email: normalizedEmail,
+        _id: { $ne: userId },
+      }).select("_id");
+      if (existingEmailUser) {
+        return res.status(400).json({
+          success: false,
+          message: "Bu e-posta zaten kullanımda",
+        });
+      }
+    }
 
-    const updateData = {};
-    if (name) updateData.name = name;
-    if (username) updateData.username = username;
-    if (gender !== undefined) updateData.gender = normalizeGender(gender);
-    if (age) updateData.age = age;
-    if (location) updateData.location = location;
-    if (country) updateData.country = country;
-    if (bio !== undefined) updateData.bio = bio;
+    if (name) user.name = name;
+    if (username) user.username = username;
+    if (gender !== undefined) user.gender = normalizeGender(gender);
+    if (age) user.age = age;
+    if (location) user.location = location;
+    if (country) user.country = country;
+    if (bio !== undefined) user.bio = bio;
     if (typeof preferredLanguage === "string" && preferredLanguage.trim()) {
-      updateData.preferredLanguage = preferredLanguage.trim().toLowerCase();
+      user.preferredLanguage = preferredLanguage.trim().toLowerCase();
+    }
+    if (normalizedEmail) {
+      user.email = normalizedEmail;
+      user.authProvider = "email";
+    }
+    if (normalizedPassword) {
+      user.password = normalizedPassword;
+      user.authProvider = "email";
+      user.isGuest = false;
     }
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { $set: updateData },
-      { new: true, runValidators: true },
-    ).select("-password -refreshToken");
-
-    if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Kullanıcı bulunamadı" });
-    }
+    await user.save();
 
     logger.info(`✅ Profil gÃ¼ncellendi: ${user.username}`);
 
@@ -1295,6 +1361,8 @@ exports.updateMyProfile = async (req, res) => {
         username: user.username,
         name: user.name,
         email: user.email,
+        authProvider: user.authProvider || "email",
+        isGuest: user.authProvider === "guest",
         preferredLanguage: user.preferredLanguage || "tr",
         profileImage: user.profileImage || "",
         gender: user.gender,
