@@ -1262,7 +1262,11 @@ exports.updateMyProfile = async (req, res) => {
     }
     if (email !== undefined) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-      if (!normalizedEmail || normalizedEmail.length > 120 || !emailRegex.test(normalizedEmail)) {
+      if (
+        !normalizedEmail ||
+        normalizedEmail.length > 120 ||
+        !emailRegex.test(normalizedEmail)
+      ) {
         return res.status(400).json({
           success: false,
           message: "Geçerli bir e-posta adresi girin",
@@ -1270,7 +1274,11 @@ exports.updateMyProfile = async (req, res) => {
       }
     }
     if (password !== undefined) {
-      if (!normalizedPassword || normalizedPassword.length < 6 || normalizedPassword.length > 128) {
+      if (
+        !normalizedPassword ||
+        normalizedPassword.length < 6 ||
+        normalizedPassword.length > 128
+      ) {
         return res.status(400).json({
           success: false,
           message: "Şifre 6-128 karakter arasında olmalı",
@@ -1296,7 +1304,10 @@ exports.updateMyProfile = async (req, res) => {
     const canAttachPrimaryCredentials =
       user.authProvider !== "email" || hasTemporaryEmail;
 
-    if ((email !== undefined || password !== undefined) && !canAttachPrimaryCredentials) {
+    if (
+      (email !== undefined || password !== undefined) &&
+      !canAttachPrimaryCredentials
+    ) {
       return res.status(403).json({
         success: false,
         message: "Bu hesap için giriş bilgileri burada güncellenemez",
