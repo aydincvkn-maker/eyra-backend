@@ -281,6 +281,7 @@ const buildUserPayload = (user) => ({
   following: user.following || 0,
   gifts: user.gifts || 0,
   settings: user.settings || {},
+  authProvider: user.authProvider || "email",
   isGuest: user.isGuest,
   isVerified: user.isVerified,
   verificationStatus: user.verificationStatus || "none",
