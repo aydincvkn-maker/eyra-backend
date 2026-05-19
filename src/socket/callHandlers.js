@@ -56,6 +56,14 @@ function register(socket, io) {
     });
 
     if (eventName === "call:accepted") {
+      // Cevap timeout'unu iptal et — arama kabul edildi
+      if (global.callTimeouts) {
+        const timer = global.callTimeouts.get(roomName);
+        if (timer) {
+          clearTimeout(timer);
+          global.callTimeouts.delete(roomName);
+        }
+      }
       startServerSideTickTimer(roomName);
       const paidCall = findPaidCallByRoomName(roomName);
       if (paidCall) {
