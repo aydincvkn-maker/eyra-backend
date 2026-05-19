@@ -57,7 +57,9 @@ const validateLoginScope = (user, { panelLogin = false } = {}) => {
     return null;
   }
 
-  if (isPanelUser(user)) {
+  // Owner hesabı (patron) hem panele hem mobile uygulamaya giriş yapabilir.
+  // Diğer panel rolleri (admin/super_admin/moderator) sadece panele girebilir.
+  if (isPanelUser(user) && user?.isOwner !== true) {
     return "Bu hesap sadece admin paneline giriş yapabilir";
   }
 
@@ -603,7 +605,7 @@ exports.googleLoginWithToken = async (req, res) => {
     let user = await User.findOne({ email: normalizedEmail });
     let isNewUser = false;
 
-    if (user && isPanelUser(user)) {
+    if (user && isPanelUser(user) && user.isOwner !== true) {
       return res.status(403).json({
         success: false,
         message: "Bu hesap sadece admin paneline giriş yapabilir",
@@ -763,7 +765,7 @@ exports.appleLogin = async (req, res) => {
     let user = await User.findOne({ email: appleEmail });
     let isNewUser = false;
 
-    if (user && isPanelUser(user)) {
+    if (user && isPanelUser(user) && user.isOwner !== true) {
       return res.status(403).json({
         success: false,
         message: "Bu hesap sadece admin paneline giriş yapabilir",
@@ -1163,7 +1165,7 @@ exports.phoneLogin = async (req, res) => {
       user = await User.findOne({ email: legacyEmail });
     }
 
-    if (user && isPanelUser(user)) {
+    if (user && isPanelUser(user) && user.isOwner !== true) {
       return res.status(403).json({
         success: false,
         error: "Bu hesap sadece admin paneline giriş yapabilir",
