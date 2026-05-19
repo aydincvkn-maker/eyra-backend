@@ -1802,6 +1802,14 @@ exports.requestPaidCall = async (req, res) => {
       return res.status(400).json({ ok: false, error: "cannot_call_yourself" });
     }
 
+    // Host zaten aramada mı kontrol et
+    try {
+      const hostPresence = await presenceService.getPresence(String(hostId));
+      if (hostPresence.busy || hostPresence.inCall) {
+        return res.status(400).json({ ok: false, error: "host_in_call", message: "Kullanıcı şu anda başka bir görüşmede" });
+      }
+    } catch (_) {}
+
     // Caller'ı kontrol et + Fiyat hesapla
     const pricePerMinute = stream.host.callPricePerMinute || 100; // Default: 100 coin/dk
     const parsedDuration = Number(duration) || 0;
@@ -1913,6 +1921,16 @@ exports.requestPaidCall = async (req, res) => {
     // Timeout referansını kaydet (clearTimeout için)
     if (global.callRequests.has(requestId)) {
       global.callRequests.get(requestId)._timeout = callTimeout;
+    }
+
+    // Her iki kullanıcıyı busy olarak işaretle (yeni arama gelmesin)
+    try {
+      await Promise.all([
+        presenceService.setBusy(String(callerId), true, { partnerId: String(hostId), roomName: callRoomName }),
+        presenceService.setBusy(String(hostId), true, { partnerId: String(callerId), roomName: callRoomName }),
+      ]);
+    } catch (e) {
+      logger.warn("setBusy (requestPaidCall) failed:", e.message);
     }
 
     // ✅ FIX: activeCalls'a da kaydet - mesajlaşma getCounterpartyForRoom bunu kullanıyor
@@ -2126,6 +2144,16 @@ exports.rejectPaidCall = async (req, res) => {
     // Talebi sil
     global.callRequests.delete(requestId);
 
+    // Presence busy durumunu temizle (ret durumunda)
+    try {
+      await Promise.all([
+        presenceService.setBusy(String(request.callerId), false),
+        presenceService.setBusy(String(request.hostId), false),
+      ]);
+    } catch (e) {
+      logger.warn("setBusy(false) rejectPaidCall failed:", e.message);
+    }
+
     // Caller'a bildir
     if (global.io) {
       const callerSocketKey = String(request.callerId);
@@ -2200,6 +2228,16 @@ exports.endPaidCall = async (req, res) => {
     const callRoomName = request.callRoomName || `paid_call_${requestId}`;
     if (global.activeCalls) {
       global.activeCalls.delete(callRoomName);
+    }
+
+    // Presence busy durumunu temizle
+    try {
+      await Promise.all([
+        presenceService.setBusy(String(request.callerId), false),
+        presenceService.setBusy(String(request.hostId), false),
+      ]);
+    } catch (e) {
+      logger.warn("setBusy(false) endPaidCall failed:", e.message);
     }
 
     // Her iki tarafa da bildir
