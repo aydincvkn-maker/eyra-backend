@@ -13,10 +13,13 @@ const { emitToUserSockets } = require("../socket/helpers");
 const { sendError } = require("../utils/response");
 const { createNotification } = require("../controllers/notificationController");
 const { logger } = require("../utils/logger");
+const { callPriceForLevel } = require("../utils/callPrice");
 
 // Cevaplanmayan aramalar için timeout (60 saniye)
 const CALL_ANSWER_TIMEOUT_MS = 60000;
-const callTimeouts = new Map();
+// Global paylaşımlı timeout map — callHandlers.js'den de erişilebilir
+if (!global.callTimeouts) global.callTimeouts = new Map();
+const callTimeouts = global.callTimeouts;
 
 function getActiveSocketForUser(userId) {
   const targetKey = String(userId || "").trim();
@@ -139,7 +142,7 @@ router.post("/initiate", auth, async (req, res) => {
     if (!targetUser) {
       return sendError(res, 404, "Kullanıcı bulunamadı");
     }
-    const pricePerMinute = targetUser.callPricePerMinute || 100;
+    const pricePerMinute = callPriceForLevel(targetUser.level || 1);
 
     // Caller'ın en az 1 dakika karşılığı coin'i olmalı
     const caller = await User.findById(callerId).select("coins").lean();
