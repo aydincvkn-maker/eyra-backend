@@ -1806,7 +1806,13 @@ exports.requestPaidCall = async (req, res) => {
     try {
       const hostPresence = await presenceService.getPresence(String(hostId));
       if (hostPresence.busy || hostPresence.inCall) {
-        return res.status(400).json({ ok: false, error: "host_in_call", message: "Kullanıcı şu anda başka bir görüşmede" });
+        return res
+          .status(400)
+          .json({
+            ok: false,
+            error: "host_in_call",
+            message: "Kullanıcı şu anda başka bir görüşmede",
+          });
       }
     } catch (_) {}
 
@@ -1926,8 +1932,14 @@ exports.requestPaidCall = async (req, res) => {
     // Her iki kullanıcıyı busy olarak işaretle (yeni arama gelmesin)
     try {
       await Promise.all([
-        presenceService.setBusy(String(callerId), true, { partnerId: String(hostId), roomName: callRoomName }),
-        presenceService.setBusy(String(hostId), true, { partnerId: String(callerId), roomName: callRoomName }),
+        presenceService.setBusy(String(callerId), true, {
+          partnerId: String(hostId),
+          roomName: callRoomName,
+        }),
+        presenceService.setBusy(String(hostId), true, {
+          partnerId: String(callerId),
+          roomName: callRoomName,
+        }),
       ]);
     } catch (e) {
       logger.warn("setBusy (requestPaidCall) failed:", e.message);
