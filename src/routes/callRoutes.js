@@ -137,7 +137,7 @@ router.post("/initiate", auth, async (req, res) => {
 
     // Callee bilgilerini çek (fiyat için)
     const targetUser = await User.findById(targetUserId)
-      .select("callPricePerMinute coins username name profileImage")
+      .select("callPricePerMinute level coins username name profileImage")
       .lean();
     if (!targetUser) {
       return sendError(res, 404, "Kullanıcı bulunamadı");
