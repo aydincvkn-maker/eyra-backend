@@ -8,6 +8,27 @@ const fs = require("fs");
 const crypto = require("crypto");
 const storageService = require("../services/storageService");
 const { logger } = require("../utils/logger");
+const axios = require("axios");
+
+/**
+ * Sends a Telegram message to the admin when a new verification request arrives.
+ * Requires TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID env vars.
+ * Silently skips if env vars are not configured.
+ */
+async function notifyAdminTelegram(message) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) return;
+  try {
+    await axios.post(
+      `https://api.telegram.org/bot${token}/sendMessage`,
+      { chat_id: chatId, text: message, parse_mode: "HTML" },
+      { timeout: 8000 },
+    );
+  } catch (err) {
+    logger.warn("Telegram admin notify failed", { error: err.message });
+  }
+}
 
 const saveVerificationUpload = async (userId, file, suffix) => {
   const id = `verify_${userId}_${suffix}_${crypto.randomBytes(8).toString("hex")}`;
@@ -212,6 +233,15 @@ exports.uploadFacePhotos = async (req, res) => {
       userId,
       verificationId: verification._id,
     });
+
+    // Fire-and-forget: notify admin via Telegram
+    const displayName = user.name || user.username || userId.toString();
+    notifyAdminTelegram(
+      `🔔 <b>Yeni Doğrulama Talebi</b>\n` +
+        `👤 Kullanıcı: ${displayName}\n` +
+        `🆔 ID: ${userId}\n` +
+        `🕐 ${new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })}`,
+    ).catch(() => {});
 
     return res.json({
       success: true,
@@ -535,5 +565,41 @@ exports.adminReject = async (req, res) => {
   } catch (err) {
     logger.error("adminReject error:", err);
     res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+};
+
+/**
+ * Admin: Telegram bot bağlantısını test eder.
+ * GET /api/verification/admin/test-telegram
+ */
+exports.testTelegramNotification = async (req, res) => {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+
+  if (!token || !chatId) {
+    return res.status(503).json({
+      success: false,
+      message: "TELEGRAM_BOT_TOKEN veya TELEGRAM_CHAT_ID env değişkeni eksik",
+      configured: { token: !!token, chatId: !!chatId },
+    });
+  }
+
+  try {
+    await axios.post(
+      `https://api.telegram.org/bot${token}/sendMessage`,
+      {
+        chat_id: chatId,
+        text: `✅ <b>Telegram Test Başarılı</b>\n🕐 ${new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })}`,
+        parse_mode: "HTML",
+      },
+      { timeout: 8000 },
+    );
+    return res.json({ success: true, message: "Telegram mesajı gönderildi" });
+  } catch (err) {
+    return res.status(502).json({
+      success: false,
+      message: "Telegram API hatası",
+      detail: err.response?.data?.description || err.message,
+    });
   }
 };

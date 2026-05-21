@@ -99,5 +99,11 @@ router.put(
   requirePermission("users:edit"),
   verificationController.adminReject,
 );
+router.get(
+  "/admin/test-telegram",
+  auth,
+  requirePermission("users:edit"),
+  verificationController.testTelegramNotification,
+);
 
 module.exports = router;
