@@ -1807,13 +1807,11 @@ exports.requestPaidCall = async (req, res) => {
     try {
       const hostPresence = await presenceService.getPresence(String(hostId));
       if (hostPresence.busy || hostPresence.inCall) {
-        return res
-          .status(400)
-          .json({
-            ok: false,
-            error: "host_in_call",
-            message: "Kullanıcı şu anda başka bir görüşmede",
-          });
+        return res.status(400).json({
+          ok: false,
+          error: "host_in_call",
+          message: "Kullanıcı şu anda başka bir görüşmede",
+        });
       }
     } catch (_) {}
 
