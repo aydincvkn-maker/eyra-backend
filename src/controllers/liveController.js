@@ -26,6 +26,7 @@ const { createNotification } = require("./notificationController");
 const Follow = require("../models/Follow");
 const adminSocket = require("../socket/adminNamespace");
 const { logger } = require("../utils/logger");
+const { callPriceForLevel } = require("../utils/callPrice");
 
 // ============ CATEGORY MAPPING (Turkish → English) ============
 const CATEGORY_MAP = {
@@ -1788,7 +1789,7 @@ exports.requestPaidCall = async (req, res) => {
     // Yayını bul
     const stream = await LiveStream.findOne({ roomId, isLive: true }).populate(
       "host",
-      "username name profileImage callPricePerMinute",
+      "username name profileImage level callPricePerMinute",
     );
 
     if (!stream) {
@@ -1816,8 +1817,8 @@ exports.requestPaidCall = async (req, res) => {
       }
     } catch (_) {}
 
-    // Caller'ı kontrol et + Fiyat hesapla
-    const pricePerMinute = stream.host.callPricePerMinute || 100; // Default: 100 coin/dk
+    // Caller'ı kontrol et + Fiyat hesapla (yayıncı seviyesine göre)
+    const pricePerMinute = callPriceForLevel(stream.host.level || 1);
     const parsedDuration = Number(duration) || 0;
     const flatEntryPrice = 899;
     const totalPrice =
