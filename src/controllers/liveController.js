@@ -2288,7 +2288,7 @@ exports.getHostCallPrice = async (req, res) => {
     const { hostId } = req.params;
 
     const host = await User.findById(hostId).select(
-      "callPricePerMinute username name",
+      "callPricePerMinute username name level",
     );
     if (!host) {
       return res.status(404).json({ ok: false, error: "host_not_found" });
@@ -2298,7 +2298,7 @@ exports.getHostCallPrice = async (req, res) => {
       ok: true,
       hostId,
       hostName: host.name || host.username,
-      pricePerMinute: host.callPricePerMinute || 100,
+      pricePerMinute: callPriceForLevel(host.level || 1),
       currency: "coins",
     });
   } catch (err) {
@@ -2315,7 +2315,7 @@ exports.getHostLiveSummary = async (req, res) => {
     const { hostId } = req.params;
 
     const host = await User.findById(hostId).select(
-      "username name profileImage age country callPricePerMinute dailyQuotaTarget isLive isOnline isBusy presenceStatus",
+      "username name profileImage age country callPricePerMinute level dailyQuotaTarget isLive isOnline isBusy presenceStatus",
     );
 
     if (!host) {
@@ -2352,7 +2352,7 @@ exports.getHostLiveSummary = async (req, res) => {
         profileImage: host.profileImage || "",
         age: host.age || 0,
         country: host.country || "",
-        callPricePerMinute: host.callPricePerMinute || 100,
+        callPricePerMinute: callPriceForLevel(host.level || 1),
         dailyQuotaTarget: host.dailyQuotaTarget || 0,
         dailyGiftTotal,
         dayWindow: {
