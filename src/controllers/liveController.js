@@ -8,6 +8,7 @@ const { v4: uuidv4 } = require("uuid");
 const { AccessToken } = require("livekit-server-sdk");
 const presenceService = require("../services/presenceService");
 const liveService = require("../services/liveService");
+const pkMatchService = require("../services/pkMatchService");
 const translationService = require("../services/translationService");
 const {
   optimizeStreamList,
@@ -611,6 +612,27 @@ exports.endLive = async (req, res) => {
     const viewerIds = [...(stream.viewers || [])];
     const finalViewerCount = stream.viewerCount || 0;
     const streamRoomId = stream.roomId;
+
+    // ✅ Aktif PK eşleşmesi varsa sonlandır ve karşı tarafı bilgilendir
+    try {
+      const pkMatch = await pkMatchService.endMatchByRoom(streamRoomId);
+      if (pkMatch && global.io) {
+        const endedPayload = {
+          pkRoomId: pkMatch.pkRoomId,
+          reason: "host_ended",
+        };
+        global.io.to(pkMatch.hostA.streamRoomId).emit("pk:ended", {
+          ...endedPayload,
+          streamRoomId: pkMatch.hostA.streamRoomId,
+        });
+        global.io.to(pkMatch.hostB.streamRoomId).emit("pk:ended", {
+          ...endedPayload,
+          streamRoomId: pkMatch.hostB.streamRoomId,
+        });
+      }
+    } catch (e) {
+      logger.warn("⚠️ PK match cleanup failed:", e.message);
+    }
 
     // Yayını kapat
     stream.isLive = false;
