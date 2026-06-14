@@ -6,6 +6,7 @@
 const { userSockets, socketGenderCache } = require("./state");
 const LiveStream = require("../models/LiveStream");
 const presenceService = require("../services/presenceService");
+const pkMatchService = require("../services/pkMatchService");
 const { logger } = require("../utils/logger");
 
 /**
@@ -102,7 +103,10 @@ function register(socket, io, stopServerHeartbeat) {
         pkMatchService.cleanupUser(userId);
         const pkMatch = await pkMatchService.endMatchByUser(userId);
         if (pkMatch) {
-          const endedPayload = { pkRoomId: pkMatch.pkRoomId, reason: "disconnect" };
+          const endedPayload = {
+            pkRoomId: pkMatch.pkRoomId,
+            reason: "disconnect",
+          };
           io.to(pkMatch.hostA.streamRoomId).emit("pk:ended", {
             ...endedPayload,
             streamRoomId: pkMatch.hostA.streamRoomId,
