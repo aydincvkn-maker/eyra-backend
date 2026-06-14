@@ -58,8 +58,7 @@ function getWaitingList(excludeUserId) {
 
 async function buildMatch(a, b) {
   const matchId = uuidv4();
-  const pkRoomId =
-    "pk_" + Date.now().toString() + "_" + uuidv4().slice(0, 8);
+  const pkRoomId = "pk_" + Date.now().toString() + "_" + uuidv4().slice(0, 8);
   const startedAt = Date.now();
   const match = {
     matchId,
@@ -83,8 +82,10 @@ async function buildMatch(a, b) {
   activeMatches.set(matchId, match);
   userToMatch.set(match.hostA.userId, matchId);
   userToMatch.set(match.hostB.userId, matchId);
-  if (match.hostA.streamRoomId) roomToMatch.set(match.hostA.streamRoomId, matchId);
-  if (match.hostB.streamRoomId) roomToMatch.set(match.hostB.streamRoomId, matchId);
+  if (match.hostA.streamRoomId)
+    roomToMatch.set(match.hostA.streamRoomId, matchId);
+  if (match.hostB.streamRoomId)
+    roomToMatch.set(match.hostB.streamRoomId, matchId);
 
   // İki yayın dokümanına PK bilgisini yaz (izleyici-join ortak oda token'ı için)
   try {
@@ -137,7 +138,10 @@ async function enqueueAndMatch(entry) {
   const key = String(entry.userId);
 
   if (userToMatch.has(key)) {
-    return { status: "already_in_match", match: activeMatches.get(userToMatch.get(key)) };
+    return {
+      status: "already_in_match",
+      match: activeMatches.get(userToMatch.get(key)),
+    };
   }
 
   const opponentIdx = queue.findIndex((e) => String(e.userId) !== key);
@@ -202,7 +206,12 @@ async function endMatch(matchId) {
       { roomId: { $in: [match.hostA.streamRoomId, match.hostB.streamRoomId] } },
       {
         $set: { isPk: false },
-        $unset: { pkRoomId: "", pkMatchId: "", pkOpponent: "", pkStartedAt: "" },
+        $unset: {
+          pkRoomId: "",
+          pkMatchId: "",
+          pkOpponent: "",
+          pkStartedAt: "",
+        },
       },
     );
   } catch (e) {
@@ -219,7 +228,11 @@ function cleanupUser(userId) {
 
 /** Ortak PK odası için host (yayın izinli) token üretir. */
 async function hostToken(match, userId) {
-  return createLiveKitToken({ userId, roomId: match.pkRoomId, canPublish: true });
+  return createLiveKitToken({
+    userId,
+    roomId: match.pkRoomId,
+    canPublish: true,
+  });
 }
 
 /** Ortak PK odası için izleyici (sadece izleme) token üretir. */
