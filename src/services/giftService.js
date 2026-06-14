@@ -660,6 +660,25 @@ exports.sendGift = async ({
     };
     if (live) {
       global.io.to(live.roomId).emit("gift_received", giftPayload);
+      // PK düellosunda rakibin yayın odasına da yayınla ki her iki tarafın
+      // izleyicileri ve host'ları skoru senkron görsün.
+      if (live.isPk && live.pkRoomId) {
+        try {
+          const pkMatchService = require("./pkMatchService");
+          const match = pkMatchService.getMatchByRoom(live.roomId);
+          if (match) {
+            const opponentRoom =
+              String(match.hostA.streamRoomId) === String(live.roomId)
+                ? match.hostB.streamRoomId
+                : match.hostA.streamRoomId;
+            if (opponentRoom && String(opponentRoom) !== String(live.roomId)) {
+              global.io.to(opponentRoom).emit("gift_received", giftPayload);
+            }
+          }
+        } catch (_) {
+          /* PK senkron yayını best-effort */
+        }
+      }
     } else {
       // Direkt hediye: alıcı + gönderene bildir
       try {
