@@ -97,6 +97,25 @@ function register(socket, io, stopServerHeartbeat) {
     if (set.size === 0) {
       userSockets.delete(key);
 
+      // PK bekleme kuyruğundan çıkar ve aktif PK eşleşmesini sonlandır
+      try {
+        pkMatchService.cleanupUser(userId);
+        const pkMatch = await pkMatchService.endMatchByUser(userId);
+        if (pkMatch) {
+          const endedPayload = { pkRoomId: pkMatch.pkRoomId, reason: "disconnect" };
+          io.to(pkMatch.hostA.streamRoomId).emit("pk:ended", {
+            ...endedPayload,
+            streamRoomId: pkMatch.hostA.streamRoomId,
+          });
+          io.to(pkMatch.hostB.streamRoomId).emit("pk:ended", {
+            ...endedPayload,
+            streamRoomId: pkMatch.hostB.streamRoomId,
+          });
+        }
+      } catch (err) {
+        logger.error("PK disconnect cleanup error", { err: String(err) });
+      }
+
       // Immediate offline
       try {
         await presenceService.setOffline(userId, {
