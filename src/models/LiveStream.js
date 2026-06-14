@@ -75,6 +75,17 @@ const liveStreamSchema = new mongoose.Schema(
     roomId: { type: String, required: true, unique: true, index: true },
     platform: { type: String, default: "Mobile" },
     coinsPerMin: { type: Number, default: 0 },
+
+    // ✅ PK (versus) Eşleşme
+    isPk: { type: Boolean, default: false },
+    pkRoomId: { type: String, default: null }, // Ortak LiveKit PK odası
+    pkMatchId: { type: String, default: null },
+    pkStartedAt: { type: Date },
+    pkOpponent: {
+      userId: { type: String },
+      name: { type: String },
+      image: { type: String },
+    },
     
     // Zamanlar
     startedAt: { type: Date, default: Date.now },

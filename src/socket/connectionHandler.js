@@ -12,6 +12,7 @@ const { logger } = require("../utils/logger");
 const { sanitizeSocketPayload } = require("../middleware/validate");
 
 const liveHandlers = require("./liveHandlers");
+const pkHandlers = require("./pkHandlers");
 const callHandlers = require("./callHandlers");
 const chatHandlers = require("./chatHandlers");
 const disconnectHandler = require("./disconnectHandler");
@@ -258,6 +259,7 @@ function setup(io) {
 
     // ---- Delegate to feature handlers ----
     liveHandlers.register(socket, io);
+    pkHandlers.register(socket, io);
     callHandlers.register(socket, io);
     chatHandlers.register(socket, io);
     disconnectHandler.register(socket, io, stopServerHeartbeat);

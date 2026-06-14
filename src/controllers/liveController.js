@@ -722,8 +722,13 @@ exports.joinAsViewer = async (req, res) => {
       return res.status(404).json({ ok: false, error: "stream_not_found" });
     }
 
-    // Token oluştur
-    const token = await generateViewerToken(userId, roomId);
+    // ✅ PK aktifse izleyici ortak PK odasına bağlanır (iki host'u da görür).
+    // Chat/hediye için socket tarafında yine kendi roomId'sine join olur.
+    const isPkActive = stream.isPk === true && !!stream.pkRoomId;
+    const liveKitRoomForViewer = isPkActive ? stream.pkRoomId : roomId;
+
+    // Token oluştur (PK'da ortak oda, değilse normal yayın odası)
+    const token = await generateViewerToken(userId, liveKitRoomForViewer);
 
     // ✅ ATOMIC UPDATE: İzleyici sayısını güvenli şekilde artır
     // Race condition önleme: $inc ve $addToSet kullan
@@ -771,6 +776,12 @@ exports.joinAsViewer = async (req, res) => {
       token,
       livekitUrl: process.env.LIVEKIT_URL,
       viewerCount: updatedStream.viewerCount,
+      pk: isPkActive
+        ? {
+            pkRoomId: stream.pkRoomId,
+            opponent: stream.pkOpponent || null,
+          }
+        : null,
       stream: {
         _id: updatedStream._id,
         roomId: updatedStream.roomId,
