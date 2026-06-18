@@ -854,7 +854,11 @@ exports.adminResetUserPassword = async (req, res) => {
     }
 
     if (isPanelUser(user)) {
-      return sendError(res, 403, "Panel kullanıcılarının şifresi buradan değiştirilemez");
+      return sendError(
+        res,
+        403,
+        "Panel kullanıcılarının şifresi buradan değiştirilemez",
+      );
     }
 
     user.password = normalizedPassword;

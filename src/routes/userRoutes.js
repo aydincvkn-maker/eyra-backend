@@ -278,6 +278,14 @@ router.patch(
   userController.unbanUser,
 );
 
+// PUT /api/users/:userId/password - Admin kullanıcı şifresi belirle
+router.put(
+  "/:userId/password",
+  auth,
+  requirePermission("users:edit"),
+  userController.adminResetUserPassword,
+);
+
 // PATCH /api/users/:userId/restrict-admin - Panel admin kısıtla/kısıtı kaldır (süper admin veya patron)
 router.patch(
   "/:userId/restrict-admin",
