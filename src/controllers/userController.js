@@ -828,6 +828,50 @@ exports.toggleBan = async (req, res) => {
   }
 };
 
+exports.adminResetUserPassword = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { password } = req.body;
+    const normalizedPassword = password !== undefined ? String(password) : "";
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return sendError(res, 400, "Geçersiz kullanıcı ID");
+    }
+
+    if (
+      !normalizedPassword ||
+      normalizedPassword.length < 6 ||
+      normalizedPassword.length > 128
+    ) {
+      return sendError(res, 400, "Şifre 6-128 karakter arasında olmalı");
+    }
+
+    const user = await User.findById(userId);
+    if (!user) return sendError(res, 404, "Kullanıcı bulunamadı");
+
+    if (String(user._id) === String(req.user.id)) {
+      return sendError(res, 400, "Kendi şifrenizi buradan değiştiremezsiniz");
+    }
+
+    if (isPanelUser(user)) {
+      return sendError(res, 403, "Panel kullanıcılarının şifresi buradan değiştirilemez");
+    }
+
+    user.password = normalizedPassword;
+    user.authProvider = "email";
+    user.isGuest = false;
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    await user.save();
+
+    logger.info(`Admin ${req.user.id} reset password for user ${user._id}`);
+
+    res.json({ success: true, message: "Şifre güncellendi" });
+  } catch (err) {
+    logger.error("adminResetUserPassword error:", err);
+    sendError(res, 500, "Sunucu hatası");
+  }
+};
+
 exports.unbanUser = async (req, res) => {
   try {
     const { userId } = req.params;
