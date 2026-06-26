@@ -404,6 +404,19 @@ exports.register = async (req, res) => {
       });
     }
 
+    const normalizedUsername = String(username).trim();
+    if (
+      normalizedUsername.length < 3 ||
+      normalizedUsername.length > 10 ||
+      !/^[a-zA-Z0-9_.]+$/.test(normalizedUsername)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Kullanıcı adı 3-10 karakter olmalı ve boşluk içeremez",
+        error: "Kullanıcı adı 3-10 karakter olmalı ve boşluk içeremez",
+      });
+    }
+
     const existingEmail = await User.findOne({ email: normalizedEmail });
     if (existingEmail) {
       return res.status(400).json({
@@ -413,7 +426,9 @@ exports.register = async (req, res) => {
       });
     }
 
-    const existingUsername = await User.findOne({ username });
+    const existingUsername = await User.findOne({
+      username: normalizedUsername,
+    });
     if (existingUsername) {
       return res.status(400).json({
         success: false,
@@ -425,7 +440,7 @@ exports.register = async (req, res) => {
     const normalizedGender = resolveGender(gender);
 
     const user = await User.create({
-      username,
+      username: normalizedUsername,
       name,
       email: normalizedEmail,
       password,

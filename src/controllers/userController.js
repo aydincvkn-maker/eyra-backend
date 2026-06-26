@@ -1262,10 +1262,10 @@ exports.updateMyProfile = async (req, res) => {
     }
     if (username !== undefined) {
       const v = String(username).trim();
-      if (v.length < 3 || v.length > 30)
+      if (v.length < 3 || v.length > 10)
         return res.status(400).json({
           success: false,
-          message: "Kullanıcı adı 3-30 karakter arasında olmalı",
+          message: "Kullanıcı adı 3-10 karakter arasında olmalı",
         });
       if (!/^[a-zA-Z0-9_.]+$/.test(v))
         return res.status(400).json({

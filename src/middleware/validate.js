@@ -37,9 +37,9 @@ const validateRegister = [
     .withMessage("Password must be 6-128 characters"),
   body("username")
     .trim()
-    .isLength({ min: 2, max: 30 })
-    .withMessage("Username must be 2-30 characters")
-    .matches(/^[a-zA-Z0-9_.\-\s]+$/)
+    .isLength({ min: 3, max: 10 })
+    .withMessage("Username must be 3-10 characters")
+    .matches(/^[a-zA-Z0-9_.]+$/)
     .withMessage("Username contains invalid characters"),
   body("gender")
     .optional()
@@ -171,9 +171,9 @@ const validateUpdateProfile = [
   body("username")
     .optional()
     .trim()
-    .isLength({ min: 2, max: 30 })
-    .withMessage("Username must be 2-30 characters")
-    .matches(/^[a-zA-Z0-9_.\-\s]+$/)
+    .isLength({ min: 3, max: 10 })
+    .withMessage("Username must be 3-10 characters")
+    .matches(/^[a-zA-Z0-9_.]+$/)
     .withMessage("Username contains invalid characters"),
   body("bio")
     .optional()

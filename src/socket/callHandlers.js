@@ -7,6 +7,7 @@ const { activeCalls } = require("./state");
 const { emitToUserSockets, getCounterpartyForRoom } = require("./helpers");
 const presenceService = require("../services/presenceService");
 const User = require("../models/User");
+const Transaction = require("../models/Transaction");
 const { sanitizeSocketPayload } = require("../middleware/validate");
 const { logger } = require("../utils/logger");
 
@@ -186,6 +187,14 @@ function register(socket, io) {
         return;
       }
 
+      // ✅ Direkt (kullanıcı→kullanıcı) aramalarda ücretlendirme tamamen
+      // server-side timer ile yapılır. Client tick'leri yok say — aksi halde
+      // değiştirilmiş bir istemci tick göndermeyi durdurarak ücretsiz
+      // konuşabilirdi.
+      if (callInfo.isDirectCall) {
+        return;
+      }
+
       // ✅ FIX: Server-side timer varsa resetle (client aktif)
       if (callInfo._serverTickTimer) {
         clearInterval(callInfo._serverTickTimer);
@@ -218,7 +227,12 @@ function startServerSideTickTimer(callRoomName) {
     return;
   }
 
-  let serverMinute = 0;
+  // ✅ İlk dakika ücretini kabul anında peşin al — 60 saniyeden kısa aramalar
+  // da ücretli olsun (kimse ücretsiz aramasın). Coin arayandan düşer, %70'i
+  // aranana (host) geçer.
+  _processCallTick(callInfo, 1);
+
+  let serverMinute = 1; // İlk dakika alındı; timer 2. dakikadan devam etsin
   callInfo._serverTickTimer = setInterval(() => {
     // Call hala aktif mi?
     let stillActive = false;
@@ -298,9 +312,23 @@ async function _processCallTick(callInfo, minuteIndex) {
     }
 
     const hostShare = Math.floor(pricePerMinute * 0.7);
-    await User.findByIdAndUpdate(callInfo.hostId, {
-      $inc: { coins: hostShare, totalEarnings: hostShare },
-    });
+    const updatedHost = await User.findByIdAndUpdate(
+      callInfo.hostId,
+      { $inc: { coins: hostShare, totalEarnings: hostShare } },
+      { new: true },
+    );
+
+    // ✅ Arama kazancını Transaction olarak kaydet — günlük canlı kazanç
+    //    sayacı ve haftalık performans/maaş hesabı bu kayıtları kullanır.
+    //    Fire-and-forget: kayıt hatası ücretlendirmeyi bozmaz.
+    Transaction.create({
+      user: callInfo.hostId,
+      type: "call_earning",
+      amount: hostShare,
+      balanceAfter: updatedHost ? updatedHost.coins : undefined,
+      relatedUser: callInfo.callerId,
+      description: "Görüntülü arama kazancı",
+    }).catch((e) => logger.error("call_earning transaction error:", e.message));
 
     emitToUserSockets(callInfo.callerId, "call:coin_charged", {
       roomName: callInfo.callRoomName,

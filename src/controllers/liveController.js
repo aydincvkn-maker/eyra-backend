@@ -2136,6 +2136,21 @@ exports.acceptPaidCall = async (req, res) => {
     }
 
     const hostEarnings = Math.floor(request.totalPrice * 0.45);
+
+    // ✅ Canlı yayın sırasında alınan ücretli arama kazancını Transaction
+    //    olarak kaydet — coin requestPaidCall'da peşin kredilendi; bu kayıt
+    //    yalnızca commit anında (status=connected, iade penceresi kapandı)
+    //    yazılır. Günlük canlı kazanç sayacı ve haftalık maaş bu kaydı kullanır.
+    Transaction.create({
+      user: hostId,
+      type: "call_earning",
+      amount: hostEarnings,
+      relatedUser: request.callerId,
+      description: "Canlı yayın ücretli arama kazancı",
+    }).catch((e) =>
+      logger.error("paid call_earning transaction error:", e.message),
+    );
+
     res.json({
       ok: true,
       callRoomName,
@@ -2361,7 +2376,8 @@ exports.getHostLiveSummary = async (req, res) => {
       {
         $match: {
           user: host._id,
-          type: "gift_received",
+          // Günlük canlı kazanç = alınan hediyeler + alınan görüntülü aramalar
+          type: { $in: ["gift_received", "call_earning"] },
           status: "completed",
           createdAt: { $gte: start, $lt: end },
         },
