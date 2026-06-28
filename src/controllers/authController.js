@@ -85,12 +85,24 @@ const getPendingApprovalMessage = (user) => {
 };
 
 const updateLoginTracking = async (req, user) => {
+  const loginCountry = String(
+    req.headers["cf-ipcountry"] ||
+      req.headers["x-vercel-ip-country"] ||
+      req.headers["x-country-code"] ||
+      req.headers["cloudfront-viewer-country"] ||
+      "",
+  )
+    .trim()
+    .toUpperCase()
+    .slice(0, 2);
+
   const loginEntry = {
     platform: String(
       req.headers["x-platform"] || req.headers["user-agent"] || "",
     ).slice(0, 200),
     device: String(req.headers["x-device"] || "").slice(0, 200),
     ip: req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || "",
+    country: loginCountry,
     loginAt: new Date(),
   };
 
@@ -1276,6 +1288,16 @@ exports.phoneLogin = async (req, res) => {
         device: String(req.headers["x-device"] || "").slice(0, 200),
         ip:
           req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || "",
+        country: String(
+          req.headers["cf-ipcountry"] ||
+            req.headers["x-vercel-ip-country"] ||
+            req.headers["x-country-code"] ||
+            req.headers["cloudfront-viewer-country"] ||
+            "",
+        )
+          .trim()
+          .toUpperCase()
+          .slice(0, 2),
         loginAt: new Date(),
       };
       await User.updateOne(

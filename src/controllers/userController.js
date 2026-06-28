@@ -169,6 +169,15 @@ const formatUser = (user, presenceData = {}) => {
   const isBusy = presenceStatus === "in_call";
   const lastSeen =
     presenceData.lastSeen || user.lastSeen || user.lastOnlineAt || null;
+  const latestLogin = Array.isArray(user.loginHistory)
+    ? [...user.loginHistory].sort(
+        (a, b) => new Date(b.loginAt || 0) - new Date(a.loginAt || 0),
+      )[0]
+    : null;
+  const loginCountry = String(latestLogin?.country || "")
+    .trim()
+    .toUpperCase()
+    .slice(0, 2);
 
   return {
     _id: user._id,
@@ -181,6 +190,7 @@ const formatUser = (user, presenceData = {}) => {
     age: user.age || 20,
     location: user.location || "TR",
     country: user.country || "TR",
+    loginCountry: loginCountry || null,
     followers: user.followers || 0,
     following: user.following || 0,
     gifts: user.gifts || 0,

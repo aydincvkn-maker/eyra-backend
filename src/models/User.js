@@ -111,6 +111,7 @@ const userSchema = new mongoose.Schema(
         platform: { type: String, default: "" },
         device: { type: String, default: "" },
         ip: { type: String, default: "" },
+        country: { type: String, default: "" },
         loginAt: { type: Date, default: Date.now },
       },
     ],
