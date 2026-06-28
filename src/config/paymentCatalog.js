@@ -100,8 +100,7 @@ const normalizePaymentContext = (context = {}) => {
   const channel = String(context.channel || "app")
     .trim()
     .toLowerCase();
-  const isStoreManagedPlatform =
-    channel === "app" && (platform === "android" || platform === "ios");
+  const isStoreManagedPlatform = channel === "app" && platform === "android";
 
   return {
     platform,
