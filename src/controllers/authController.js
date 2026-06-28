@@ -570,6 +570,8 @@ exports.guestLogin = async (req, res) => {
       busyUntil: null,
     });
 
+    await updateLoginTracking(req, user);
+
     const token = createToken(user, "7d");
 
     res.json({
