@@ -215,27 +215,34 @@ router.post("/initiate", auth, async (req, res) => {
       return sendError(res, 404, "Kullanıcı bulunamadı");
     }
     // Caller'ın en az 1 dakika karşılığı coin'i olmalı
-    const caller = await User.findById(callerId).select("coins gender level").lean();
+    const caller = await User.findById(callerId)
+      .select("coins gender level")
+      .lean();
     if (!caller) {
       return sendError(res, 404, "Kullanıcı bulunamadı");
     }
     const callerGender = String(caller.gender || "other").toLowerCase();
     const targetGender = String(targetUser.gender || "other").toLowerCase();
-    const femaleParticipant = callerGender === "female"
-      ? { id: String(callerId), level: caller.level || 1 }
-      : targetGender === "female"
-        ? { id: String(targetUserId), level: targetUser.level || 1 }
-        : null;
-    const maleParticipant = callerGender === "male"
-      ? { id: String(callerId), coins: caller.coins }
-      : targetGender === "male"
-        ? { id: String(targetUserId), coins: targetUser.coins }
-        : null;
+    const femaleParticipant =
+      callerGender === "female"
+        ? { id: String(callerId), level: caller.level || 1 }
+        : targetGender === "female"
+          ? { id: String(targetUserId), level: targetUser.level || 1 }
+          : null;
+    const maleParticipant =
+      callerGender === "male"
+        ? { id: String(callerId), coins: caller.coins }
+        : targetGender === "male"
+          ? { id: String(targetUserId), coins: targetUser.coins }
+          : null;
     const isBillableCall = Boolean(femaleParticipant && maleParticipant);
     const pricePerMinute = isBillableCall
       ? callPriceForLevel(femaleParticipant.level)
       : 0;
-    if ((callerGender === "male" || targetGender === "male") && !isBillableCall) {
+    if (
+      (callerGender === "male" || targetGender === "male") &&
+      !isBillableCall
+    ) {
       return res.status(400).json({
         success: false,
         error: "call_not_allowed",
