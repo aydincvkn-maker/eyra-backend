@@ -109,7 +109,8 @@ function isUserParticipantInTrackedRoom(roomName, userId) {
     for (const request of global.callRequests.values()) {
       if (request.callRoomName !== roomKey) continue;
       return (
-        String(request.callerId) === userKey || String(request.hostId) === userKey
+        String(request.callerId) === userKey ||
+        String(request.hostId) === userKey
       );
     }
   }
