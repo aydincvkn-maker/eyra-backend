@@ -1822,7 +1822,7 @@ exports.requestPaidCall = async (req, res) => {
     // Yayını bul
     const stream = await LiveStream.findOne({ roomId, isLive: true }).populate(
       "host",
-      "username name profileImage level callPricePerMinute",
+      "username name profileImage level callPricePerMinute gender",
     );
 
     if (!stream) {
@@ -1849,18 +1849,36 @@ exports.requestPaidCall = async (req, res) => {
     } catch (_) {}
 
     // Caller'ı kontrol et + Fiyat hesapla (yayıncı seviyesine göre)
-    const pricePerMinute = callPriceForLevel(stream.host.level || 1);
+    const callerProfile = await User.findById(callerId)
+      .select("coins name username profileImage gender")
+      .lean();
+    if (!callerProfile) {
+      return res.status(404).json({ ok: false, error: "caller_not_found" });
+    }
+
+    const callerGender = String(callerProfile.gender || "other").toLowerCase();
+    const hostGender = String(stream.host.gender || "other").toLowerCase();
+    const isBillableCall = callerGender === "male" && hostGender === "female";
+    const pricePerMinute = isBillableCall
+      ? callPriceForLevel(stream.host.level || 1)
+      : 0;
     const parsedDuration = Number(duration) || 0;
     const flatEntryPrice = 899;
     const totalPrice =
-      parsedDuration > 0 ? pricePerMinute * parsedDuration : flatEntryPrice;
+      isBillableCall
+        ? parsedDuration > 0
+          ? pricePerMinute * parsedDuration
+          : flatEntryPrice
+        : 0;
 
     // Coin kontrolü + atomik düşürme (TOCTOU race condition önleme)
-    const updatedCaller = await User.findOneAndUpdate(
-      { _id: callerId, coins: { $gte: totalPrice } },
-      { $inc: { coins: -totalPrice } },
-      { new: true, select: "coins name username profileImage" },
-    );
+    const updatedCaller = isBillableCall
+      ? await User.findOneAndUpdate(
+          { _id: callerId, coins: { $gte: totalPrice } },
+          { $inc: { coins: -totalPrice } },
+          { new: true, select: "coins name username profileImage" },
+        )
+      : callerProfile;
     if (!updatedCaller) {
       // Tekrar bak: kullanıcı var mı yoksa coin mi yetersiz?
       const callerCheck = await User.findById(callerId).select("coins").lean();
@@ -1877,9 +1895,11 @@ exports.requestPaidCall = async (req, res) => {
 
     // Host'a coin ekle (%45) — zaten atomik
     const hostShare = Math.floor(totalPrice * 0.45);
-    await User.findByIdAndUpdate(hostId, {
-      $inc: { coins: hostShare, totalEarnings: hostShare },
-    });
+    if (hostShare > 0) {
+      await User.findByIdAndUpdate(hostId, {
+        $inc: { coins: hostShare, totalEarnings: hostShare },
+      });
+    }
 
     // Talep ID oluştur
     const requestId = `call_request_${Date.now()}_${uuidv4().slice(0, 8)}`;
@@ -1897,10 +1917,14 @@ exports.requestPaidCall = async (req, res) => {
         "❌ Token generation failed, rolling back coins:",
         tokenErr.message,
       );
-      await User.findByIdAndUpdate(callerId, { $inc: { coins: totalPrice } });
-      await User.findByIdAndUpdate(hostId, {
-        $inc: { coins: -hostShare, totalEarnings: -hostShare },
-      });
+      if (totalPrice > 0) {
+        await User.findByIdAndUpdate(callerId, { $inc: { coins: totalPrice } });
+      }
+      if (hostShare > 0) {
+        await User.findByIdAndUpdate(hostId, {
+          $inc: { coins: -hostShare, totalEarnings: -hostShare },
+        });
+      }
       return res
         .status(500)
         .json({ ok: false, error: "token_generation_failed" });
@@ -1920,6 +1944,8 @@ exports.requestPaidCall = async (req, res) => {
       duration: parsedDuration,
       pricePerMinute,
       totalPrice,
+      payerId: isBillableCall ? String(callerId) : null,
+      earnerId: isBillableCall ? String(hostId) : null,
       status: "accepted",
       callRoomName,
       createdAt: Date.now(),
@@ -1935,12 +1961,16 @@ exports.requestPaidCall = async (req, res) => {
           logger.info(
             `⏰ Call request ${requestId} timed out, refunding ${totalPrice} coins to caller`,
           );
-          User.findByIdAndUpdate(callerId, {
-            $inc: { coins: totalPrice },
-          }).catch(() => {});
-          User.findByIdAndUpdate(hostId, {
-            $inc: { coins: -hostShare, totalEarnings: -hostShare },
-          }).catch(() => {});
+          if (totalPrice > 0) {
+            User.findByIdAndUpdate(callerId, {
+              $inc: { coins: totalPrice },
+            }).catch(() => {});
+          }
+          if (hostShare > 0) {
+            User.findByIdAndUpdate(hostId, {
+              $inc: { coins: -hostShare, totalEarnings: -hostShare },
+            }).catch(() => {});
+          }
           global.callRequests.delete(requestId);
           if (global.activeCalls) global.activeCalls.delete(callRoomName);
           // Notify both sides
