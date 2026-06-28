@@ -1707,6 +1707,30 @@ exports.deleteAccount = async (req, res) => {
       }
     }
 
+    const socketSet = global.userSockets?.get(String(userId));
+    const socketIds = socketSet ? Array.from(socketSet) : [];
+
+    try {
+      const meta = { reason: "account_deleted" };
+      if (socketIds.length > 0 && socketIds[0]) {
+        meta.socketId = socketIds[0];
+      }
+      await presenceService.setOffline(String(userId), meta);
+    } catch (e) {
+      logger.warn("deleteAccount presence cleanup failed:", e.message);
+    }
+
+    if (socketIds.length && global.io?.sockets?.sockets) {
+      for (const socketId of socketIds) {
+        const socketInstance = global.io.sockets.sockets.get(socketId);
+        if (socketInstance) socketInstance.disconnect(true);
+      }
+    }
+
+    if (global.userSockets) {
+      global.userSockets.delete(String(userId));
+    }
+
     await User.findByIdAndDelete(userId);
 
     // Firebase Auth kullanicisini da sil - email ve/veya telefon numarasina gore
