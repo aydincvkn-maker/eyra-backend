@@ -92,6 +92,31 @@ function isUserInTrackedCall(userId) {
   return false;
 }
 
+function isUserParticipantInTrackedRoom(roomName, userId) {
+  const roomKey = String(roomName || "").trim();
+  const userKey = String(userId || "").trim();
+  if (!roomKey || !userKey) return false;
+
+  const activeCall = global.activeCalls?.get(roomKey);
+  if (activeCall) {
+    return (
+      String(activeCall.callerId) === userKey ||
+      String(activeCall.targetUserId) === userKey
+    );
+  }
+
+  if (global.callRequests) {
+    for (const request of global.callRequests.values()) {
+      if (request.callRoomName !== roomKey) continue;
+      return (
+        String(request.callerId) === userKey || String(request.hostId) === userKey
+      );
+    }
+  }
+
+  return false;
+}
+
 /**
  * Cevaplanmayan arama timeout handler
  * Hem arayan hem aranan kullanıcının busy durumunu temizler
@@ -547,6 +572,13 @@ router.post("/token", auth, async (req, res) => {
 
     if (!roomName) {
       return res.status(400).json({ ok: false, message: "roomName gerekli" });
+    }
+
+    if (!isUserParticipantInTrackedRoom(roomName, userId)) {
+      return res.status(404).json({
+        ok: false,
+        message: "Aktif arama bulunamadı",
+      });
     }
 
     const displayName = (userName || req.user.username || "User").toString();
