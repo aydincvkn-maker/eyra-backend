@@ -2170,15 +2170,17 @@ exports.acceptPaidCall = async (req, res) => {
     //    olarak kaydet — coin requestPaidCall'da peşin kredilendi; bu kayıt
     //    yalnızca commit anında (status=connected, iade penceresi kapandı)
     //    yazılır. Günlük canlı kazanç sayacı ve haftalık maaş bu kaydı kullanır.
-    Transaction.create({
-      user: hostId,
-      type: "call_earning",
-      amount: hostEarnings,
-      relatedUser: request.callerId,
-      description: "Canlı yayın ücretli arama kazancı",
-    }).catch((e) =>
-      logger.error("paid call_earning transaction error:", e.message),
-    );
+    if (hostEarnings > 0) {
+      Transaction.create({
+        user: hostId,
+        type: "call_earning",
+        amount: hostEarnings,
+        relatedUser: request.callerId,
+        description: "Canlı yayın ücretli arama kazancı",
+      }).catch((e) =>
+        logger.error("paid call_earning transaction error:", e.message),
+      );
+    }
 
     res.json({
       ok: true,
