@@ -1858,16 +1858,18 @@ exports.requestPaidCall = async (req, res) => {
 
     const callerGender = String(callerProfile.gender || "other").toLowerCase();
     const hostGender = String(stream.host.gender || "other").toLowerCase();
-    const femaleParticipant = callerGender === "female"
-      ? { id: String(callerId), level: callerProfile.level || 1 }
-      : hostGender === "female"
-        ? { id: String(hostId), level: stream.host.level || 1 }
-        : null;
-    const maleParticipant = callerGender === "male"
-      ? { id: String(callerId), coins: callerProfile.coins }
-      : hostGender === "male"
-        ? { id: String(hostId), coins: stream.host.coins }
-        : null;
+    const femaleParticipant =
+      callerGender === "female"
+        ? { id: String(callerId), level: callerProfile.level || 1 }
+        : hostGender === "female"
+          ? { id: String(hostId), level: stream.host.level || 1 }
+          : null;
+    const maleParticipant =
+      callerGender === "male"
+        ? { id: String(callerId), coins: callerProfile.coins }
+        : hostGender === "male"
+          ? { id: String(hostId), coins: stream.host.coins }
+          : null;
     const isBillableCall = Boolean(femaleParticipant && maleParticipant);
     const pricePerMinute = isBillableCall
       ? callPriceForLevel(femaleParticipant.level)
@@ -1890,7 +1892,9 @@ exports.requestPaidCall = async (req, res) => {
       : callerProfile;
     if (!updatedPayer) {
       // Tekrar bak: kullanıcı var mı yoksa coin mi yetersiz?
-      const payerCheck = await User.findById(maleParticipant.id).select("coins").lean();
+      const payerCheck = await User.findById(maleParticipant.id)
+        .select("coins")
+        .lean();
       if (!payerCheck) {
         return res.status(404).json({ ok: false, error: "payer_not_found" });
       }
@@ -1927,7 +1931,9 @@ exports.requestPaidCall = async (req, res) => {
         tokenErr.message,
       );
       if (totalPrice > 0) {
-        await User.findByIdAndUpdate(maleParticipant.id, { $inc: { coins: totalPrice } });
+        await User.findByIdAndUpdate(maleParticipant.id, {
+          $inc: { coins: totalPrice },
+        });
       }
       if (hostShare > 0) {
         await User.findByIdAndUpdate(femaleParticipant.id, {
