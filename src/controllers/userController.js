@@ -64,6 +64,31 @@ const buildAppUserQuery = (extra = {}) => ({
   ...extra,
 });
 
+const unsignedNonAdminFemaleQuery = () => ({
+  gender: "female",
+  createdByAdmin: { $ne: true },
+  "broadcasterContract.signed": { $ne: true },
+});
+
+const canViewerSeeAppUser = (viewer, target) => {
+  if (!target || isPanelUser(target)) return false;
+  const targetGender = normalizeGender(target.gender);
+  const viewerGender = viewer ? normalizeGender(viewer.gender) : null;
+
+  if (!viewerGender || viewerGender === "male") {
+    if (targetGender !== "female") return false;
+    if (target.settings?.profileVisibility === false) return false;
+    if (
+      target.createdByAdmin !== true &&
+      target.broadcasterContract?.signed !== true
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 const isPanelUser = (user) => {
   if (user?.accountScope === "panel") return true;
   const role = String(user?.role || "").toLowerCase();
@@ -277,13 +302,7 @@ exports.getUsers = async (req, res) => {
     // Sözleşme imzalamayan kadın kullanıcıları erkek izleyicilerden gizle (kadın izleyiciler görebilir)
     // Admin tarafından oluşturulan host'lar (createdByAdmin) sözleşme şartından muaftır.
     if (_viewerGender1 !== "female") {
-      query["$nor"] = [
-        {
-          gender: "female",
-          createdByAdmin: { $ne: true },
-          "broadcasterContract.signed": { $ne: true },
-        },
-      ];
+      query["$nor"] = [unsignedNonAdminFemaleQuery()];
     }
 
     // ✅ Kullanıcı listesi getir (limit zorunlu — sınırsız sorgu önlenir)
@@ -749,13 +768,7 @@ exports.getFemaleUsers = async (req, res) => {
     // Sözleşme imzalamayan kadın kullanıcıları erkek izleyicilerden gizle (kadın izleyiciler görebilir)
     // Admin tarafından oluşturulan host'lar (createdByAdmin) sözleşme şartından muaftır.
     if (_viewerGender2 !== "female") {
-      baseQuery["$nor"] = [
-        {
-          gender: "female",
-          createdByAdmin: { $ne: true },
-          "broadcasterContract.signed": { $ne: true },
-        },
-      ];
+      baseQuery["$nor"] = [unsignedNonAdminFemaleQuery()];
     }
 
     const users = await User.find(baseQuery)
