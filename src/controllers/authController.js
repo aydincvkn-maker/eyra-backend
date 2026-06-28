@@ -816,7 +816,10 @@ exports.appleLogin = async (req, res) => {
 
     if (!user) {
       isNewUser = true;
-      const username = await createUniqueUsername(User, appleEmail.split("@")[0]);
+      const username = await createUniqueUsername(
+        User,
+        appleEmail.split("@")[0],
+      );
       const displayName =
         givenName && familyName
           ? `${givenName} ${familyName}`
