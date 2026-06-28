@@ -1864,12 +1864,11 @@ exports.requestPaidCall = async (req, res) => {
       : 0;
     const parsedDuration = Number(duration) || 0;
     const flatEntryPrice = 899;
-    const totalPrice =
-      isBillableCall
-        ? parsedDuration > 0
-          ? pricePerMinute * parsedDuration
-          : flatEntryPrice
-        : 0;
+    const totalPrice = isBillableCall
+      ? parsedDuration > 0
+        ? pricePerMinute * parsedDuration
+        : flatEntryPrice
+      : 0;
 
     // Coin kontrolü + atomik düşürme (TOCTOU race condition önleme)
     const updatedCaller = isBillableCall
