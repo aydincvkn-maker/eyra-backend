@@ -287,8 +287,14 @@ async function _processCallTick(callInfo, minuteIndex) {
     if (minuteIndex <= callInfo._lastTickMinute) return;
     callInfo._lastTickMinute = minuteIndex;
 
-    const pricePerMinute = callInfo.pricePerMinute || 120;
+    const pricePerMinute = Number(callInfo.pricePerMinute || 0);
     const freeMinutes = callInfo.freeMinutes || 0;
+    const payerId = callInfo.payerId || callInfo.callerId;
+    const earnerId = callInfo.earnerId || callInfo.hostId;
+
+    if (pricePerMinute <= 0 || !payerId || !earnerId) {
+      return;
+    }
 
     // Ücretsiz dakika içindeyse coin düşme
     if (minuteIndex <= freeMinutes) {
@@ -299,15 +305,15 @@ async function _processCallTick(callInfo, minuteIndex) {
     }
 
     const updatedCaller = await User.findOneAndUpdate(
-      { _id: callInfo.callerId, coins: { $gte: pricePerMinute } },
+      { _id: payerId, coins: { $gte: pricePerMinute } },
       { $inc: { coins: -pricePerMinute } },
       { new: true, select: "coins" },
     );
     if (!updatedCaller) {
-      emitToUserSockets(callInfo.callerId, "call:insufficient_coins", {
+      emitToUserSockets(payerId, "call:insufficient_coins", {
         roomName: callInfo.callRoomName,
       });
-      emitToUserSockets(callInfo.hostId, "call:insufficient_coins", {
+      emitToUserSockets(earnerId, "call:insufficient_coins", {
         roomName: callInfo.callRoomName,
       });
       logger.info("Insufficient coins for call, ending", {
@@ -323,7 +329,7 @@ async function _processCallTick(callInfo, minuteIndex) {
 
     const hostShare = Math.floor(pricePerMinute * 0.7);
     const updatedHost = await User.findByIdAndUpdate(
-      callInfo.hostId,
+      earnerId,
       { $inc: { coins: hostShare, totalEarnings: hostShare } },
       { new: true },
     );
@@ -332,21 +338,21 @@ async function _processCallTick(callInfo, minuteIndex) {
     //    sayacı ve haftalık performans/maaş hesabı bu kayıtları kullanır.
     //    Fire-and-forget: kayıt hatası ücretlendirmeyi bozmaz.
     Transaction.create({
-      user: callInfo.hostId,
+      user: earnerId,
       type: "call_earning",
       amount: hostShare,
       balanceAfter: updatedHost ? updatedHost.coins : undefined,
-      relatedUser: callInfo.callerId,
+      relatedUser: payerId,
       description: "Görüntülü arama kazancı",
     }).catch((e) => logger.error("call_earning transaction error:", e.message));
 
-    emitToUserSockets(callInfo.callerId, "call:coin_charged", {
+    emitToUserSockets(payerId, "call:coin_charged", {
       roomName: callInfo.callRoomName,
       amount: pricePerMinute,
       remaining: updatedCaller.coins,
       minute: minuteIndex + 1,
     });
-    emitToUserSockets(callInfo.hostId, "call:coin_charged", {
+    emitToUserSockets(earnerId, "call:coin_charged", {
       roomName: callInfo.callRoomName,
       amount: hostShare,
       earned: true,
@@ -354,7 +360,8 @@ async function _processCallTick(callInfo, minuteIndex) {
     });
 
     logger.debug("Call tick processed", {
-      caller: callInfo.callerId,
+      payer: payerId,
+      earner: earnerId,
       amount: pricePerMinute,
       minute: minuteIndex + 1,
       hostShare,
