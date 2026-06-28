@@ -3,11 +3,63 @@
  * Cleans up live rooms, presence, user socket map, and heartbeat timer.
  */
 
-const { userSockets, socketGenderCache } = require("./state");
+const { userSockets, socketGenderCache, activeCalls } = require("./state");
 const LiveStream = require("../models/LiveStream");
 const presenceService = require("../services/presenceService");
 const pkMatchService = require("../services/pkMatchService");
+const { emitToUserSockets } = require("./helpers");
 const { logger } = require("../utils/logger");
+
+function clearDirectCallRequest(roomName) {
+  if (!global.callRequests || !roomName) return;
+
+  for (const [requestId, request] of global.callRequests) {
+    if (request.callRoomName === roomName && request.isDirectCall) {
+      if (request._serverTickTimer) {
+        clearInterval(request._serverTickTimer);
+      }
+      global.callRequests.delete(requestId);
+      return;
+    }
+  }
+}
+
+async function cleanupActiveCallsForUser(userId) {
+  const key = String(userId || "").trim();
+  if (!key) return;
+
+  for (const [roomName, callInfo] of activeCalls.entries()) {
+    const callerId = String(callInfo.callerId || "");
+    const targetUserId = String(callInfo.targetUserId || "");
+    if (callerId !== key && targetUserId !== key) continue;
+
+    const counterpartyId = callerId === key ? targetUserId : callerId;
+
+    if (global.callTimeouts) {
+      const timer = global.callTimeouts.get(roomName);
+      if (timer) {
+        clearTimeout(timer);
+        global.callTimeouts.delete(roomName);
+      }
+    }
+
+    clearDirectCallRequest(roomName);
+    activeCalls.delete(roomName);
+
+    await presenceService.setBusy(counterpartyId, false).catch((err) => {
+      logger.warn("Call disconnect cleanup setBusy failed", {
+        userId: counterpartyId,
+        err: err.message,
+      });
+    });
+
+    emitToUserSockets(counterpartyId, "call:ended", {
+      roomName,
+      endedBy: key,
+      reason: "disconnect",
+    });
+  }
+}
 
 /**
  * Register the disconnect handler on a connected socket.
@@ -119,6 +171,8 @@ function register(socket, io, stopServerHeartbeat) {
       } catch (err) {
         logger.error("PK disconnect cleanup error", { err: String(err) });
       }
+
+      await cleanupActiveCallsForUser(userId);
 
       // Immediate offline
       try {
