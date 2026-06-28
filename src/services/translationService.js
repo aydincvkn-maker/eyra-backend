@@ -59,6 +59,7 @@ const SUPPORTED_LANGUAGES = {
   fil: "Filipino",
   ms: "Melayu",
   pl: "Polski",
+  ur: "Urdu",
 };
 
 // Cache: son çeviriler için memory cache (performans için)
