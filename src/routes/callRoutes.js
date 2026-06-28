@@ -49,6 +49,47 @@ function clearCallTimeout(roomName) {
   }
 }
 
+function clearDirectCallRequest(roomName) {
+  if (!global.callRequests || !roomName) return;
+
+  for (const [requestId, request] of global.callRequests) {
+    if (request.callRoomName === roomName && request.isDirectCall) {
+      if (request._serverTickTimer) {
+        clearInterval(request._serverTickTimer);
+      }
+      global.callRequests.delete(requestId);
+      return;
+    }
+  }
+}
+
+function isUserInTrackedCall(userId) {
+  const key = String(userId || "").trim();
+  if (!key) return false;
+
+  if (global.activeCalls) {
+    for (const call of global.activeCalls.values()) {
+      if (String(call.callerId) === key || String(call.targetUserId) === key) {
+        return true;
+      }
+    }
+  }
+
+  if (global.callRequests) {
+    for (const request of global.callRequests.values()) {
+      if (request.isDirectCall && request.status === "pending") continue;
+      if (request.status && !["pending", "connected", "accepted"].includes(request.status)) {
+        continue;
+      }
+      if (String(request.callerId) === key || String(request.hostId) === key) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 /**
  * Cevaplanmayan arama timeout handler
  * Hem arayan hem aranan kullanıcının busy durumunu temizler
@@ -78,6 +119,7 @@ async function handleCallTimeout(roomName) {
 
     // Active call'dan kaldır
     global.activeCalls?.delete(roomName);
+    clearDirectCallRequest(roomName);
 
     // Socket ile her iki tarafa bildir
     if (global.io && global.userSockets) {
@@ -178,7 +220,15 @@ router.post("/initiate", auth, async (req, res) => {
       });
     }
 
-    if (targetPresence.busy || targetPresence.inCall) {
+    const callerPresence = await presenceService.getPresence(callerId);
+    if (callerPresence.busy || callerPresence.inCall || isUserInTrackedCall(callerId)) {
+      return res.status(400).json({
+        message: "Zaten aktif bir aramanız var",
+        presenceStatus: "in_call",
+      });
+    }
+
+    if (targetPresence.busy || targetPresence.inCall || isUserInTrackedCall(targetUserId)) {
       return res.status(400).json({
         message: "Kullanıcı meşgul",
         presenceStatus: "in_call",
@@ -349,6 +399,7 @@ router.post("/end", auth, async (req, res) => {
 
       // Remove from active calls
       global.activeCalls.delete(roomName);
+      clearDirectCallRequest(roomName);
 
       emitToUserSockets(callerId, "call:ended", {
         roomName,
@@ -418,6 +469,7 @@ router.post("/reject", auth, async (req, res) => {
 
       // Remove from active calls
       global.activeCalls.delete(roomName);
+      clearDirectCallRequest(roomName);
 
       // Notify caller via socket that call was rejected
       if (global.io && global.userSockets) {
