@@ -178,7 +178,12 @@ return {current, ttl}
 
 const consumeRedis = async ({ redis, key, windowMs }) => {
   const redisKey = `rl:${key}`;
-  const result = await redis.eval(RATE_LIMIT_LUA, 1, redisKey, String(windowMs));
+  const result = await redis.eval(
+    RATE_LIMIT_LUA,
+    1,
+    redisKey,
+    String(windowMs),
+  );
   const current = Array.isArray(result) ? Number(result[0]) : 0;
   let ttl = Array.isArray(result) ? Number(result[1]) : windowMs;
   if (!Number.isFinite(ttl) || ttl < 0) ttl = windowMs;
@@ -266,10 +271,7 @@ const createRateLimiter = (options = {}) => {
         });
 
         res.setHeader("X-RateLimit-Limit", effectiveMax);
-        res.setHeader(
-          "X-RateLimit-Reset",
-          Math.ceil((now + ttl) / 1000),
-        );
+        res.setHeader("X-RateLimit-Reset", Math.ceil((now + ttl) / 1000));
 
         if (current > effectiveMax) {
           const retryAfter = Math.max(1, Math.ceil(ttl / 1000));
