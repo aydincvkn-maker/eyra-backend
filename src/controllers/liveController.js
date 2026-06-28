@@ -2055,8 +2055,8 @@ exports.requestPaidCall = async (req, res) => {
         const hostPayload = {
           requestId,
           callerId: String(callerId),
-          callerName: updatedCaller.name || updatedCaller.username,
-          callerImage: updatedCaller.profileImage,
+          callerName: callerProfile.name || callerProfile.username,
+          callerImage: callerProfile.profileImage,
           duration: parsedDuration,
           totalPrice,
           pricePerMinute,
@@ -2079,7 +2079,7 @@ exports.requestPaidCall = async (req, res) => {
       global.io.to(roomId).emit("host_in_private_call", {
         hostId,
         hostName: stream.host?.name || stream.host?.username || "Yayıncı",
-        callerName: updatedCaller.name || updatedCaller.username || "Kullanıcı",
+        callerName: callerProfile.name || callerProfile.username || "Kullanıcı",
         duration: parsedDuration,
         totalPrice,
       });
