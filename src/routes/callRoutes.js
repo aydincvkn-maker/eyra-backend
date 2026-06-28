@@ -235,6 +235,13 @@ router.post("/initiate", auth, async (req, res) => {
     const pricePerMinute = isBillableCall
       ? callPriceForLevel(femaleParticipant.level)
       : 0;
+    if ((callerGender === "male" || targetGender === "male") && !isBillableCall) {
+      return res.status(400).json({
+        success: false,
+        error: "call_not_allowed",
+        message: "Bu arama türü desteklenmiyor",
+      });
+    }
     if (isBillableCall && maleParticipant.coins < pricePerMinute) {
       return res.status(400).json({
         success: false,

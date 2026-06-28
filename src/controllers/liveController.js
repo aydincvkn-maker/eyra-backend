@@ -1874,6 +1874,13 @@ exports.requestPaidCall = async (req, res) => {
     const pricePerMinute = isBillableCall
       ? callPriceForLevel(femaleParticipant.level)
       : 0;
+    if ((callerGender === "male" || hostGender === "male") && !isBillableCall) {
+      return res.status(400).json({
+        ok: false,
+        error: "call_not_allowed",
+        message: "Bu arama türü desteklenmiyor",
+      });
+    }
     const parsedDuration = Number(duration) || 0;
     const flatEntryPrice = 899;
     const totalPrice = isBillableCall
