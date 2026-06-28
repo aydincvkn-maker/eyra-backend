@@ -1822,7 +1822,7 @@ exports.requestPaidCall = async (req, res) => {
     // Yayını bul
     const stream = await LiveStream.findOne({ roomId, isLive: true }).populate(
       "host",
-      "username name profileImage level callPricePerMinute gender",
+      "username name profileImage level callPricePerMinute gender coins",
     );
 
     if (!stream) {
@@ -1858,9 +1858,19 @@ exports.requestPaidCall = async (req, res) => {
 
     const callerGender = String(callerProfile.gender || "other").toLowerCase();
     const hostGender = String(stream.host.gender || "other").toLowerCase();
-    const isBillableCall = callerGender === "male" && hostGender === "female";
+    const femaleParticipant = callerGender === "female"
+      ? { id: String(callerId), level: callerProfile.level || 1 }
+      : hostGender === "female"
+        ? { id: String(hostId), level: stream.host.level || 1 }
+        : null;
+    const maleParticipant = callerGender === "male"
+      ? { id: String(callerId), coins: callerProfile.coins }
+      : hostGender === "male"
+        ? { id: String(hostId), coins: stream.host.coins }
+        : null;
+    const isBillableCall = Boolean(femaleParticipant && maleParticipant);
     const pricePerMinute = isBillableCall
-      ? callPriceForLevel(stream.host.level || 1)
+      ? callPriceForLevel(femaleParticipant.level)
       : 0;
     const parsedDuration = Number(duration) || 0;
     const flatEntryPrice = 899;
@@ -1871,31 +1881,31 @@ exports.requestPaidCall = async (req, res) => {
       : 0;
 
     // Coin kontrolü + atomik düşürme (TOCTOU race condition önleme)
-    const updatedCaller = isBillableCall
+    const updatedPayer = isBillableCall
       ? await User.findOneAndUpdate(
-          { _id: callerId, coins: { $gte: totalPrice } },
+          { _id: maleParticipant.id, coins: { $gte: totalPrice } },
           { $inc: { coins: -totalPrice } },
-          { new: true, select: "coins name username profileImage" },
+          { new: true, select: "coins" },
         )
       : callerProfile;
-    if (!updatedCaller) {
+    if (!updatedPayer) {
       // Tekrar bak: kullanıcı var mı yoksa coin mi yetersiz?
-      const callerCheck = await User.findById(callerId).select("coins").lean();
-      if (!callerCheck) {
-        return res.status(404).json({ ok: false, error: "caller_not_found" });
+      const payerCheck = await User.findById(maleParticipant.id).select("coins").lean();
+      if (!payerCheck) {
+        return res.status(404).json({ ok: false, error: "payer_not_found" });
       }
       return res.status(400).json({
         ok: false,
         error: "insufficient_coins",
         required: totalPrice,
-        available: callerCheck.coins,
+        available: payerCheck.coins,
       });
     }
 
     // Host'a coin ekle (%45) — zaten atomik
     const hostShare = Math.floor(totalPrice * 0.45);
     if (hostShare > 0) {
-      await User.findByIdAndUpdate(hostId, {
+      await User.findByIdAndUpdate(femaleParticipant.id, {
         $inc: { coins: hostShare, totalEarnings: hostShare },
       });
     }
@@ -1917,10 +1927,10 @@ exports.requestPaidCall = async (req, res) => {
         tokenErr.message,
       );
       if (totalPrice > 0) {
-        await User.findByIdAndUpdate(callerId, { $inc: { coins: totalPrice } });
+        await User.findByIdAndUpdate(maleParticipant.id, { $inc: { coins: totalPrice } });
       }
       if (hostShare > 0) {
-        await User.findByIdAndUpdate(hostId, {
+        await User.findByIdAndUpdate(femaleParticipant.id, {
           $inc: { coins: -hostShare, totalEarnings: -hostShare },
         });
       }
@@ -1935,16 +1945,16 @@ exports.requestPaidCall = async (req, res) => {
     global.callRequests.set(requestId, {
       requestId,
       callerId,
-      callerName: updatedCaller.name || updatedCaller.username,
-      callerImage: updatedCaller.profileImage,
+      callerName: callerProfile.name || callerProfile.username,
+      callerImage: callerProfile.profileImage,
       hostId: String(hostId),
       hostName: stream.host?.name || stream.host?.username || "Yayıncı",
       roomId,
       duration: parsedDuration,
       pricePerMinute,
       totalPrice,
-      payerId: isBillableCall ? String(callerId) : null,
-      earnerId: isBillableCall ? String(hostId) : null,
+      payerId: isBillableCall ? maleParticipant.id : null,
+      earnerId: isBillableCall ? femaleParticipant.id : null,
       status: "accepted",
       callRoomName,
       createdAt: Date.now(),
