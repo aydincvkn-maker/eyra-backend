@@ -1194,7 +1194,10 @@ exports.phoneLogin = async (req, res) => {
 
     // Telefon numarası veya firebaseUid ile kullanıcı bul
     const phoneLookupValues = getPhoneLookupValues(verifiedPhone);
-    let user = await User.findOne({ phone: { $in: phoneLookupValues } });
+    let user = await User.findOne({
+      phone: { $in: phoneLookupValues },
+      authProvider: "phone",
+    });
     let isNewUser = false;
 
     if (!user) {
@@ -1243,8 +1246,8 @@ exports.phoneLogin = async (req, res) => {
         });
       }
 
-      // Mevcut kullanıcı — telefon numarasını güncelle
-      if (!user.phone) user.phone = verifiedPhone;
+      // Mevcut telefon hesabı — Firebase'in doğruladığı E.164 değeriyle kanonik tut
+      if (user.phone !== verifiedPhone) user.phone = verifiedPhone;
       user.lastSeen = new Date();
       user.lastOnlineAt = new Date();
       if (user.isGuest) user.isGuest = false;
