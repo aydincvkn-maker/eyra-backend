@@ -3,6 +3,7 @@
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const { logger } = require("../utils/logger");
+const { getRedisClient } = require("../config/redis");
 
 /**
  * Simple in-memory rate limiter for API endpoints
@@ -162,6 +163,28 @@ setInterval(
   5 * 60 * 1000,
 );
 
+// ── Redis fixed-window counter (atomic via Lua) ──
+// Returns the current count for this window and the remaining TTL in ms.
+// INCR + PEXPIRE (only on first hit) + PTTL in a single atomic round-trip so
+// concurrent requests across multiple instances can't race the window.
+const RATE_LIMIT_LUA = `
+local current = redis.call('INCR', KEYS[1])
+if current == 1 then
+  redis.call('PEXPIRE', KEYS[1], tonumber(ARGV[1]))
+end
+local ttl = redis.call('PTTL', KEYS[1])
+return {current, ttl}
+`;
+
+const consumeRedis = async ({ redis, key, windowMs }) => {
+  const redisKey = `rl:${key}`;
+  const result = await redis.eval(RATE_LIMIT_LUA, 1, redisKey, String(windowMs));
+  const current = Array.isArray(result) ? Number(result[0]) : 0;
+  let ttl = Array.isArray(result) ? Number(result[1]) : windowMs;
+  if (!Number.isFinite(ttl) || ttl < 0) ttl = windowMs;
+  return { current, ttl, redisKey };
+};
+
 /**
  * Create a rate limiter middleware
  * @param {Object} options - Rate limit options
@@ -185,7 +208,7 @@ const createRateLimiter = (options = {}) => {
     skipRoles = ["admin", "super_admin"],
   } = options;
 
-  return (req, res, next) => {
+  return async (req, res, next) => {
     if (typeof skip === "function" && skip(req)) {
       return next();
     }
@@ -230,6 +253,73 @@ const createRateLimiter = (options = {}) => {
     }
     if (typeof effectiveMax !== "number" || effectiveMax <= 0) {
       effectiveMax = 100;
+    }
+
+    // ── Redis fast-path (multi-instance correct). Fails open to in-memory. ──
+    const redis = getRedisClient();
+    if (redis && redis.status === "ready") {
+      try {
+        const { current, ttl, redisKey } = await consumeRedis({
+          redis,
+          key,
+          windowMs,
+        });
+
+        res.setHeader("X-RateLimit-Limit", effectiveMax);
+        res.setHeader(
+          "X-RateLimit-Reset",
+          Math.ceil((now + ttl) / 1000),
+        );
+
+        if (current > effectiveMax) {
+          const retryAfter = Math.max(1, Math.ceil(ttl / 1000));
+          res.setHeader("X-RateLimit-Remaining", 0);
+          res.setHeader("Retry-After", retryAfter);
+
+          logger.warn("Rate limit exceeded", {
+            keyPrefix,
+            keyHash: hashValue(key),
+            scope,
+            method: req.method,
+            path: req.originalUrl || req.path,
+            userId: userId || null,
+            ip,
+            limit: effectiveMax,
+            windowMs,
+            currentCount: current,
+            retryAfter,
+            store: "redis",
+          });
+
+          return res.status(429).json({
+            ok: false,
+            error: "rate_limited",
+            message,
+            retryAfter,
+          });
+        }
+
+        res.setHeader("X-RateLimit-Remaining", effectiveMax - current);
+
+        // skipSuccessfulRequests: refund the slot on a successful response.
+        if (skipSuccessfulRequests) {
+          const originalSend = res.send;
+          res.send = function (body) {
+            if (res.statusCode < 400) {
+              redis.decr(redisKey).catch(() => {});
+            }
+            return originalSend.call(this, body);
+          };
+        }
+
+        return next();
+      } catch (err) {
+        // Redis unavailable / scripting error → fall through to in-memory.
+        logger.warn("Rate limit Redis path failed, using in-memory fallback", {
+          keyPrefix,
+          error: err.message,
+        });
+      }
     }
 
     let data = rateLimitStore.get(key);
