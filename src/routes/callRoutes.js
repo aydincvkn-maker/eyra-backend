@@ -214,23 +214,33 @@ router.post("/initiate", auth, async (req, res) => {
     if (!targetUser) {
       return sendError(res, 404, "Kullanıcı bulunamadı");
     }
-    const basePricePerMinute = callPriceForLevel(targetUser.level || 1);
-
     // Caller'ın en az 1 dakika karşılığı coin'i olmalı
-    const caller = await User.findById(callerId).select("coins gender").lean();
+    const caller = await User.findById(callerId).select("coins gender level").lean();
     if (!caller) {
       return sendError(res, 404, "Kullanıcı bulunamadı");
     }
     const callerGender = String(caller.gender || "other").toLowerCase();
     const targetGender = String(targetUser.gender || "other").toLowerCase();
-    const isBillableCall = callerGender === "male" && targetGender === "female";
-    const pricePerMinute = isBillableCall ? basePricePerMinute : 0;
-    if (caller.coins < pricePerMinute) {
+    const femaleParticipant = callerGender === "female"
+      ? { id: String(callerId), level: caller.level || 1 }
+      : targetGender === "female"
+        ? { id: String(targetUserId), level: targetUser.level || 1 }
+        : null;
+    const maleParticipant = callerGender === "male"
+      ? { id: String(callerId), coins: caller.coins }
+      : targetGender === "male"
+        ? { id: String(targetUserId), coins: targetUser.coins }
+        : null;
+    const isBillableCall = Boolean(femaleParticipant && maleParticipant);
+    const pricePerMinute = isBillableCall
+      ? callPriceForLevel(femaleParticipant.level)
+      : 0;
+    if (isBillableCall && maleParticipant.coins < pricePerMinute) {
       return res.status(400).json({
         success: false,
         error: "insufficient_coins",
         required: pricePerMinute,
-        available: caller.coins,
+        available: maleParticipant.coins,
         message: `Arama için en az ${pricePerMinute} coin gerekli`,
       });
     }
@@ -319,8 +329,8 @@ router.post("/initiate", auth, async (req, res) => {
       callRoomName: roomName,
       pricePerMinute,
       freeMinutes: 0,
-      payerId: isBillableCall ? String(callerId) : null,
-      earnerId: isBillableCall ? String(targetUserId) : null,
+      payerId: isBillableCall ? maleParticipant.id : null,
+      earnerId: isBillableCall ? femaleParticipant.id : null,
       status: "pending",
       isDirectCall: true, // live yayın araması değil
       createdAt: Date.now(),

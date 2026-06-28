@@ -261,8 +261,7 @@ function startServerSideTickTimer(callRoomName) {
   }
 
   // ✅ İlk dakika ücretini kabul anında peşin al — 60 saniyeden kısa aramalar
-  // da ücretli olsun (kimse ücretsiz aramasın). Coin arayandan düşer, %70'i
-  // aranana (host) geçer.
+  // da ücretli olsun. Erkek katılımcı öder, ücretin tamamı kadın katılımcıya geçer.
   _processCallTick(callInfo, 1);
 
   let serverMinute = 1; // İlk dakika alındı; timer 2. dakikadan devam etsin
@@ -394,24 +393,45 @@ async function _processCallTick(callInfo, minuteIndex) {
       return;
     }
 
-    const hostShare = Math.floor(pricePerMinute * 0.7);
+    const hostShare = pricePerMinute;
     const updatedHost = await User.findByIdAndUpdate(
       earnerId,
       { $inc: { coins: hostShare, totalEarnings: hostShare } },
       { new: true },
     );
 
+    const callHistory = await CallHistory.findOneAndUpdate(
+      { roomName: callInfo.callRoomName },
+      { $inc: { coinCost: pricePerMinute } },
+      { new: true, select: "_id coinCost" },
+    ).catch((e) => {
+      logger.error("call history coinCost update error:", e.message);
+      return null;
+    });
+
     // ✅ Arama kazancını Transaction olarak kaydet — günlük canlı kazanç
     //    sayacı ve haftalık performans/maaş hesabı bu kayıtları kullanır.
     //    Fire-and-forget: kayıt hatası ücretlendirmeyi bozmaz.
-    Transaction.create({
-      user: earnerId,
-      type: "call_earning",
-      amount: hostShare,
-      balanceAfter: updatedHost ? updatedHost.coins : undefined,
-      relatedUser: payerId,
-      description: "Görüntülü arama kazancı",
-    }).catch((e) => logger.error("call_earning transaction error:", e.message));
+    Promise.all([
+      Transaction.create({
+        user: payerId,
+        type: "call_payment",
+        amount: -pricePerMinute,
+        balanceAfter: updatedCaller.coins,
+        relatedUser: earnerId,
+        relatedCall: callHistory?._id,
+        description: "Görüntülü arama ödemesi",
+      }),
+      Transaction.create({
+        user: earnerId,
+        type: "call_earning",
+        amount: hostShare,
+        balanceAfter: updatedHost ? updatedHost.coins : undefined,
+        relatedUser: payerId,
+        relatedCall: callHistory?._id,
+        description: "Görüntülü arama kazancı",
+      }),
+    ]).catch((e) => logger.error("call transaction error:", e.message));
 
     emitToUserSockets(payerId, "call:coin_charged", {
       roomName: callInfo.callRoomName,

@@ -719,8 +719,15 @@ exports.googleLoginWithToken = async (req, res) => {
       await user.save();
     }
 
+    try {
+      await updateLoginTracking(req, user);
+    } catch (e) {
+      logger.warn("Google login history update failed:", e.message);
+    }
+
     const token = createToken(user);
     const needsProfileSetup = !user.gender || user.gender === "other";
+    const needsUsernameSetup = isNewUser || !isValidUsername(user.username);
 
     // G├╝nl├╝k giri┼ş bonusu
     const dailyBonus = await checkDailyLoginBonus(user);
@@ -730,6 +737,7 @@ exports.googleLoginWithToken = async (req, res) => {
       token,
       isNewUser,
       needsProfileSetup,
+      needsUsernameSetup,
       user: buildUserPayload(user),
       dailyBonus: dailyBonus.granted ? dailyBonus : undefined,
     });

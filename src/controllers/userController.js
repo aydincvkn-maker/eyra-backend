@@ -275,9 +275,14 @@ exports.getUsers = async (req, res) => {
     // Profil fotoğrafı olmayan (gizli) kadın kullanıcıları listeden çıkar
     query["settings.profileVisibility"] = { $ne: false };
     // Sözleşme imzalamayan kadın kullanıcıları erkek izleyicilerden gizle (kadın izleyiciler görebilir)
+    // Admin tarafından oluşturulan host'lar (createdByAdmin) sözleşme şartından muaftır.
     if (_viewerGender1 !== "female") {
       query["$nor"] = [
-        { gender: "female", "broadcasterContract.signed": { $ne: true } },
+        {
+          gender: "female",
+          createdByAdmin: { $ne: true },
+          "broadcasterContract.signed": { $ne: true },
+        },
       ];
     }
 
@@ -437,11 +442,15 @@ exports.adminCreateUser = async (req, res) => {
       );
     }
 
-    const trimmedUsername = String(username).trim();
+    const trimmedUsername = normalizeUsername(username);
     const trimmedEmail = String(email).trim().toLowerCase();
 
-    if (trimmedUsername.length < 3 || trimmedUsername.length > 30) {
-      return sendError(res, 400, "Kullanici adi 3-30 karakter arasi olmali");
+    if (!isValidUsername(trimmedUsername)) {
+      return sendError(
+        res,
+        400,
+        "Kullanıcı adı 3-10 karakter olmalı ve boşluk içeremez",
+      );
     }
     if (String(password).length < 6) {
       return sendError(res, 400, "Sifre en az 6 karakter olmali");
@@ -738,9 +747,14 @@ exports.getFemaleUsers = async (req, res) => {
     // Profil fotoğrafı olmayan (gizli) kadın kullanıcıları listeden çıkar
     baseQuery["settings.profileVisibility"] = { $ne: false };
     // Sözleşme imzalamayan kadın kullanıcıları erkek izleyicilerden gizle (kadın izleyiciler görebilir)
+    // Admin tarafından oluşturulan host'lar (createdByAdmin) sözleşme şartından muaftır.
     if (_viewerGender2 !== "female") {
       baseQuery["$nor"] = [
-        { gender: "female", "broadcasterContract.signed": { $ne: true } },
+        {
+          gender: "female",
+          createdByAdmin: { $ne: true },
+          "broadcasterContract.signed": { $ne: true },
+        },
       ];
     }
 
@@ -1818,12 +1832,13 @@ exports.getUserById = async (req, res) => {
     }
 
     // Profil fotoğrafı olmayan kadın kullanıcıyı erkek izleyiciden gizle
-    // Sözleşme imzalamayan kadın kullanıcıyı da gizle
+    // Sözleşme imzalamayan kadın kullanıcıyı da gizle (admin host'lar muaf)
     const viewerId = req.user?.id ? String(req.user.id) : null;
     if (
       user.gender === "female" &&
       (user.settings?.profileVisibility === false ||
-        user.broadcasterContract?.signed !== true)
+        (user.createdByAdmin !== true &&
+          user.broadcasterContract?.signed !== true))
     ) {
       if (!viewerId || viewerId !== String(user._id)) {
         const viewer = viewerId
