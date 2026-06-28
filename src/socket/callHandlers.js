@@ -29,6 +29,15 @@ function register(socket, io) {
     return null;
   };
 
+  const clearCallAnswerTimeout = (roomName) => {
+    if (!global.callTimeouts || !roomName) return;
+    const timer = global.callTimeouts.get(roomName);
+    if (timer) {
+      clearTimeout(timer);
+      global.callTimeouts.delete(roomName);
+    }
+  };
+
   const forwardCallEvent = async (eventName, roomName) => {
     const senderId = socket.data.userId;
     if (!senderId) {
@@ -79,6 +88,7 @@ function register(socket, io) {
       eventName === "call:cancelled"
     ) {
       const callInfo = activeCalls.get(roomName);
+      clearCallAnswerTimeout(roomName);
       clearServerSideTickTimer(roomName);
       if (callInfo) {
         try {
