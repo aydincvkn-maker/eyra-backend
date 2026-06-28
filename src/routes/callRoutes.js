@@ -182,18 +182,22 @@ router.post("/initiate", auth, async (req, res) => {
 
     // Callee bilgilerini çek (fiyat için)
     const targetUser = await User.findById(targetUserId)
-      .select("callPricePerMinute level coins username name profileImage")
+      .select("callPricePerMinute level coins username name profileImage gender")
       .lean();
     if (!targetUser) {
       return sendError(res, 404, "Kullanıcı bulunamadı");
     }
-    const pricePerMinute = callPriceForLevel(targetUser.level || 1);
+    const basePricePerMinute = callPriceForLevel(targetUser.level || 1);
 
     // Caller'ın en az 1 dakika karşılığı coin'i olmalı
-    const caller = await User.findById(callerId).select("coins").lean();
+    const caller = await User.findById(callerId).select("coins gender").lean();
     if (!caller) {
       return sendError(res, 404, "Kullanıcı bulunamadı");
     }
+    const callerGender = String(caller.gender || "other").toLowerCase();
+    const targetGender = String(targetUser.gender || "other").toLowerCase();
+    const isBillableCall = callerGender === "male" && targetGender === "female";
+    const pricePerMinute = isBillableCall ? basePricePerMinute : 0;
     if (caller.coins < pricePerMinute) {
       return res.status(400).json({
         success: false,
@@ -288,6 +292,8 @@ router.post("/initiate", auth, async (req, res) => {
       callRoomName: roomName,
       pricePerMinute,
       freeMinutes: 0,
+      payerId: isBillableCall ? String(callerId) : null,
+      earnerId: isBillableCall ? String(targetUserId) : null,
       status: "pending",
       isDirectCall: true, // live yayın araması değil
       createdAt: Date.now(),
