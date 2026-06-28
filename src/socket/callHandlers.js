@@ -301,6 +301,51 @@ function clearServerSideTickTimer(callRoomName) {
   }
 }
 
+async function cleanupCallAfterInsufficientCoins(callInfo) {
+  const roomName = callInfo.callRoomName;
+  const callerId = callInfo.callerId;
+  const hostId = callInfo.hostId;
+
+  if (global.callRequests && roomName) {
+    for (const [requestId, request] of global.callRequests) {
+      if (request.callRoomName === roomName) {
+        if (request._timeout) clearTimeout(request._timeout);
+        if (request._serverTickTimer) clearInterval(request._serverTickTimer);
+        global.callRequests.delete(requestId);
+        break;
+      }
+    }
+  }
+
+  if (roomName) {
+    activeCalls.delete(roomName);
+    await CallHistory.findOneAndUpdate(
+      { roomName },
+      { $set: { status: "cancelled", endedAt: new Date() } },
+    ).catch(() => {});
+  }
+
+  await Promise.all(
+    [callerId, hostId]
+      .filter(Boolean)
+      .map((userId) =>
+        presenceService.setBusy(userId, false).catch((err) => {
+          logger.warn("insufficient coin cleanup setBusy failed", {
+            userId: String(userId),
+            err: err.message,
+          });
+        }),
+      ),
+  );
+
+  for (const userId of [callerId, hostId].filter(Boolean)) {
+    emitToUserSockets(userId, "call:ended", {
+      roomName,
+      reason: "insufficient_coins",
+    });
+  }
+}
+
 /**
  * Ortak coin tick işleme mantığı
  */
@@ -347,6 +392,7 @@ async function _processCallTick(callInfo, minuteIndex) {
         clearInterval(callInfo._serverTickTimer);
         callInfo._serverTickTimer = null;
       }
+      await cleanupCallAfterInsufficientCoins(callInfo);
       return;
     }
 
