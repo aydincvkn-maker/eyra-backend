@@ -78,7 +78,10 @@ function isUserInTrackedCall(userId) {
   if (global.callRequests) {
     for (const request of global.callRequests.values()) {
       if (request.isDirectCall && request.status === "pending") continue;
-      if (request.status && !["pending", "connected", "accepted"].includes(request.status)) {
+      if (
+        request.status &&
+        !["pending", "connected", "accepted"].includes(request.status)
+      ) {
         continue;
       }
       if (String(request.callerId) === key || String(request.hostId) === key) {
@@ -221,14 +224,22 @@ router.post("/initiate", auth, async (req, res) => {
     }
 
     const callerPresence = await presenceService.getPresence(callerId);
-    if (callerPresence.busy || callerPresence.inCall || isUserInTrackedCall(callerId)) {
+    if (
+      callerPresence.busy ||
+      callerPresence.inCall ||
+      isUserInTrackedCall(callerId)
+    ) {
       return res.status(400).json({
         message: "Zaten aktif bir aramanız var",
         presenceStatus: "in_call",
       });
     }
 
-    if (targetPresence.busy || targetPresence.inCall || isUserInTrackedCall(targetUserId)) {
+    if (
+      targetPresence.busy ||
+      targetPresence.inCall ||
+      isUserInTrackedCall(targetUserId)
+    ) {
       return res.status(400).json({
         message: "Kullanıcı meşgul",
         presenceStatus: "in_call",
