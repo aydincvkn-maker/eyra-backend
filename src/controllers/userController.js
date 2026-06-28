@@ -1844,24 +1844,15 @@ exports.getUserById = async (req, res) => {
         .json({ success: false, message: "Kullanıcı bulunamadı" });
     }
 
-    // Profil fotoğrafı olmayan kadın kullanıcıyı erkek izleyiciden gizle
-    // Sözleşme imzalamayan kadın kullanıcıyı da gizle (admin host'lar muaf)
     const viewerId = req.user?.id ? String(req.user.id) : null;
-    if (
-      user.gender === "female" &&
-      (user.settings?.profileVisibility === false ||
-        (user.createdByAdmin !== true &&
-          user.broadcasterContract?.signed !== true))
-    ) {
-      if (!viewerId || viewerId !== String(user._id)) {
-        const viewer = viewerId
-          ? await User.findById(viewerId).select("gender")
-          : null;
-        if (!viewer || viewer.gender !== "female") {
-          return res
-            .status(404)
-            .json({ success: false, message: "Kullanıcı bulunamadı" });
-        }
+    if (viewerId !== String(user._id)) {
+      const viewer = viewerId
+        ? await User.findById(viewerId).select("gender")
+        : null;
+      if (!canViewerSeeAppUser(viewer, user)) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Kullanıcı bulunamadı" });
       }
     }
 
