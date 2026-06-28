@@ -326,16 +326,14 @@ async function cleanupCallAfterInsufficientCoins(callInfo) {
   }
 
   await Promise.all(
-    [callerId, hostId]
-      .filter(Boolean)
-      .map((userId) =>
-        presenceService.setBusy(userId, false).catch((err) => {
-          logger.warn("insufficient coin cleanup setBusy failed", {
-            userId: String(userId),
-            err: err.message,
-          });
-        }),
-      ),
+    [callerId, hostId].filter(Boolean).map((userId) =>
+      presenceService.setBusy(userId, false).catch((err) => {
+        logger.warn("insufficient coin cleanup setBusy failed", {
+          userId: String(userId),
+          err: err.message,
+        });
+      }),
+    ),
   );
 
   for (const userId of [callerId, hostId].filter(Boolean)) {
