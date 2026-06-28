@@ -8,6 +8,11 @@ const presenceService = require("../services/presenceService");
 const SystemSettings = require("../models/SystemSettings");
 const Transaction = require("../models/Transaction");
 const { logger } = require("../utils/logger");
+const {
+  createUniqueUsername,
+  isValidUsername,
+  normalizeUsername,
+} = require("../utils/username");
 
 const PANEL_ROLES = ["admin", "super_admin", "moderator"];
 
@@ -426,12 +431,8 @@ exports.register = async (req, res) => {
       });
     }
 
-    const normalizedUsername = String(username).trim();
-    if (
-      normalizedUsername.length < 3 ||
-      normalizedUsername.length > 10 ||
-      !/^[a-zA-Z0-9_.]+$/.test(normalizedUsername)
-    ) {
+    const normalizedUsername = normalizeUsername(username);
+    if (!isValidUsername(normalizedUsername)) {
       return res.status(400).json({
         success: false,
         message: "Kullanıcı adı 3-10 karakter olmalı ve boşluk içeremez",
@@ -508,7 +509,7 @@ exports.guestLogin = async (req, res) => {
 
     const normalizedGender = resolveGender(gender);
     const timestamp = Date.now();
-    const username = `guest_${timestamp}`;
+    const username = await createUniqueUsername(User, `guest${timestamp}`);
     const email = `${username}@guest.local`;
 
     const user = await User.create({
@@ -652,7 +653,10 @@ exports.googleLoginWithToken = async (req, res) => {
 
     if (!user) {
       isNewUser = true;
-      const username = `${normalizedEmail.split("@")[0]}${Math.floor(Math.random() * 1000)}`;
+      const username = await createUniqueUsername(
+        User,
+        normalizedEmail.split("@")[0],
+      );
 
       user = await User.create({
         username,
@@ -812,8 +816,7 @@ exports.appleLogin = async (req, res) => {
 
     if (!user) {
       isNewUser = true;
-      const baseUsername = appleEmail.split("@")[0];
-      const username = `${baseUsername}${Math.floor(Math.random() * 1000)}`;
+      const username = await createUniqueUsername(User, appleEmail.split("@")[0]);
       const displayName =
         givenName && familyName
           ? `${givenName} ${familyName}`
@@ -1216,7 +1219,7 @@ exports.phoneLogin = async (req, res) => {
     if (!user) {
       isNewUser = true;
       const timestamp = Date.now();
-      const username = `user_${timestamp}`;
+      const username = await createUniqueUsername(User, `user${timestamp}`);
 
       user = await User.create({
         username,
