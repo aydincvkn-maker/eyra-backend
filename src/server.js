@@ -175,9 +175,9 @@ if (process.env.REDIS_HOST) {
     });
     const subClient = pubClient.duplicate();
     io.adapter(createAdapter(pubClient, subClient));
-    console.log("Redis Adapter connected (Scalable Presence Mode)");
+    logger.info("Redis Adapter connected (Scalable Presence Mode)");
   } catch (err) {
-    console.warn("Redis Adapter init failed:", err.message);
+    logger.warn("Redis Adapter init failed", { error: err.message });
   }
 }
 
@@ -186,7 +186,7 @@ if (NODE_ENV === "development") {
   try {
     require("debug")("socket.io:*")();
   } catch (_) {
-    console.warn(
+    logger.warn(
       "[DEV] debug paketi yüklü değil, socket.io debug logları devre dışı",
     );
   }
@@ -457,9 +457,9 @@ app.use((req, res) => {
 // Global error handler middleware
 app.use((err, req, res, _next) => {
   // Log the error
-  console.error(`❌ [${req.method}] ${req.originalUrl}:`, err.message);
+  logger.error(`[${req.method}] ${req.originalUrl}`, { error: err.message });
   if (NODE_ENV !== "production") {
-    console.error(err.stack);
+    logger.error("Error stack", { stack: err.stack });
   }
 
   // CORS errors
@@ -533,13 +533,13 @@ connectDB().then(async () => {
         },
       },
     );
-    console.log(
+    logger.info(
       "Server startup: " +
         result.modifiedCount +
         " stale kullanici offline olarak ayarlandi",
     );
   } catch (err) {
-    console.error("Server startup reset error:", err);
+    logger.error("Server startup reset error", err);
   }
 
   presenceService.initialize({
@@ -550,7 +550,7 @@ connectDB().then(async () => {
   });
 
   server.listen(PORT, "0.0.0.0", () => {
-    console.log("EYRA backend " + PORT + " portunda calisiyor (0.0.0.0)");
+    logger.info("EYRA backend " + PORT + " portunda calisiyor (0.0.0.0)");
   });
 });
 
@@ -562,12 +562,12 @@ let isShuttingDown = false;
 
 const gracefulShutdown = async (signal) => {
   if (isShuttingDown) {
-    console.log("Shutdown already in progress...");
+    logger.info("Shutdown already in progress...");
     return;
   }
 
   isShuttingDown = true;
-  console.log(signal + " received: Starting graceful shutdown...");
+  logger.info(signal + " received: Starting graceful shutdown...");
 
   try {
     // 1. Stop accepting new connections
@@ -578,7 +578,7 @@ const gracefulShutdown = async (signal) => {
     io.sockets.sockets.forEach((socket) => {
       socket.disconnect(true);
     });
-    console.log(socketCount + " sockets disconnected");
+    logger.info(socketCount + " sockets disconnected");
 
     // 3. Mark all users offline
     const userCount = userSockets.size;
@@ -586,10 +586,10 @@ const gracefulShutdown = async (signal) => {
       try {
         await presenceService.setOffline(userId, { reason: "server_shutdown" });
       } catch (e) {
-        console.error("Failed to mark " + userId + " offline: " + e.message);
+        logger.error("Failed to mark " + userId + " offline: " + e.message);
       }
     }
-    console.log(userCount + " users marked offline");
+    logger.info(userCount + " users marked offline");
 
     // 4. Cleanup pending DB updates
     const pendingCount = pendingDbUpdates.size;
@@ -597,7 +597,7 @@ const gracefulShutdown = async (signal) => {
       clearTimeout(timeoutId);
       pendingDbUpdates.delete(userId);
     }
-    console.log(pendingCount + " pending updates cleared");
+    logger.info(pendingCount + " pending updates cleared");
 
     // 5. Clear timers
     if (cleanupTimers.staleCleanupTimer)
@@ -625,10 +625,10 @@ const gracefulShutdown = async (signal) => {
     activeCalls.clear();
     pendingCalls.clear();
 
-    console.log("Graceful shutdown complete");
+    logger.info("Graceful shutdown complete");
     process.exit(0);
   } catch (err) {
-    console.error("Error during shutdown:", err);
+    logger.error("Error during shutdown:", err);
     process.exit(1);
   }
 };
