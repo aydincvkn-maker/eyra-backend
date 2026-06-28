@@ -77,7 +77,6 @@ function isUserInTrackedCall(userId) {
 
   if (global.callRequests) {
     for (const request of global.callRequests.values()) {
-      if (request.isDirectCall && request.status === "pending") continue;
       if (
         request.status &&
         !["pending", "connected", "accepted"].includes(request.status)

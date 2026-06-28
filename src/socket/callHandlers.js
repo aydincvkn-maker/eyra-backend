@@ -8,6 +8,7 @@ const { emitToUserSockets, getCounterpartyForRoom } = require("./helpers");
 const presenceService = require("../services/presenceService");
 const User = require("../models/User");
 const Transaction = require("../models/Transaction");
+const CallHistory = require("../models/CallHistory");
 const { sanitizeSocketPayload } = require("../middleware/validate");
 const { logger } = require("../utils/logger");
 
@@ -108,6 +109,28 @@ function register(socket, io) {
           logger.debug(`Both users set as not busy for room: ${roomName}`);
         } catch (e) {
           logger.error("setBusy cleanup error", { err: String(e) });
+        }
+
+        try {
+          const update = { endedAt: new Date() };
+          if (eventName === "call:ended") {
+            const startTime = callInfo.createdAt || Date.now();
+            update.status = "completed";
+            update.durationSec = Math.max(
+              0,
+              Math.floor((Date.now() - startTime) / 1000),
+            );
+          } else if (eventName === "call:rejected") {
+            update.status = "rejected";
+          } else if (eventName === "call:cancelled") {
+            update.status = "cancelled";
+          }
+          await CallHistory.findOneAndUpdate(
+            { roomName },
+            { $set: update },
+          ).catch(() => {});
+        } catch (e) {
+          logger.error("CallHistory socket cleanup error", { err: String(e) });
         }
       }
 
