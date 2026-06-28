@@ -10,13 +10,23 @@ const pkMatchService = require("../services/pkMatchService");
 const { emitToUserSockets } = require("./helpers");
 const { logger } = require("../utils/logger");
 
-function clearDirectCallRequest(roomName) {
+function clearCallRequestForRoom(roomName) {
   if (!global.callRequests || !roomName) return;
 
   for (const [requestId, request] of global.callRequests) {
-    if (request.callRoomName === roomName && request.isDirectCall) {
+    if (request.callRoomName === roomName) {
       if (request._serverTickTimer) {
         clearInterval(request._serverTickTimer);
+      }
+      if (request._timeout) {
+        clearTimeout(request._timeout);
+      }
+      if (request.roomId && global.io) {
+        global.io.to(request.roomId).emit("host_returned_from_call", {
+          hostId: request.hostId,
+          hostName: request.hostName || "Yayıncı",
+          callerName: request.callerName || "Kullanıcı",
+        });
       }
       global.callRequests.delete(requestId);
       return;
@@ -43,7 +53,7 @@ async function cleanupActiveCallsForUser(userId) {
       }
     }
 
-    clearDirectCallRequest(roomName);
+    clearCallRequestForRoom(roomName);
     activeCalls.delete(roomName);
 
     await presenceService.setBusy(counterpartyId, false).catch((err) => {
