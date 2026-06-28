@@ -85,8 +85,12 @@ const getPendingApprovalMessage = (user) => {
   return null;
 };
 
-const updateLoginTracking = async (req, user) => {
-  const loginCountry = String(
+const getClientIp = (req) =>
+  req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || "";
+
+// Giriş ülkesini önce CDN header'larından, yoksa client IP'sinden (geoip) çöz
+const resolveRequestCountry = (req) => {
+  const headerCountry = String(
     req.headers["cf-ipcountry"] ||
       req.headers["x-vercel-ip-country"] ||
       req.headers["x-country-code"] ||
@@ -97,12 +101,34 @@ const updateLoginTracking = async (req, user) => {
     .toUpperCase()
     .slice(0, 2);
 
+  if (headerCountry && headerCountry !== "XX") {
+    return headerCountry;
+  }
+
+  const ip = getClientIp(req);
+  if (ip) {
+    try {
+      const geo = geoip.lookup(ip);
+      if (geo?.country) {
+        return String(geo.country).trim().toUpperCase().slice(0, 2);
+      }
+    } catch {
+      // geoip lookup hatası giriş akışını engellememeli
+    }
+  }
+
+  return "";
+};
+
+const updateLoginTracking = async (req, user) => {
+  const loginCountry = resolveRequestCountry(req);
+
   const loginEntry = {
     platform: String(
       req.headers["x-platform"] || req.headers["user-agent"] || "",
     ).slice(0, 200),
     device: String(req.headers["x-device"] || "").slice(0, 200),
-    ip: req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || "",
+    ip: getClientIp(req),
     country: loginCountry,
     loginAt: new Date(),
   };
