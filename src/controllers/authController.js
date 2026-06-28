@@ -297,6 +297,28 @@ const buildUserPayload = (user) => ({
   createdByAdmin: user.createdByAdmin || false,
 });
 
+const getPhoneLookupValues = (phoneNumber) => {
+  const raw = String(phoneNumber || "").trim();
+  const digits = raw.replace(/\D/g, "");
+  const values = new Set();
+
+  if (raw) values.add(raw);
+  if (digits) {
+    values.add(digits);
+    values.add(`+${digits}`);
+    values.add(`00${digits}`);
+
+    if (digits.startsWith("90") && digits.length > 10) {
+      const local = digits.slice(2);
+      values.add(local);
+      values.add(`0${local}`);
+      values.add(`+90${local}`);
+    }
+  }
+
+  return [...values].filter(Boolean);
+};
+
 // G├╝nl├╝k giri┼ş bonusu kontrol├╝ ve verme
 const checkDailyLoginBonus = async (user) => {
   try {
@@ -1171,7 +1193,8 @@ exports.phoneLogin = async (req, res) => {
     const normalizedGender = resolveGender(gender);
 
     // Telefon numarası veya firebaseUid ile kullanıcı bul
-    let user = await User.findOne({ phone: verifiedPhone });
+    const phoneLookupValues = getPhoneLookupValues(verifiedPhone);
+    let user = await User.findOne({ phone: { $in: phoneLookupValues } });
     let isNewUser = false;
 
     if (!user) {
