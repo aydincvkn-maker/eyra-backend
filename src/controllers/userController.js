@@ -20,6 +20,7 @@ const { checkFollowerAchievements } = require("./achievementController");
 const { createNotification } = require("./notificationController");
 const { logger } = require("../utils/logger");
 const adminSocket = require("../socket/adminNamespace");
+const { isValidUsername, normalizeUsername } = require("../utils/username");
 const PANEL_ROLES = ["admin", "super_admin", "moderator"];
 
 let _followIndexesSynced = false;
@@ -1228,6 +1229,8 @@ exports.updateMyProfile = async (req, res) => {
       email !== undefined ? String(email).trim().toLowerCase() : undefined;
     const normalizedPassword =
       password !== undefined ? String(password) : undefined;
+    const normalizedUsername =
+      username !== undefined ? normalizeUsername(username) : undefined;
 
     // ─── Input validation ────────────────────────────────────
     const ALLOWED_LANGUAGES = [
@@ -1261,16 +1264,10 @@ exports.updateMyProfile = async (req, res) => {
         });
     }
     if (username !== undefined) {
-      const v = String(username).trim();
-      if (v.length < 3 || v.length > 10)
+      if (!isValidUsername(normalizedUsername))
         return res.status(400).json({
           success: false,
-          message: "Kullanıcı adı 3-10 karakter arasında olmalı",
-        });
-      if (!/^[a-zA-Z0-9_.]+$/.test(v))
-        return res.status(400).json({
-          success: false,
-          message: "Kullanıcı adı yalnızca harf, rakam, _ ve . içerebilir",
+          message: "Kullanıcı adı 3-10 karakter olmalı ve boşluk içeremez",
         });
     }
     if (bio !== undefined && String(bio).length > 300)
@@ -1363,9 +1360,9 @@ exports.updateMyProfile = async (req, res) => {
     }
 
     // Username benzersizlik kontrolÃ¼
-    if (username) {
+    if (normalizedUsername) {
       const existingUser = await User.findOne({
-        username,
+        username: normalizedUsername,
         _id: { $ne: userId },
       });
       if (existingUser) {
@@ -1389,7 +1386,7 @@ exports.updateMyProfile = async (req, res) => {
     }
 
     if (name) user.name = name;
-    if (username) user.username = username;
+    if (normalizedUsername) user.username = normalizedUsername;
     if (gender !== undefined) user.gender = normalizeGender(gender);
     if (age) user.age = age;
     if (location) user.location = location;
