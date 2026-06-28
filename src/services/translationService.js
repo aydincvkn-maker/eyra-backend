@@ -58,6 +58,7 @@ const SUPPORTED_LANGUAGES = {
   th: "ไทย",
   fil: "Filipino",
   ms: "Melayu",
+  nl: "Nederlands",
   pl: "Polski",
   ur: "Urdu",
 };
