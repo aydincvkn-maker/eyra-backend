@@ -333,3 +333,42 @@ exports.deleteLiveKitRoom = async (roomName) => {
     return false;
   }
 };
+
+/**
+ * LiveKit odasından tek bir katılımcıyı zorla çıkar (host, co-host'u atınca).
+ * Token iptal edilemediği için, atılan kişinin bağlantısı bu şekilde koparılır.
+ * @param {string} roomName - LiveKit oda adı (stream roomId)
+ * @param {string} identity - Katılımcı kimliği (userId)
+ */
+exports.removeLiveKitParticipant = async (roomName, identity) => {
+  if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
+    logger.warn("⚠️ LiveKit credentials missing, skipping participant removal");
+    return false;
+  }
+  if (!roomName || !identity) return false;
+  try {
+    const httpUrl = LIVEKIT_URL.replace("wss://", "https://").replace(
+      "ws://",
+      "http://",
+    );
+    const roomService = new RoomServiceClient(
+      httpUrl,
+      LIVEKIT_API_KEY,
+      LIVEKIT_API_SECRET,
+    );
+    await roomService.removeParticipant(roomName, String(identity));
+    logger.info(`🚪 LiveKit participant ${identity} removed from ${roomName}`);
+    return true;
+  } catch (err) {
+    // Katılımcı zaten yoksa hata değil
+    if (err.message?.includes("not found") || err.code === 404) {
+      return true;
+    }
+    logger.error(
+      `⚠️ LiveKit participant removal failed (${identity}@${roomName}):`,
+      err.message,
+    );
+    return false;
+  }
+};
+
