@@ -311,15 +311,15 @@ exports.startLive = async (req, res) => {
     const hostBirthYear = Number.isInteger(onboarding.birthYear)
       ? onboarding.birthYear
       : (() => {
-          const age = Number.parseInt(String(host.age ?? ""), 10);
-          return Number.isInteger(age) && age >= 18 && age <= 120
-            ? new Date().getFullYear() - age
-            : null;
-        })();
+        const age = Number.parseInt(String(host.age ?? ""), 10);
+        return Number.isInteger(age) && age >= 18 && age <= 120
+          ? new Date().getFullYear() - age
+          : null;
+      })();
     const onboardingCompleted =
       onboarding.completed === true &&
       String(onboarding.fullName || host.accountHolder || "").trim().length >=
-        2 &&
+      2 &&
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
         String(onboarding.contactEmail || host.email || "").trim(),
       ) &&
@@ -461,7 +461,7 @@ exports.startLive = async (req, res) => {
             relatedId: stream._id,
             relatedType: "live",
             imageUrl: host.streamCoverImage || host.profileImage,
-          }).catch(() => {}),
+          }).catch(() => { }),
         );
         await Promise.all(notifPromises);
         logger.info(
@@ -791,7 +791,7 @@ exports.joinAsViewer = async (req, res) => {
     // ✅ Mission tracking for watching streams
     try {
       await trackMissionProgress(userId, "watch_stream");
-    } catch (_) {}
+    } catch (_) { }
 
     res.json({
       ok: true,
@@ -800,9 +800,9 @@ exports.joinAsViewer = async (req, res) => {
       viewerCount: updatedStream.viewerCount,
       pk: isPkActive
         ? {
-            pkRoomId: stream.pkRoomId,
-            opponent: stream.pkOpponent || null,
-          }
+          pkRoomId: stream.pkRoomId,
+          opponent: stream.pkOpponent || null,
+        }
         : null,
       stream: {
         _id: updatedStream._id,
@@ -1193,7 +1193,7 @@ exports.banStream = async (req, res) => {
     // Presence güncelle
     try {
       await presenceService.setLive(hostId, false);
-    } catch (e) {}
+    } catch (e) { }
 
     // ✅ PROFESSIONAL: İzleyicilere detaylı bildir
     if (global.io) {
@@ -1348,7 +1348,7 @@ exports.inviteCoHost = async (req, res) => {
       ) {
         const remainingSec = Math.ceil(
           (new Date(existingCoHost.restrictedUntil).getTime() - Date.now()) /
-            1000,
+          1000,
         );
         return res.status(403).json({
           ok: false,
@@ -1651,7 +1651,7 @@ exports.removeCoHost = async (req, res) => {
     await stream.save();
 
     // Token iptal edilemediği için katılımcıyı LiveKit odasından zorla çıkar.
-    liveService.removeLiveKitParticipant(roomId, userId).catch(() => {});
+    liveService.removeLiveKitParticipant(roomId, userId).catch(() => { });
 
     // Co-host'a ve herkese bildir
     if (global.io) {
@@ -1926,7 +1926,7 @@ exports.requestPaidCall = async (req, res) => {
           message: "Kullanıcı şu anda başka bir görüşmede",
         });
       }
-    } catch (_) {}
+    } catch (_) { }
 
     // Caller'ı kontrol et + Fiyat hesapla (yayıncı seviyesine göre)
     const callerProfile = await User.findById(callerId)
@@ -1972,10 +1972,10 @@ exports.requestPaidCall = async (req, res) => {
     // Coin kontrolü + atomik düşürme (TOCTOU race condition önleme)
     const updatedPayer = isBillableCall
       ? await User.findOneAndUpdate(
-          { _id: maleParticipant.id, coins: { $gte: totalPrice } },
-          { $inc: { coins: -totalPrice } },
-          { new: true, select: "coins" },
-        )
+        { _id: maleParticipant.id, coins: { $gte: totalPrice } },
+        { $inc: { coins: -totalPrice } },
+        { new: true, select: "coins" },
+      )
       : callerProfile;
     if (!updatedPayer) {
       // Tekrar bak: kullanıcı var mı yoksa coin mi yetersiz?
@@ -2066,12 +2066,12 @@ exports.requestPaidCall = async (req, res) => {
           if (totalPrice > 0) {
             User.findByIdAndUpdate(callerId, {
               $inc: { coins: totalPrice },
-            }).catch(() => {});
+            }).catch(() => { });
           }
           if (hostShare > 0) {
             User.findByIdAndUpdate(hostId, {
               $inc: { coins: -hostShare, totalEarnings: -hostShare },
-            }).catch(() => {});
+            }).catch(() => { });
           }
           global.callRequests.delete(requestId);
           if (global.activeCalls) global.activeCalls.delete(callRoomName);
@@ -2175,7 +2175,7 @@ exports.requestPaidCall = async (req, res) => {
     // ✅ Mission tracking for making calls
     try {
       await trackMissionProgress(callerId, "make_call");
-    } catch (_) {}
+    } catch (_) { }
 
     res.json({
       ok: true,
