@@ -14,9 +14,12 @@ const coHostSchema = new mongoose.Schema(
     canModerate: { type: Boolean, default: false }, // Chat moderasyonu yapabilir mi
     status: {
       type: String,
-      enum: ["pending", "accepted", "rejected", "left"],
+      enum: ["pending", "accepted", "rejected", "left", "removed"],
       default: "pending",
     },
+    // Host tarafından çıkarıldıysa bu tarihe kadar tekrar davet edilemez (5 dk).
+    // Host listeden erken kaldırırsa null'a çekilir.
+    restrictedUntil: { type: Date, default: null },
   },
   { _id: true },
 );
