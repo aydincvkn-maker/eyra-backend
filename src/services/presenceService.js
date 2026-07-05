@@ -33,7 +33,8 @@ class PresenceService extends EventEmitter {
     this._heartbeatTimeoutMs = 15_000; // ✅ 15 saniye (client 5 saniyede bir heartbeat gönderir)
     this._sweepIntervalMs = 3_000; // ✅ 3 saniye - daha hızlı stale temizliği
     this._sweepTimer = null;
-    
+    this._lastSweepTickAt = null; // ✅ Event-loop stall tespiti (toplu yanlış-offline'ı önler)
+
     // ✅ PROFESSIONAL: Metrics for monitoring
     this._metrics = {
       totalConnections: 0,
@@ -45,11 +46,11 @@ class PresenceService extends EventEmitter {
       lastOnlineCount: 0,
       peakOnlineCount: 0,
     };
-    
+
     // ✅ PROFESSIONAL: Offline users lastSeen cache (prevents null)
     this._lastSeenCache = new Map(); // userId -> timestamp
   }
-  
+
   // ✅ Get metrics for monitoring/debugging
   getMetrics() {
     return {
@@ -70,6 +71,9 @@ class PresenceService extends EventEmitter {
       clearInterval(this._sweepTimer);
       this._sweepTimer = null;
     }
+
+    // ✅ Baseline: ilk sweep tick'inin stall sanılmasını önler
+    this._lastSweepTickAt = Date.now();
 
     this._sweepTimer = setInterval(() => {
       try {
@@ -137,19 +141,45 @@ class PresenceService extends EventEmitter {
 
   _sweepStale() {
     const now = Date.now();
+
+    // ✅ STALL GUARD: Event loop bir süre bloke/duraklarsa (host throttling,
+    // ağır senkron işlem, GC duraklaması, cold resume) sweep uyandığında TÜM
+    // kayıtların lastPing'i sırf bu duraklama yüzünden "bayat" görünür. Bu turda
+    // silme yaparsak tüm kullanıcıları aynı anda yanlışlıkla offline yaparız
+    // ("herkes aniden kayboluyor"). Bunun yerine bu tick'te silmeyi atlar ve her
+    // kaydın lastPing'ini tazeleriz; istemciler bir sonraki heartbeat penceresini alır.
+    const lastTick = this._lastSweepTickAt || now;
+    const elapsed = now - lastTick;
+    this._lastSweepTickAt = now;
+
+    const stallThreshold = Math.max(
+      this._heartbeatTimeoutMs,
+      this._sweepIntervalMs * 3,
+    );
+    if (elapsed > stallThreshold) {
+      for (const entry of this._onlineUsers.values()) {
+        if (entry) entry.lastPing = now;
+      }
+      this._metrics.lastSweepAt = now;
+      logger.warn(
+        `⏱️ Presence sweep ${elapsed}ms stall sonrası atlandı — ${this._onlineUsers.size} kayıt tazelendi (toplu yanlış-offline önlendi)`,
+      );
+      return;
+    }
+
     let sweptCount = 0;
     const sweptUsers = [];
-    
+
     for (const [userId, entry] of this._onlineUsers.entries()) {
       if (!entry?.lastPing) continue;
 
       const staleDuration = now - entry.lastPing;
       if (staleDuration > this._heartbeatTimeoutMs) {
         const snapshot = this._snapshotOnline(userId);
-        
+
         // ✅ FIX: Cache lastSeen before deleting
         this._lastSeenCache.set(userId, now);
-        
+
         this._onlineUsers.delete(userId);
         const offline = {
           ...snapshot,
@@ -162,7 +192,7 @@ class PresenceService extends EventEmitter {
         sweptUsers.push({ userId, staleDurationMs: staleDuration });
       }
     }
-    
+
     // ✅ Update metrics
     this._metrics.totalSweeps++;
     this._metrics.totalSweptUsers += sweptCount;
@@ -171,7 +201,7 @@ class PresenceService extends EventEmitter {
     if (this._onlineUsers.size > this._metrics.peakOnlineCount) {
       this._metrics.peakOnlineCount = this._onlineUsers.size;
     }
-    
+
     // ✅ Cleanup old lastSeen cache entries (older than 24 hours)
     // Also enforce a hard cap to prevent unbounded growth
     const cacheMaxAge = 24 * 60 * 60 * 1000;
@@ -189,7 +219,7 @@ class PresenceService extends EventEmitter {
         this._lastSeenCache.delete(uid);
       }
     }
-    
+
     // ✅ Log only when users are swept (reduces log spam)
     if (sweptCount > 0) {
       logger.info(`🧹 Presence sweep: ${sweptCount} users marked offline`, {
@@ -210,10 +240,10 @@ class PresenceService extends EventEmitter {
 
     const now = Date.now();
     const current = this._onlineUsers.get(key);
-    
+
     // ✅ CACHE UPDATE: Store lastSeen for future offline lookups
     this._lastSeenCache.set(key, now);
-    
+
     // ✅ Race condition fix: Eğer mevcut bir socket varsa ve yeni socketId farklıysa,
     // yeni bağlantı eski bağlantıyı override eder (bu normal - yeni tab/cihaz)
     // Ama socketId yoksa (HTTP çağrısı), mevcut socket'i bozmayız
@@ -224,7 +254,7 @@ class PresenceService extends EventEmitter {
       this._onlineUsers.set(key, current);
       return this._snapshotOnline(key);
     }
-    
+
     const socketId = String(meta.socketId || current?.socketId || '').trim() || null;
     const gender = meta.gender ?? current?.gender ?? null;
 
@@ -240,7 +270,7 @@ class PresenceService extends EventEmitter {
     if (!this._onlineUsers.has(key)) {
       this._metrics.totalConnections++;
     }
-    
+
     this._onlineUsers.set(key, entry);
 
     const snapshot = this._snapshotOnline(key);
@@ -258,7 +288,7 @@ class PresenceService extends EventEmitter {
     if (!key) throw new Error('userId is required');
 
     const entry = this._onlineUsers.get(key);
-    
+
     // ✅ RACE CONDITION FIX: Validate socketId properly
     // If entry exists and has a socketId, we MUST verify the disconnect request
     // is from the same socket. This prevents stale disconnects from killing
@@ -279,15 +309,15 @@ class PresenceService extends EventEmitter {
 
     const now = Date.now();
     const snapshot = this._snapshotOnline(key);
-    
+
     // ✅ Track metrics - disconnection
     if (this._onlineUsers.has(key)) {
       this._metrics.totalDisconnections++;
     }
-    
+
     // ✅ FIX: Cache lastSeen before deleting
     this._lastSeenCache.set(key, now);
-    
+
     this._onlineUsers.delete(key);
 
     const offline = {
