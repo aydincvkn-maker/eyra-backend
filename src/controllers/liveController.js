@@ -1642,13 +1642,22 @@ exports.removeCoHost = async (req, res) => {
       return res.status(404).json({ ok: false, error: "cohost_not_found" });
     }
 
-    stream.coHosts[coHostIndex].status = "left";
+    // Çıkarılan co-host 5 dakika boyunca tekrar davet edilemez (host erken
+    // kaldırabilir). Durum "removed" olarak işaretlenir.
+    const RESTRICTION_MS = 5 * 60 * 1000;
+    const restrictedUntil = new Date(Date.now() + RESTRICTION_MS);
+    stream.coHosts[coHostIndex].status = "removed";
+    stream.coHosts[coHostIndex].restrictedUntil = restrictedUntil;
     await stream.save();
+
+    // Token iptal edilemediği için katılımcıyı LiveKit odasından zorla çıkar.
+    liveService.removeLiveKitParticipant(roomId, userId).catch(() => {});
 
     // Co-host'a ve herkese bildir
     if (global.io) {
       global.io.to(`user_${userId}`).emit("cohost:removed", {
         roomId,
+        restrictedUntil,
       });
       global.io.to(roomId).emit("cohost:left", {
         roomId,
