@@ -8,6 +8,7 @@ const {
   liveStartLimiter,
   chatLimiter,
   reportLimiter,
+  coHostLimiter,
 } = require("../middleware/rateLimit");
 const { logger } = require("../utils/logger");
 
@@ -182,10 +183,10 @@ router.post(
 
 // ============ CO-HOST ENDPOINTS ============
 // Co-host daveti gönder (Host tarafından)
-router.post("/cohost/invite", auth, liveController.inviteCoHost);
+router.post("/cohost/invite", auth, coHostLimiter, liveController.inviteCoHost);
 
 // Co-host davetini kabul et
-router.post("/cohost/accept", auth, liveController.acceptCoHostInvite);
+router.post("/cohost/accept", auth, coHostLimiter, liveController.acceptCoHostInvite);
 
 // Co-host davetini reddet
 router.post("/cohost/reject", auth, liveController.rejectCoHostInvite);
