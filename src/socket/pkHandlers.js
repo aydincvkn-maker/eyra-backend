@@ -53,6 +53,16 @@ function pub(h) {
   };
 }
 
+// Basit per-socket cooldown: PK eşleşme/davet spam'ini önler.
+function tooSoon(socket, key, ms) {
+  if (!socket.data._pkCooldown) socket.data._pkCooldown = {};
+  const now = Date.now();
+  const last = socket.data._pkCooldown[key] || 0;
+  if (now - last < ms) return true;
+  socket.data._pkCooldown[key] = now;
+  return false;
+}
+
 // Eşleşme oluşunca iki host'a kendi yayın token'larını, izleyici odalarına
 // ortak PK odasını bildirir.
 async function emitMatched(io, match) {
@@ -117,6 +127,7 @@ function register(socket, io) {
     const { streamRoomId } = sanitizeSocketPayload(raw);
     const userId = socket.data.userId;
     if (!userId || !streamRoomId || typeof streamRoomId !== "string") return;
+    if (tooSoon(socket, "find", 2000)) return;
     try {
       const entry = await profileEntry(userId, streamRoomId);
       const result = await pkMatch.enqueueAndMatch(entry);
@@ -152,6 +163,7 @@ function register(socket, io) {
     const userId = socket.data.userId;
     if (!userId || !targetUserId || !streamRoomId) return;
     if (String(targetUserId) === String(userId)) return;
+    if (tooSoon(socket, "invite", 2000)) return;
     pruneInvites();
     if (pkMatch.isBusy(userId) || pkMatch.isBusy(targetUserId)) {
       socket.emit("pk:invite_failed", { reason: "busy" });
