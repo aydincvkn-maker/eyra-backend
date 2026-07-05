@@ -250,12 +250,22 @@ router.post("/initiate", auth, async (req, res) => {
       });
     }
     if (isBillableCall && maleParticipant.coins < pricePerMinute) {
+      const callerIsPayer = String(maleParticipant.id) === String(callerId);
+      if (callerIsPayer) {
+        return res.status(400).json({
+          success: false,
+          error: "insufficient_coins",
+          required: pricePerMinute,
+          available: maleParticipant.coins,
+          message: `Arama için en az ${pricePerMinute} coin gerekli`,
+        });
+      }
+      // Arayan kadın; ödeyen (erkek) karşı tarafın coini yetersiz. Kadını coin
+      // satın almaya yönlendirmemek için ayrı bir hata kodu döndürülür.
       return res.status(400).json({
         success: false,
-        error: "insufficient_coins",
-        required: pricePerMinute,
-        available: maleParticipant.coins,
-        message: `Arama için en az ${pricePerMinute} coin gerekli`,
+        error: "target_insufficient_coins",
+        message: "Karşı tarafın görüşme için yeterli coini yok",
       });
     }
 
