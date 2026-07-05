@@ -595,7 +595,7 @@ exports.sendGift = async ({
   const updatedRecipient = await User.findByIdAndUpdate(
     actualRecipientId,
     { $inc: { coins: recipientShare, totalEarnings: recipientShare } },
-    { new: true, select: "coins" },
+    { new: true, select: "coins name username" },
   );
   if (!updatedRecipient) {
     // Recipient bulunamadı — sender'a coin'i geri ver
@@ -655,6 +655,8 @@ exports.sendGift = async ({
       senderName: updatedSender.name || updatedSender.username,
       senderImage: updatedSender.profileImage,
       recipientId: actualRecipientId,
+      recipientName:
+        updatedRecipient.name || updatedRecipient.username || "",
       roomId: live ? live.roomId : null,
       timestamp: new Date().toISOString(),
     };
