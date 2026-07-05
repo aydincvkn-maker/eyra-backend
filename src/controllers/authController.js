@@ -1275,7 +1275,10 @@ exports.phoneLogin = async (req, res) => {
 
       user = await User.create({
         username,
-        name: name || verifiedPhone,
+        // ⚠️ Telefon numarasını asla görünen ada yazma (gizlilik). Kullanıcı
+        // profil kurulumunda kendi adını/kullanıcı adını belirleyene kadar
+        // otomatik oluşturulan username'i göster.
+        name: name || username,
         email: `phone_${timestamp}@phone.eyra`,
         password: firebaseUid,
         authProvider: "phone",
