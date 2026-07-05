@@ -1343,10 +1343,18 @@ exports.inviteCoHost = async (req, res) => {
 
     // Kullanıcıyı kontrol et
     const user = await User.findById(userId).select(
-      "username name profileImage isBanned",
+      "username name profileImage isBanned gender",
     );
     if (!user || user.isBanned) {
       return res.status(404).json({ ok: false, error: "user_not_found" });
+    }
+
+    // 🛡️ Yayın politikası: sadece kadın kullanıcılar yayın (video) yapabilir.
+    // Co-host da video yayınladığı için aynı kısıt uygulanır.
+    if (String(user.gender) !== "female") {
+      return res
+        .status(403)
+        .json({ ok: false, error: "only_female_can_cohost" });
     }
 
     // Co-host olarak ekle (pending durumunda)
