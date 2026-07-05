@@ -455,7 +455,7 @@ const syncDefaultGifts = async () => {
       existingGift.description !== defaultGift.description ||
       existingGift.imageUrl !== defaultGift.imageUrl ||
       (existingGift.animationUrl || null) !==
-        (defaultGift.animationUrl || null) ||
+      (defaultGift.animationUrl || null) ||
       existingGift.valueCoins !== defaultGift.valueCoins ||
       existingGift.category !== defaultGift.category ||
       existingGift.order !== defaultGift.order ||
@@ -807,7 +807,7 @@ exports.postGiftHooks = async ({
       if (senderUser) {
         await senderUser.addXP(5); // Hediye gönderme XP
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // Achievement kontrolü
     const senderGiftCount = await Message.countDocuments({
