@@ -197,6 +197,16 @@ router.post("/cohost/leave", auth, liveController.leaveAsCoHost);
 // Co-host'u çıkar (Host tarafından)
 router.post("/cohost/remove", auth, liveController.removeCoHost);
 
+// Host tarafından çıkarılmış (kısıtlı) co-host listesi
+router.get("/cohost/removed/:roomId", auth, liveController.getRemovedCoHosts);
+
+// Çıkarılan co-host'un davet kısıtını erken kaldır (Host)
+router.post(
+  "/cohost/lift-restriction",
+  auth,
+  liveController.liftCoHostRestriction,
+);
+
 // Co-host listesini getir
 router.get("/cohost/:roomId", auth, liveController.getCoHosts);
 
