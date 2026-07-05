@@ -539,6 +539,17 @@ const uploadLimiter = createRateLimiter({
   keyPrefix: "upload",
 });
 
+/**
+ * Co-host invite/accept rate limiter
+ * 20 istek / dakika — davet spam'ini önler
+ */
+const coHostLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: "Çok fazla co-host isteği. Lütfen bekleyin.",
+  keyPrefix: "cohost",
+});
+
 module.exports = {
   createRateLimiter,
   generalLimiter,
@@ -550,4 +561,5 @@ module.exports = {
   panelAdminLimiter,
   paymentLimiter,
   uploadLimiter,
+  coHostLimiter,
 };
