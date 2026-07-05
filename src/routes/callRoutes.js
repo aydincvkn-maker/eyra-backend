@@ -143,7 +143,7 @@ async function handleCallTimeout(roomName) {
     await CallHistory.findOneAndUpdate(
       { roomName },
       { $set: { status: "missed", endedAt: new Date() } },
-    ).catch(() => {});
+    ).catch(() => { });
 
     // Active call'dan kaldır
     global.activeCalls?.delete(roomName);
@@ -182,7 +182,7 @@ async function handleCallTimeout(roomName) {
         relatedId: roomName,
         relatedType: "call",
       });
-    } catch (_) {}
+    } catch (_) { }
   } catch (err) {
     logger.error("❌ Call timeout handler error:", err);
   }
@@ -643,9 +643,9 @@ router.get("/active", auth, async (req, res) => {
   try {
     const activeCalls = global.activeCalls
       ? Array.from(global.activeCalls.entries()).map(([roomName, info]) => ({
-          roomName,
-          ...info,
-        }))
+        roomName,
+        ...info,
+      }))
       : [];
 
     res.json({
