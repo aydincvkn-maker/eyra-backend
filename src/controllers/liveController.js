@@ -1491,7 +1491,7 @@ exports.acceptCoHostInvite = async (req, res) => {
           name: user.name,
           profileImage: user.profileImage,
         },
-        role: stream.coHosts[coHostIndex].role,
+        role: acceptedEntry.role,
       });
     }
 
@@ -1500,8 +1500,8 @@ exports.acceptCoHostInvite = async (req, res) => {
       message: "Yayına katıldınız",
       token,
       livekitUrl: process.env.LIVEKIT_URL,
-      role: stream.coHosts[coHostIndex].role,
-      canPublish: stream.coHosts[coHostIndex].canPublish,
+      role: acceptedEntry.role,
+      canPublish: acceptedEntry.canPublish,
     });
   } catch (err) {
     logger.error("acceptCoHostInvite error:", err);
