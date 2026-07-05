@@ -1339,6 +1339,26 @@ exports.inviteCoHost = async (req, res) => {
       if (existingCoHost.status === "pending") {
         return res.status(400).json({ ok: false, error: "already_invited" });
       }
+      // Host tarafından çıkarıldıysa ve kısıt süresi (5 dk) dolmadıysa
+      // tekrar davet edilemez — host listeden erken kaldırmadıkça.
+      if (
+        existingCoHost.status === "removed" &&
+        existingCoHost.restrictedUntil &&
+        new Date(existingCoHost.restrictedUntil).getTime() > Date.now()
+      ) {
+        const remainingSec = Math.ceil(
+          (new Date(existingCoHost.restrictedUntil).getTime() - Date.now()) /
+            1000,
+        );
+        return res.status(403).json({
+          ok: false,
+          error: "cohost_restricted",
+          remainingSec,
+          message: `Bu kullanıcı ${Math.ceil(
+            remainingSec / 60,
+          )} dk boyunca tekrar davet edilemez`,
+        });
+      }
     }
 
     // Kullanıcıyı kontrol et
@@ -1357,14 +1377,23 @@ exports.inviteCoHost = async (req, res) => {
         .json({ ok: false, error: "only_female_can_cohost" });
     }
 
-    // Co-host olarak ekle (pending durumunda)
-    stream.coHosts.push({
-      user: userId,
-      role: role,
-      status: "pending",
-      canPublish: true,
-      canModerate: role === "moderator",
-    });
+    // Mevcut (removed/left/rejected) kayıt varsa yerinde pending'e çek —
+    // dizide mükerrer kayıt oluşmasın. Yoksa yeni kayıt ekle.
+    if (existingCoHost) {
+      existingCoHost.status = "pending";
+      existingCoHost.role = role;
+      existingCoHost.canPublish = true;
+      existingCoHost.canModerate = role === "moderator";
+      existingCoHost.restrictedUntil = null;
+    } else {
+      stream.coHosts.push({
+        user: userId,
+        role: role,
+        status: "pending",
+        canPublish: true,
+        canModerate: role === "moderator",
+      });
+    }
     await stream.save();
 
     // Kullanıcıya bildirim gönder (socket)
