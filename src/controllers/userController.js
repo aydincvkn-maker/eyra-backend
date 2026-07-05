@@ -174,6 +174,72 @@ const buildUserStats = async (userId, existingUser = null) => {
   return stats;
 };
 
+const clampString = (value, maxLength) =>
+  String(value || "")
+    .trim()
+    .slice(0, maxLength);
+
+const calculateAppInsights = (user) => {
+  const now = Date.now();
+  const createdAt = user?.createdAt ? new Date(user.createdAt).getTime() : null;
+  const activity = user?.appActivity || {};
+  const lastActiveRaw = activity.lastActiveAt || user?.lastSeen || null;
+  const lastActiveAt = lastActiveRaw ? new Date(lastActiveRaw).getTime() : null;
+  const inactiveDays = lastActiveAt
+    ? Math.max(0, Math.floor((now - lastActiveAt) / (24 * 60 * 60 * 1000)))
+    : null;
+
+  let uninstallRisk = "low";
+  let uninstallReason = "Aktif veya yakın zamanda giriş yapmış";
+  if (inactiveDays === null) {
+    uninstallRisk = "unknown";
+    uninstallReason = "Aktivite verisi yok";
+  } else if (inactiveDays >= 30) {
+    uninstallRisk = "high";
+    uninstallReason = "30+ gündür aktif değil";
+  } else if (inactiveDays >= 14) {
+    uninstallRisk = "medium";
+    uninstallReason = "14+ gündür aktif değil";
+  } else if (inactiveDays >= 7 || (!user?.fcmToken && inactiveDays >= 3)) {
+    uninstallRisk = "watch";
+    uninstallReason = !user?.fcmToken
+      ? "Bildirim tokenı yok ve birkaç gündür aktif değil"
+      : "7+ gündür aktif değil";
+  }
+
+  return {
+    firstOpenAt: activity.firstOpenAt || null,
+    lastOpenAt: activity.lastOpenAt || null,
+    lastActiveAt: activity.lastActiveAt || null,
+    lastForegroundAt: activity.lastForegroundAt || null,
+    lastBackgroundAt: activity.lastBackgroundAt || null,
+    lastEvent: activity.lastEvent || "",
+    sessionCount: activity.sessionCount || 0,
+    totalSessionSeconds: activity.totalSessionSeconds || 0,
+    lastSessionSeconds: activity.lastSessionSeconds || 0,
+    platform: activity.platform || "",
+    appVersion: activity.appVersion || "",
+    buildNumber: activity.buildNumber || "",
+    deviceModel: activity.deviceModel || "",
+    locale: activity.locale || "",
+    timezone: activity.timezone || "",
+    installSource: activity.installSource || "",
+    notificationPermission: activity.notificationPermission || "unknown",
+    fcmTokenUpdatedAt: user?.fcmTokenUpdatedAt || null,
+    hasFcmToken: Boolean(user?.fcmToken),
+    memberAgeHours: createdAt
+      ? Math.max(0, Math.floor((now - createdAt) / (60 * 60 * 1000)))
+      : null,
+    memberAgeDays: createdAt
+      ? Math.max(0, Math.floor((now - createdAt) / (24 * 60 * 60 * 1000)))
+      : null,
+    inactiveDays,
+    uninstallRisk,
+    uninstallLikely: uninstallRisk === "high",
+    uninstallReason,
+  };
+};
+
 // =============================================
 // PROFESSIONAL USER FORMATTER
 // =============================================
@@ -233,6 +299,10 @@ const formatUser = (user, presenceData = {}) => {
     lastSeen,
     authProvider: user.authProvider || "email",
     createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+    lastOnlineAt: user.lastOnlineAt || null,
+    lastOfflineAt: user.lastOfflineAt || null,
+    appInsights: calculateAppInsights(user),
   };
 };
 
@@ -911,6 +981,91 @@ exports.adminResetUserPassword = async (req, res) => {
   } catch (err) {
     logger.error("adminResetUserPassword error:", err);
     sendError(res, 500, "Sunucu hatası");
+  }
+};
+
+// POST /api/users/me/activity - Uygulama açılış/session aktivitesini kaydet
+exports.recordAppActivity = async (req, res) => {
+  try {
+    const userId = req.user?.id || req.user?._id;
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Yetkilendirme hatası" });
+    }
+
+    const allowedEvents = new Set([
+      "first_open",
+      "open",
+      "resume",
+      "background",
+      "heartbeat",
+      "close",
+    ]);
+    const event = clampString(req.body?.event, 30);
+    if (!allowedEvents.has(event)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Geçersiz aktivite olayı" });
+    }
+
+    const rawSessionSeconds = Number(req.body?.sessionSeconds || 0);
+    const sessionSeconds = Number.isFinite(rawSessionSeconds)
+      ? Math.min(Math.max(Math.floor(rawSessionSeconds), 0), 24 * 60 * 60)
+      : 0;
+    const now = new Date();
+    const user = await User.findById(userId).select("appActivity");
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Kullanıcı bulunamadı" });
+    }
+
+    const set = {
+      "appActivity.lastActiveAt": now,
+      "appActivity.lastEvent": event,
+      "appActivity.platform": clampString(req.body?.platform, 30),
+      "appActivity.appVersion": clampString(req.body?.appVersion, 40),
+      "appActivity.buildNumber": clampString(req.body?.buildNumber, 40),
+      "appActivity.deviceModel": clampString(req.body?.deviceModel, 80),
+      "appActivity.locale": clampString(req.body?.locale, 20),
+      "appActivity.timezone": clampString(req.body?.timezone, 80),
+      "appActivity.installSource": clampString(req.body?.installSource, 40),
+      "appActivity.notificationPermission": clampString(
+        req.body?.notificationPermission || "unknown",
+        30,
+      ),
+      lastSeen: now,
+    };
+
+    if (!user.appActivity?.firstOpenAt || event === "first_open") {
+      set["appActivity.firstOpenAt"] = user.appActivity?.firstOpenAt || now;
+    }
+    if (event === "first_open" || event === "open" || event === "resume") {
+      set["appActivity.lastOpenAt"] = now;
+      set["appActivity.lastForegroundAt"] = now;
+    }
+    if (event === "background" || event === "close") {
+      set["appActivity.lastBackgroundAt"] = now;
+      set["appActivity.lastSessionSeconds"] = sessionSeconds;
+    }
+
+    const inc = {};
+    if (event === "first_open" || event === "open" || event === "resume") {
+      inc["appActivity.sessionCount"] = 1;
+    }
+    if (sessionSeconds > 0 && (event === "background" || event === "close")) {
+      inc["appActivity.totalSessionSeconds"] = sessionSeconds;
+    }
+
+    const update = { $set: set };
+    if (Object.keys(inc).length > 0) update.$inc = inc;
+
+    await User.updateOne({ _id: userId }, update, { runValidators: true });
+    res.json({ success: true });
+  } catch (err) {
+    logger.error("recordAppActivity error:", err);
+    res.status(500).json({ success: false, message: "Aktivite kaydedilemedi" });
   }
 };
 
@@ -1845,7 +2000,14 @@ exports.getUserById = async (req, res) => {
     }
 
     const viewerId = req.user?.id ? String(req.user.id) : null;
-    if (viewerId !== String(user._id)) {
+    const isAdminViewer =
+      req.user?.role === "admin" ||
+      req.user?.role === "super_admin" ||
+      req.user?.role === "moderator" ||
+      (Array.isArray(req.user?.permissions) &&
+        req.user.permissions.includes("users:view"));
+
+    if (!isAdminViewer && viewerId !== String(user._id)) {
       const viewer = viewerId
         ? await User.findById(viewerId).select("gender")
         : null;
@@ -1878,11 +2040,24 @@ exports.getUserById = async (req, res) => {
         gifts: user.gifts || 0,
         coins: user.coins || 0,
         bio: user.bio || "",
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        authProvider: user.authProvider || "email",
         presenceStatus,
         isOnline: presenceStatus !== "offline",
         isLive,
+        isBusy: presenceStatus === "in_call",
         isVerified: user.isVerified || false,
+        isBanned: user.isBanned || false,
+        isVip: user.isVip || false,
+        vipTier: user.vipTier || "none",
         lastSeen: presenceData.lastSeen || null,
+        lastOnlineAt: user.lastOnlineAt || null,
+        lastOfflineAt: user.lastOfflineAt || null,
+        loginHistory: Array.isArray(user.loginHistory)
+          ? user.loginHistory.slice(-20).reverse()
+          : [],
+        appInsights: calculateAppInsights(user),
       },
     });
   } catch (err) {

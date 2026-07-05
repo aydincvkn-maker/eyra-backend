@@ -175,6 +175,9 @@ router.put("/me/phone", auth, userController.changePhone);
 // GET /api/users/me/login-history - Giriş geçmişi
 router.get("/me/login-history", auth, userController.getLoginHistory);
 
+// POST /api/users/me/activity - Uygulama açılış/session aktivitesi
+router.post("/me/activity", auth, userController.recordAppActivity);
+
 // GET /api/users/me/blocked - Engellenen kullanıcılar
 router.get("/me/blocked", auth, blockController.getBlockedUsers);
 

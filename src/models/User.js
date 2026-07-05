@@ -223,6 +223,27 @@ const userSchema = new mongoose.Schema(
     fcmToken: { type: String, default: null },
     fcmTokenUpdatedAt: { type: Date, default: null },
 
+    // UYGULAMA AKTİVİTESİ / RETENTION
+    appActivity: {
+      firstOpenAt: { type: Date, default: null },
+      lastOpenAt: { type: Date, default: null },
+      lastActiveAt: { type: Date, default: null },
+      lastForegroundAt: { type: Date, default: null },
+      lastBackgroundAt: { type: Date, default: null },
+      lastEvent: { type: String, default: "" },
+      sessionCount: { type: Number, default: 0, min: 0 },
+      totalSessionSeconds: { type: Number, default: 0, min: 0 },
+      lastSessionSeconds: { type: Number, default: 0, min: 0 },
+      platform: { type: String, default: "" },
+      appVersion: { type: String, default: "" },
+      buildNumber: { type: String, default: "" },
+      deviceModel: { type: String, default: "" },
+      locale: { type: String, default: "" },
+      timezone: { type: String, default: "" },
+      installSource: { type: String, default: "" },
+      notificationPermission: { type: String, default: "unknown" },
+    },
+
     // HIGHLIGHTS
     highlights: {
       type: [
@@ -388,6 +409,8 @@ userSchema.index({ isLive: 1 });
 userSchema.index({ isBusy: 1 });
 userSchema.index({ lastOnlineAt: 1 });
 userSchema.index({ lastOfflineAt: 1 });
+userSchema.index({ "appActivity.lastActiveAt": 1 });
+userSchema.index({ "appActivity.firstOpenAt": 1 });
 // username zaten unique: true olarak schema'da tanımlı, duplicate index ekleme
 
 module.exports = mongoose.model("User", userSchema);
