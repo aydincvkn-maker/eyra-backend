@@ -1715,6 +1715,87 @@ exports.getCoHosts = async (req, res) => {
 };
 
 /**
+ * Host tarafından çıkarılmış ve hâlâ kısıtlı (5 dk) co-host'ları getir.
+ * Host bu listeden kısıtı erken kaldırabilir.
+ */
+exports.getRemovedCoHosts = async (req, res) => {
+  try {
+    const hostId = req.user.id;
+    const { roomId } = req.params;
+
+    const stream = await LiveStream.findOne({ roomId }).populate(
+      "coHosts.user",
+      "username name profileImage",
+    );
+    if (!stream) {
+      return res.status(404).json({ ok: false, error: "stream_not_found" });
+    }
+    if (String(stream.host) !== String(hostId)) {
+      return res.status(403).json({ ok: false, error: "only_host" });
+    }
+
+    const now = Date.now();
+    const removed = stream.coHosts
+      .filter(
+        (c) =>
+          c.status === "removed" &&
+          c.restrictedUntil &&
+          new Date(c.restrictedUntil).getTime() > now &&
+          c.user,
+      )
+      .map((c) => ({
+        userId: c.user._id,
+        username: c.user.username,
+        name: c.user.name,
+        profileImage: c.user.profileImage,
+        restrictedUntil: c.restrictedUntil,
+        remainingSec: Math.max(
+          0,
+          Math.ceil((new Date(c.restrictedUntil).getTime() - now) / 1000),
+        ),
+      }));
+
+    res.json({ ok: true, removed });
+  } catch (err) {
+    logger.error("getRemovedCoHosts error:", err);
+    res.status(500).json({ ok: false, error: "fetch_failed" });
+  }
+};
+
+/**
+ * Bir çıkarılan co-host'un 5 dk'lık davet kısıtını erken kaldır (Host).
+ */
+exports.liftCoHostRestriction = async (req, res) => {
+  try {
+    const hostId = req.user.id;
+    const { roomId, userId } = req.body;
+
+    const stream = await LiveStream.findOne({ roomId, isLive: true });
+    if (!stream) {
+      return res.status(404).json({ ok: false, error: "stream_not_found" });
+    }
+    if (String(stream.host) !== String(hostId)) {
+      return res.status(403).json({ ok: false, error: "only_host" });
+    }
+
+    const entry = stream.coHosts.find(
+      (c) => String(c.user) === String(userId) && c.status === "removed",
+    );
+    if (!entry) {
+      return res.status(404).json({ ok: false, error: "restriction_not_found" });
+    }
+
+    entry.restrictedUntil = null;
+    await stream.save();
+
+    res.json({ ok: true, message: "Kısıt kaldırıldı" });
+  } catch (err) {
+    logger.error("liftCoHostRestriction error:", err);
+    res.status(500).json({ ok: false, error: "lift_failed" });
+  }
+};
+
+/**
  * Co-host ayarlarını güncelle (Host tarafından)
  */
 exports.updateCoHostSettings = async (req, res) => {
