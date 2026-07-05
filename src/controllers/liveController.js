@@ -1415,21 +1415,55 @@ exports.acceptCoHostInvite = async (req, res) => {
       return res.status(404).json({ ok: false, error: "invite_not_found" });
     }
 
-    // Max co-host kontrolü (son anda dolmuş olabilir)
-    const activeCoHosts = stream.coHosts.filter((c) => c.status === "accepted");
-    if (activeCoHosts.length >= stream.maxCoHosts) {
+    // 🛡️ Atomik kapasite kontrolü: kabul edilen co-host sayısı max'ın altındaysa
+    // ve bu kullanıcının bekleyen daveti hâlâ duruyorsa, tek işlemde accepted'a
+    // çevir. Aksi halde (kontrol + save arasındaki yarışta) limit aşılabilir.
+    const updated = await LiveStream.findOneAndUpdate(
+      {
+        roomId,
+        isLive: true,
+        coHosts: { $elemMatch: { user: userId, status: "pending" } },
+        $expr: {
+          $lt: [
+            {
+              $size: {
+                $filter: {
+                  input: "$coHosts",
+                  as: "c",
+                  cond: { $eq: ["$$c.status", "accepted"] },
+                },
+              },
+            },
+            "$maxCoHosts",
+          ],
+        },
+      },
+      {
+        $set: {
+          "coHosts.$[elem].status": "accepted",
+          "coHosts.$[elem].joinedAt": new Date(),
+        },
+      },
+      {
+        arrayFilters: [{ "elem.user": userId, "elem.status": "pending" }],
+        new: true,
+      },
+    );
+
+    if (!updated) {
+      // Kapasite dolmuş ya da davet artık geçerli değil.
       return res.status(400).json({ ok: false, error: "max_cohosts_reached" });
     }
 
-    // Daveti kabul et
-    stream.coHosts[coHostIndex].status = "accepted";
-    stream.coHosts[coHostIndex].joinedAt = new Date();
-    await stream.save();
+    const acceptedEntry =
+      updated.coHosts.find(
+        (c) => String(c.user) === String(userId) && c.status === "accepted",
+      ) || {};
 
     // ✅ SAFE: Token generation with error handling
     let token;
     try {
-      const canPublish = stream.coHosts[coHostIndex].canPublish;
+      const canPublish = acceptedEntry.canPublish;
       token = await generateCoHostToken(userId, roomId, canPublish);
     } catch (tokenErr) {
       logger.error(
