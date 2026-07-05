@@ -672,7 +672,13 @@ exports.sendGift = async ({
                 ? match.hostB.streamRoomId
                 : match.hostA.streamRoomId;
             if (opponentRoom && String(opponentRoom) !== String(live.roomId)) {
-              global.io.to(opponentRoom).emit("gift_received", giftPayload);
+              // ⚠️ roomId'yi rakip odasıyla değiştir: karşı tarafın istemcisi
+              // gelen event'i `roomId == widget.roomId` filtresiyle kabul etsin.
+              // recipientId korunur, böylece skor doğru tarafa yazılır.
+              global.io.to(opponentRoom).emit("gift_received", {
+                ...giftPayload,
+                roomId: opponentRoom,
+              });
             }
           }
         } catch (_) {
