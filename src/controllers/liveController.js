@@ -259,6 +259,15 @@ exports.startLive = async (req, res) => {
     const userId = req.user.id;
     let { title, category, description, quality, resolution } = req.body;
 
+    // Yayın tipini kategori normalize edilmeden önce belirle (group/pk/single)
+    const rawCategory = String(category || "").toLowerCase().trim();
+    let streamType = "single";
+    if (rawCategory === "group" || rawCategory === "grup") {
+      streamType = "group";
+    } else if (rawCategory === "pk") {
+      streamType = "pk";
+    }
+
     // Kategoriyi normalize et (Turkish → English)
     category = normalizeCategory(category);
 
@@ -382,6 +391,7 @@ exports.startLive = async (req, res) => {
       title: title || `${host.name || host.username}'s Live`,
       description: description || "",
       category: category || "chat",
+      streamType,
       thumbnailUrl: host.streamCoverImage || host.profileImage || "",
       isLive: true,
       status: "live",

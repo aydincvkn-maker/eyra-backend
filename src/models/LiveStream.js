@@ -34,6 +34,13 @@ const liveStreamSchema = new mongoose.Schema(
       enum: ["chat", "music", "dance", "talk", "gaming", "other"],
       default: "chat",
     },
+    // ✅ Yayın tipi (tekil / grup / pk) — kategoriden bağımsız yönlendirme için
+    streamType: {
+      type: String,
+      enum: ["single", "group", "pk"],
+      default: "single",
+      index: true,
+    },
     thumbnailUrl: { type: String },
 
     // Yayın Durumu

@@ -112,6 +112,7 @@ exports.getActiveStreamsWithCache = async (options = {}) => {
         title: 1,
         description: 1,
         category: 1,
+        streamType: 1,
         thumbnailUrl: 1,
         isLive: 1,
         status: 1,
