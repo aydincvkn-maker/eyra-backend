@@ -1089,6 +1089,49 @@ exports.leaveBossSeat = async (req, res) => {
 };
 
 /**
+ * Gruba yayıncı olarak katıl — kadın kullanıcı koltuk rotasyonu için yayın
+ * izinli (publish) token alır. Sıraya giriş socket (group:join_seat_queue)
+ * üzerinden yapılır.
+ */
+exports.joinGroupAsBroadcaster = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { roomId } = req.body || {};
+    if (!roomId || typeof roomId !== "string") {
+      return res.status(400).json({ ok: false, error: "roomId_required" });
+    }
+
+    const stream = await LiveStream.findOne({ roomId, isLive: true }).select(
+      "host streamType",
+    );
+    if (!stream || stream.streamType !== "group") {
+      return res.status(404).json({ ok: false, error: "group_not_live" });
+    }
+    if (String(stream.host) === String(userId)) {
+      return res.status(400).json({ ok: false, error: "host_is_not_seat" });
+    }
+
+    const user = await User.findById(userId).select("gender");
+    if (!user) {
+      return res.status(404).json({ ok: false, error: "user_not_found" });
+    }
+    if (String(user.gender).toLowerCase() !== "female") {
+      return res.status(403).json({ ok: false, error: "only_female_broadcaster" });
+    }
+
+    const token = await generateHostToken(userId, roomId);
+    return res.json({
+      ok: true,
+      token,
+      livekitUrl: process.env.LIVEKIT_URL,
+    });
+  } catch (err) {
+    logger.error("joinGroupAsBroadcaster error:", err);
+    res.status(500).json({ ok: false, error: "broadcaster_join_failed" });
+  }
+};
+
+/**
  * Yayındaki izleyici listesini getir
  */
 exports.getViewers = async (req, res) => {
