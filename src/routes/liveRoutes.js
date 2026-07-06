@@ -142,6 +142,9 @@ router.post("/boss/join", auth, liveController.joinBossSeat);
 // BOSS koltuğundan ayrıl
 router.post("/boss/leave", auth, liveController.leaveBossSeat);
 
+// Gruba yayıncı olarak katıl (kadın, publish token)
+router.post("/group/join-broadcaster", auth, liveController.joinGroupAsBroadcaster);
+
 // ============ LISTING ENDPOINTS ============
 // Aktif yayınları listele
 router.get("/list", auth, liveController.getActiveLives);
