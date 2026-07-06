@@ -145,6 +145,12 @@ router.post("/boss/leave", auth, liveController.leaveBossSeat);
 // Gruba yayıncı olarak katıl (kadın, publish token)
 router.post("/group/join-broadcaster", auth, liveController.joinGroupAsBroadcaster);
 
+// PK eşleşme kuyruğu sayısı
+router.get("/pk/waiting-count", auth, liveController.getPkWaitingCount);
+
+// Grup koltuk/sıra durumu
+router.get("/group/state/:roomId", auth, liveController.getGroupSeatState);
+
 // ============ LISTING ENDPOINTS ============
 // Aktif yayınları listele
 router.get("/list", auth, liveController.getActiveLives);
