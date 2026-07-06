@@ -662,6 +662,23 @@ exports.sendGift = async ({
     };
     if (live) {
       global.io.to(live.roomId).emit("gift_received", giftPayload);
+      // Grup yayınında: alıcı bir koltuktaysa hediye seviyesine göre süresini uzat.
+      if (live.streamType === "group") {
+        try {
+          const groupSeat = require("./groupSeatService");
+          const seconds = groupSeat.giftExtendSeconds(gift.valueCoins);
+          const { changed, state } = groupSeat.extendSeat(
+            live.roomId,
+            String(actualRecipientId),
+            seconds,
+          );
+          if (changed && state) {
+            global.io.to(live.roomId).emit("group:state", state);
+          }
+        } catch (e) {
+          logger.warn("⚠️ [gift] group seat extend failed:", e.message);
+        }
+      }
       // PK düellosunda rakibin yayın odasına da yayınla ki her iki tarafın
       // izleyicileri ve host'ları skoru senkron görsün.
       if (live.isPk && live.pkRoomId) {
