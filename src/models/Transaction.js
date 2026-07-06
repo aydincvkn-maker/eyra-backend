@@ -24,6 +24,8 @@ const transactionSchema = new mongoose.Schema(
         "achievement_reward", // Başarım ödülü
         "level_up_bonus",   // Seviye atlama bonusu
         "salary_payment",   // Haftalık maaş ödemesi
+        "boss_seat_payment", // Grup BOSS koltuğu ödemesi (coin düşer)
+        "boss_seat_earning", // Grup BOSS koltuğu kazancı (coin artar)
       ],
       required: true,
     },
