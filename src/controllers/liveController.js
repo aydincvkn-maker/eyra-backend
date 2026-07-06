@@ -955,6 +955,140 @@ exports.getStreamDetails = async (req, res) => {
 };
 
 /**
+ * BOSS koltuğuna oturma — erkek kullanıcı sabit ücret öder (grup yayını).
+ */
+const BOSS_SEAT_COIN_PRICE = 250;
+const BOSS_HOST_SHARE_RATIO = 0.45;
+
+exports.joinBossSeat = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { roomId } = req.body || {};
+    if (!roomId || typeof roomId !== "string") {
+      return res.status(400).json({ ok: false, error: "roomId_required" });
+    }
+
+    // Grup yayını mı ve canlı mı?
+    const stream = await LiveStream.findOne({ roomId, isLive: true }).select(
+      "host streamType",
+    );
+    if (!stream || stream.streamType !== "group") {
+      return res.status(404).json({ ok: false, error: "group_not_live" });
+    }
+    if (String(stream.host) === String(userId)) {
+      return res.status(400).json({ ok: false, error: "host_cannot_be_boss" });
+    }
+
+    // Sadece erkek kullanıcılar BOSS koltuğuna oturabilir.
+    const buyer = await User.findById(userId).select("gender coins");
+    if (!buyer) {
+      return res.status(404).json({ ok: false, error: "user_not_found" });
+    }
+    if (String(buyer.gender).toLowerCase() !== "male") {
+      return res.status(403).json({ ok: false, error: "only_male_can_boss" });
+    }
+
+    // Atomik coin düşürme (yetersiz bakiye filter'da engellenir).
+    const updatedBuyer = await User.findOneAndUpdate(
+      { _id: userId, coins: { $gte: BOSS_SEAT_COIN_PRICE } },
+      { $inc: { coins: -BOSS_SEAT_COIN_PRICE } },
+      { new: true, select: "coins name username profileImage" },
+    );
+    if (!updatedBuyer) {
+      return res.status(400).json({ ok: false, error: "insufficient_coins" });
+    }
+
+    // Host payı (atomik ekleme).
+    const hostShare = Math.floor(BOSS_SEAT_COIN_PRICE * BOSS_HOST_SHARE_RATIO);
+    const updatedHost = await User.findByIdAndUpdate(
+      stream.host,
+      { $inc: { coins: hostShare, totalEarnings: hostShare } },
+      { new: true, select: "coins" },
+    );
+    if (!updatedHost) {
+      // Host bulunamadı — alıcıya coin'i iade et.
+      await User.findByIdAndUpdate(userId, {
+        $inc: { coins: BOSS_SEAT_COIN_PRICE },
+      });
+      return res.status(404).json({ ok: false, error: "host_not_found" });
+    }
+
+    // İşlem kayıtları (best-effort).
+    try {
+      await Transaction.create([
+        {
+          user: userId,
+          type: "boss_seat_payment",
+          amount: -BOSS_SEAT_COIN_PRICE,
+          balanceAfter: updatedBuyer.coins,
+          relatedUser: stream.host,
+          relatedStream: stream._id,
+          description: "BOSS koltuğu ödemesi",
+        },
+        {
+          user: stream.host,
+          type: "boss_seat_earning",
+          amount: hostShare,
+          balanceAfter: updatedHost.coins,
+          relatedUser: userId,
+          relatedStream: stream._id,
+          description: "BOSS koltuğu kazancı",
+        },
+      ]);
+    } catch (txErr) {
+      logger.warn("⚠️ [joinBossSeat] transaction log failed:", txErr.message);
+    }
+
+    // Yayın izinli (publish) LiveKit token üret.
+    const token = await generateHostToken(userId, roomId);
+
+    // Koltuk servisine BOSS'u yaz ve odaya durumu yayınla.
+    const groupSeat = require("../services/groupSeatService");
+    const state = groupSeat.setBoss(roomId, {
+      userId: String(userId),
+      name: updatedBuyer.name || updatedBuyer.username || "BOSS",
+      image: updatedBuyer.profileImage || "",
+    });
+    if (global.io && state) {
+      global.io.to(roomId).emit("group:state", state);
+    }
+
+    return res.json({
+      ok: true,
+      token,
+      livekitUrl: process.env.LIVEKIT_URL,
+      coins: updatedBuyer.coins,
+      price: BOSS_SEAT_COIN_PRICE,
+    });
+  } catch (err) {
+    logger.error("joinBossSeat error:", err);
+    res.status(500).json({ ok: false, error: "boss_join_failed" });
+  }
+};
+
+/**
+ * BOSS koltuğundan ayrılma.
+ */
+exports.leaveBossSeat = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { roomId } = req.body || {};
+    if (!roomId || typeof roomId !== "string") {
+      return res.status(400).json({ ok: false, error: "roomId_required" });
+    }
+    const groupSeat = require("../services/groupSeatService");
+    const state = groupSeat.clearBoss(roomId, String(userId));
+    if (global.io && state) {
+      global.io.to(roomId).emit("group:state", state);
+    }
+    return res.json({ ok: true });
+  } catch (err) {
+    logger.error("leaveBossSeat error:", err);
+    res.status(500).json({ ok: false, error: "boss_leave_failed" });
+  }
+};
+
+/**
  * Yayındaki izleyici listesini getir
  */
 exports.getViewers = async (req, res) => {
