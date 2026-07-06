@@ -135,6 +135,13 @@ router.post("/viewer-join", auth, liveController.joinAsViewer);
 // Yayından ayrıl
 router.post("/viewer-leave", auth, liveController.leaveAsViewer);
 
+// ============ GRUP BOSS KOLTUĞU ============
+// BOSS koltuğuna otur (erkek, sabit ücret)
+router.post("/boss/join", auth, liveController.joinBossSeat);
+
+// BOSS koltuğundan ayrıl
+router.post("/boss/leave", auth, liveController.leaveBossSeat);
+
 // ============ LISTING ENDPOINTS ============
 // Aktif yayınları listele
 router.get("/list", auth, liveController.getActiveLives);
