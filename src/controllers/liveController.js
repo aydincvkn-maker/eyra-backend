@@ -1132,6 +1132,37 @@ exports.joinGroupAsBroadcaster = async (req, res) => {
 };
 
 /**
+ * PK eşleşme kuyruğunda bekleyen yayıncı sayısı (yayıncı merkezi kartı için).
+ */
+exports.getPkWaitingCount = async (req, res) => {
+  try {
+    const list = pkMatchService.getWaitingList(req.user.id);
+    return res.json({ ok: true, count: Array.isArray(list) ? list.length : 0 });
+  } catch (err) {
+    logger.error("getPkWaitingCount error:", err);
+    res.status(500).json({ ok: false, error: "pk_count_failed", count: 0 });
+  }
+};
+
+/**
+ * Grup koltuk/sıra durumu (katılmadan sıra sayısını görmek için).
+ */
+exports.getGroupSeatState = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    if (!roomId) {
+      return res.status(400).json({ ok: false, error: "roomId_required" });
+    }
+    const groupSeat = require("../services/groupSeatService");
+    const state = groupSeat.getState(roomId);
+    return res.json({ ok: true, state });
+  } catch (err) {
+    logger.error("getGroupSeatState error:", err);
+    res.status(500).json({ ok: false, error: "group_state_failed" });
+  }
+};
+
+/**
  * Yayındaki izleyici listesini getir
  */
 exports.getViewers = async (req, res) => {
