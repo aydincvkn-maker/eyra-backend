@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const transactionSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    
+
     // İşlem tipi
     type: {
       type: String,
@@ -29,22 +29,22 @@ const transactionSchema = new mongoose.Schema(
       ],
       required: true,
     },
-    
+
     // Tutar
     amount: { type: Number, required: true }, // Pozitif = kazanç, negatif = harcama
     balanceAfter: { type: Number }, // İşlem sonrası bakiye
-    
+
     // İlişkiler
     relatedUser: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // Hediye gönderen/alan
     relatedGift: { type: mongoose.Schema.Types.ObjectId, ref: "Gift" },
     relatedStream: { type: mongoose.Schema.Types.ObjectId, ref: "LiveStream" },
     relatedCall: { type: mongoose.Schema.Types.ObjectId, ref: "CallHistory" },
     relatedMission: { type: mongoose.Schema.Types.ObjectId, ref: "Mission" },
-    
+
     // Detay
     description: { type: String },
     metadata: { type: mongoose.Schema.Types.Mixed }, // Ek bilgi
-    
+
     // Durum
     status: {
       type: String,
