@@ -26,7 +26,19 @@ const {
 function register(socket, io) {
   // Send private chat message
   socket.on("chat:send_message", async (rawData) => {
-    const data = sanitizeSocketPayload(rawData);
+    let data;
+    try {
+      data = sanitizeSocketPayload(rawData);
+    } catch (sanitizeErr) {
+      logger.error("chat:send_message payload sanitize error", {
+        err: sanitizeErr.message,
+      });
+      socket.emit("chat:error", {
+        tempId: rawData?.tempId,
+        error: "Invalid message payload",
+      });
+      return;
+    }
     const fromUserId = socket.data.userId;
     logger.debug("chat:send_message received", { fromUserId, to: data.to });
 
