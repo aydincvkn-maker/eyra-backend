@@ -342,52 +342,75 @@ exports.editMessage = async (messageId, userId, newText) => {
  */
 exports.getChatUsers = async (userId) => {
   try {
-    // Find all unique users the current user has chatted with
-    const sentMessages = await Message.distinct("to", {
-      from: userId,
-      isDeleted: false,
-    });
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return [];
+    }
 
-    const receivedMessages = await Message.distinct("from", {
-      to: userId,
-      isDeleted: false,
-    });
+    const currentUserId = new mongoose.Types.ObjectId(userId);
 
-    const userIds = [...new Set([...sentMessages, ...receivedMessages])];
+    const conversationSummaries = await Message.aggregate([
+      {
+        $match: {
+          isDeleted: false,
+          $or: [{ from: currentUserId }, { to: currentUserId }],
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      {
+        $project: {
+          counterpartyId: {
+            $cond: [{ $eq: ["$from", currentUserId] }, "$to", "$from"],
+          },
+          content: 1,
+          createdAt: 1,
+          from: 1,
+          to: 1,
+          readAt: "$metadata.readAt",
+        },
+      },
+      {
+        $group: {
+          _id: "$counterpartyId",
+          lastMessage: { $first: "$content" },
+          lastMessageTime: { $first: "$createdAt" },
+          unreadCount: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$to", currentUserId] },
+                    { $ne: ["$from", currentUserId] },
+                    { $not: ["$readAt"] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]);
+
+    const userIds = conversationSummaries.map((summary) => summary._id);
 
     const users = await User.find({ _id: { $in: userIds } })
       .select("username name profileImage isOnline lastSeen gender")
       .lean();
 
-    // Get last message and unread count for each user
-    const usersWithInfo = await Promise.all(
-      users.map(async (user) => {
-        const roomId = getChatRoomId(userId, user._id.toString());
-
-        const lastMessage = await Message.findOne({
-          roomId,
-          isDeleted: false,
-        })
-          .sort({ createdAt: -1 })
-          .select("content createdAt from")
-          .lean();
-
-        const unreadCount = await Message.countDocuments({
-          roomId,
-          from: user._id,
-          to: userId,
-          isDeleted: false,
-          "metadata.readAt": { $exists: false },
-        });
-
-        return {
-          ...user,
-          lastMessage: lastMessage?.content || "",
-          lastMessageTime: lastMessage?.createdAt || null,
-          unreadCount,
-        };
-      }),
+    const summaryByUserId = new Map(
+      conversationSummaries.map((summary) => [summary._id.toString(), summary]),
     );
+
+    const usersWithInfo = users.map((user) => {
+      const summary = summaryByUserId.get(user._id.toString());
+      return {
+        ...user,
+        lastMessage: summary?.lastMessage || "",
+        lastMessageTime: summary?.lastMessageTime || null,
+        unreadCount: summary?.unreadCount || 0,
+      };
+    });
 
     // Sort by last message time
     usersWithInfo.sort((a, b) => {
