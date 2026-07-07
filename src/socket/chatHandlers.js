@@ -95,51 +95,51 @@ function register(socket, io) {
       // backgrounded or ChatService listeners may be dead after reconnect.
       setImmediate(async () => {
         try {
-        const sender = await User.findById(fromUserId)
-          .select("username name preferredLanguage")
-          .lean();
-        const senderName = sender?.name || sender?.username || "Birisi";
+          const sender = await User.findById(fromUserId)
+            .select("username name preferredLanguage")
+            .lean();
+          const senderName = sender?.name || sender?.username || "Birisi";
 
-        // Alıcının diline göre push önizlemesini çevir — uygulama içi mesaj
-        // alıcının dilinde göründüğü için üstten gelen bildirim de aynı dilde
-        // olmalı (call:message akışıyla tutarlı).
-        const receiver = await User.findById(data.to)
-          .select("preferredLanguage")
-          .lean();
-        const senderLang = sender?.preferredLanguage || "tr";
-        const receiverLang = receiver?.preferredLanguage || "tr";
+          // Alıcının diline göre push önizlemesini çevir — uygulama içi mesaj
+          // alıcının dilinde göründüğü için üstten gelen bildirim de aynı dilde
+          // olmalı (call:message akışıyla tutarlı).
+          const receiver = await User.findById(data.to)
+            .select("preferredLanguage")
+            .lean();
+          const senderLang = sender?.preferredLanguage || "tr";
+          const receiverLang = receiver?.preferredLanguage || "tr";
 
-        let previewText =
-          (message.content || "").length > 80
-            ? message.content.substring(0, 80) + "..."
-            : message.content || "Yeni mesaj";
+          let previewText =
+            (message.content || "").length > 80
+              ? message.content.substring(0, 80) + "..."
+              : message.content || "Yeni mesaj";
 
-        if (senderLang !== receiverLang) {
-          try {
-            const translated = await translationService.translateText(
-              previewText,
-              receiverLang,
-              "auto",
-            );
-            if (translated?.translatedText) {
-              previewText = translated.translatedText;
+          if (senderLang !== receiverLang) {
+            try {
+              const translated = await translationService.translateText(
+                previewText,
+                receiverLang,
+                "auto",
+              );
+              if (translated?.translatedText) {
+                previewText = translated.translatedText;
+              }
+            } catch (translateErr) {
+              logger.error("Chat push translate error", {
+                err: translateErr.message,
+              });
             }
-          } catch (translateErr) {
-            logger.error("Chat push translate error", {
-              err: translateErr.message,
-            });
           }
-        }
 
-        await createNotification({
-          recipientId: data.to,
-          type: "chat_message",
-          title: senderName,
-          body: previewText,
-          senderId: fromUserId,
-          relatedId: message._id.toString(),
-          relatedType: "Message",
-        });
+          await createNotification({
+            recipientId: data.to,
+            type: "chat_message",
+            title: senderName,
+            body: previewText,
+            senderId: fromUserId,
+            relatedId: message._id.toString(),
+            relatedType: "Message",
+          });
         } catch (pushErr) {
           logger.error("Chat push notification error", pushErr);
         }
