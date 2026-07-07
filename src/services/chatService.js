@@ -255,7 +255,7 @@ exports.sendMessage = async (fromUserId, toUserId, data) => {
     // ✅ Mission tracking for sending messages
     try {
       await trackMissionProgress(fromUserId, "send_message");
-    } catch (_) {}
+    } catch (_) { }
 
     // Populate sender info
     await message.populate("from", "username name profileImage");
