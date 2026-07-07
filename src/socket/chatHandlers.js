@@ -77,16 +77,24 @@ function register(socket, io) {
       };
 
       // Send to recipient
-      const delivered = emitToUserSockets(
+      emitToUserSockets(
         data.to,
         "chat:new_message",
         messageData,
       );
 
+      // Confirm to sender before non-critical push/translation work.
+      socket.emit("chat:new_message", {
+        ...messageData,
+        isMe: true,
+        tempId: data.tempId,
+      });
+
       // ✅ FIX: Always send push notification for chat messages.
       // Even if socket delivery succeeded, the recipient's app may be
       // backgrounded or ChatService listeners may be dead after reconnect.
-      try {
+      setImmediate(async () => {
+        try {
         const sender = await User.findById(fromUserId)
           .select("username name preferredLanguage")
           .lean();
@@ -132,15 +140,9 @@ function register(socket, io) {
           relatedId: message._id.toString(),
           relatedType: "Message",
         });
-      } catch (pushErr) {
-        logger.error("Chat push notification error", pushErr);
-      }
-
-      // Confirm to sender
-      socket.emit("chat:new_message", {
-        ...messageData,
-        isMe: true,
-        tempId: data.tempId,
+        } catch (pushErr) {
+          logger.error("Chat push notification error", pushErr);
+        }
       });
 
       logger.debug("Chat message sent", { from: fromUserId, to: data.to });
